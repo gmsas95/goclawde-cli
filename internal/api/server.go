@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 
@@ -310,7 +309,6 @@ func (s *Server) handleChatStream(c *fiber.Ctx) error {
 			fullContent.WriteString(chunk)
 			data, _ := json.Marshal(fiber.Map{"chunk": chunk})
 			fmt.Fprintf(c, "data: %s\n\n", data)
-			c.Flush()
 		},
 	})
 

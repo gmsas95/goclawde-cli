@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/YOUR_USERNAME/jimmy.ai/internal/config"
@@ -193,25 +194,25 @@ func (c *Client) ChatCompletionStream(ctx context.Context, req ChatRequest, call
 			return fmt.Errorf("failed to read stream: %w", err)
 		}
 
-		line = bytes.TrimSpace([]byte(line))
+		line = strings.TrimSpace(line)
 		if len(line) == 0 {
 			continue
 		}
 
 		// Parse SSE data
-		if !bytes.HasPrefix(line, []byte("data: ")) {
+		if !strings.HasPrefix(line, "data: ") {
 			continue
 		}
 
-		data := bytes.TrimPrefix(line, []byte("data: "))
+		data := strings.TrimPrefix(line, "data: ")
 
 		// Check for stream end
-		if string(data) == "[DONE]" {
+		if data == "[DONE]" {
 			break
 		}
 
 		var chunk StreamResponse
-		if err := json.Unmarshal(data, &chunk); err != nil {
+		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
 			continue // Skip malformed chunks
 		}
 

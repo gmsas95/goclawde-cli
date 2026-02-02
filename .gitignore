@@ -25,8 +25,7 @@ data/
 badger/
 .jimmy/
 
-# Environment files
-.env
+# Environment files (local configs - template .env is tracked)
 .env.local
 .env.*.local
 
