@@ -76,7 +76,7 @@ jobs:
         GOOS: ${{ matrix.goos }}
         GOARCH: ${{ matrix.goarch }}
       run: |
-        output="nanobot-${{ matrix.goos }}-${{ matrix.goarch }}"
+        output="jimmy-${{ matrix.goos }}-${{ matrix.goarch }}"
         if [ "${{ matrix.goos }}" = "windows" ]; then
           output="${output}.exe"
         fi
@@ -85,7 +85,7 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: nanobot-${{ matrix.goos }}-${{ matrix.goarch }}
+        name: jimmy-${{ matrix.goos }}-${{ matrix.goarch }}
         path: bin/
 
   docker:

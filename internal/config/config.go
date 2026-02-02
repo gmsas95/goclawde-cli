@@ -1,0 +1,226 @@
+package config
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/spf13/viper"
+)
+
+// Config holds all configuration for Jimmy.ai
+type Config struct {
+	Server   ServerConfig   `mapstructure:"server"`
+	LLM      LLMConfig      `mapstructure:"llm"`
+	Storage  StorageConfig  `mapstructure:"storage"`
+	Channels ChannelsConfig `mapstructure:"channels"`
+	Tools    ToolsConfig    `mapstructure:"tools"`
+	Security SecurityConfig `mapstructure:"security"`
+}
+
+// ServerConfig holds HTTP server settings
+type ServerConfig struct {
+	Address      string `mapstructure:"address"`
+	Port         int    `mapstructure:"port"`
+	ReadTimeout  int    `mapstructure:"read_timeout"`
+	WriteTimeout int    `mapstructure:"write_timeout"`
+}
+
+// LLMConfig holds language model settings
+type LLMConfig struct {
+	DefaultProvider string            `mapstructure:"default_provider"`
+	Providers       map[string]Provider `mapstructure:"providers"`
+}
+
+// Provider holds individual LLM provider configuration
+type Provider struct {
+	APIKey   string `mapstructure:"api_key"`
+	BaseURL  string `mapstructure:"base_url"`
+	Model    string `mapstructure:"model"`
+	Timeout  int    `mapstructure:"timeout"`
+	MaxTokens int   `mapstructure:"max_tokens"`
+}
+
+// StorageConfig holds database settings
+type StorageConfig struct {
+	DataDir     string `mapstructure:"data_dir"`
+	SQLitePath  string `mapstructure:"sqlite_path"`
+	BadgerPath  string `mapstructure:"badger_path"`
+}
+
+// ChannelsConfig holds integration settings
+type ChannelsConfig struct {
+	Telegram TelegramConfig `mapstructure:"telegram"`
+	WhatsApp WhatsAppConfig `mapstructure:"whatsapp"`
+	Discord  DiscordConfig  `mapstructure:"discord"`
+}
+
+// TelegramConfig holds Telegram bot settings
+type TelegramConfig struct {
+	Enabled  bool   `mapstructure:"enabled"`
+	BotToken string `mapstructure:"bot_token"`
+	Webhook  string `mapstructure:"webhook"`
+}
+
+// WhatsAppConfig holds WhatsApp settings
+type WhatsAppConfig struct {
+	Enabled bool `mapstructure:"enabled"`
+}
+
+// DiscordConfig holds Discord bot settings
+type DiscordConfig struct {
+	Enabled bool   `mapstructure:"enabled"`
+	Token   string `mapstructure:"token"`
+}
+
+// ToolsConfig holds tool system settings
+type ToolsConfig struct {
+	Enabled    []string          `mapstructure:"enabled"`
+	AllowedCmds []string         `mapstructure:"allowed_commands"`
+	Sandbox    bool              `mapstructure:"sandbox"`
+}
+
+// SecurityConfig holds security settings
+type SecurityConfig struct {
+	JWTSecret     string `mapstructure:"jwt_secret"`
+	AdminPassword string `mapstructure:"admin_password"`
+	AllowOrigins  []string `mapstructure:"allow_origins"`
+}
+
+// Load loads configuration from file, env, and defaults
+func Load(configPath, dataDir string) (*Config, error) {
+	v := viper.New()
+
+	// Set defaults
+	setDefaults(v)
+
+	// Determine data directory
+	if dataDir == "" {
+		dataDir = getDefaultDataDir()
+	}
+	
+	// Ensure data directory exists
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create data directory: %w", err)
+	}
+
+	v.Set("storage.data_dir", dataDir)
+	v.Set("storage.sqlite_path", filepath.Join(dataDir, "jimmy.db"))
+	v.Set("storage.badger_path", filepath.Join(dataDir, "badger"))
+
+	// Config file path
+	if configPath == "" {
+		configPath = filepath.Join(dataDir, "jimmy.yaml")
+	}
+
+	// If config file exists, load it
+	if _, err := os.Stat(configPath); err == nil {
+		v.SetConfigFile(configPath)
+		if err := v.ReadInConfig(); err != nil {
+			return nil, fmt.Errorf("failed to read config: %w", err)
+		}
+	}
+
+	// Environment variables (JIMMY_SERVER_PORT, JIMMY_LLM_API_KEY, etc.)
+	v.SetEnvPrefix("JIMMY")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
+
+	// Unmarshal to struct
+	var cfg Config
+	if err := v.Unmarshal(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	// Validate
+	if err := validate(&cfg); err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
+}
+
+func setDefaults(v *viper.Viper) {
+	// Server defaults
+	v.SetDefault("server.address", "0.0.0.0")
+	v.SetDefault("server.port", 8080)
+	v.SetDefault("server.read_timeout", 30)
+	v.SetDefault("server.write_timeout", 30)
+
+	// LLM defaults
+	v.SetDefault("llm.default_provider", "kimi")
+	v.SetDefault("llm.providers.kimi.base_url", "https://api.moonshot.cn/v1")
+	v.SetDefault("llm.providers.kimi.model", "kimi-k2.5")
+	v.SetDefault("llm.providers.kimi.timeout", 60)
+	v.SetDefault("llm.providers.kimi.max_tokens", 4096)
+
+	// Tools defaults
+	v.SetDefault("tools.enabled", []string{"read_file", "write_file", "list_dir", "exec_command", "web_search"})
+	v.SetDefault("tools.sandbox", true)
+
+	// Security defaults
+	v.SetDefault("security.allow_origins", []string{"*"})
+}
+
+func getDefaultDataDir() string {
+	// Try XDG_DATA_HOME first
+	if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
+		return filepath.Join(xdg, "jimmy")
+	}
+
+	// Fall back to home directory
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "./data"
+	}
+
+	return filepath.Join(home, ".local", "share", "jimmy")
+}
+
+func validate(cfg *Config) error {
+	// Check for required LLM configuration
+	if cfg.LLM.DefaultProvider == "" {
+		return fmt.Errorf("llm.default_provider is required")
+	}
+
+	provider, ok := cfg.LLM.Providers[cfg.LLM.DefaultProvider]
+	if !ok {
+		return fmt.Errorf("provider %s not configured", cfg.LLM.DefaultProvider)
+	}
+
+	if provider.APIKey == "" {
+		return fmt.Errorf("llm.providers.%s.api_key is required", cfg.LLM.DefaultProvider)
+	}
+
+	// Generate JWT secret if not provided
+	if cfg.Security.JWTSecret == "" {
+		cfg.Security.JWTSecret = generateRandomString(32)
+	}
+
+	return nil
+}
+
+func generateRandomString(n int) string {
+	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letters[i%len(letters)]
+	}
+	return string(b)
+}
+
+// GetProvider returns the provider configuration by name
+func (c *Config) GetProvider(name string) (Provider, bool) {
+	p, ok := c.LLM.Providers[name]
+	return p, ok
+}
+
+// DefaultProvider returns the default provider configuration
+func (c *Config) DefaultProvider() (Provider, error) {
+	p, ok := c.LLM.Providers[c.LLM.DefaultProvider]
+	if !ok {
+		return Provider{}, fmt.Errorf("default provider %s not found", c.LLM.DefaultProvider)
+	}
+	return p, nil
+}

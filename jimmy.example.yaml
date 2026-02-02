@@ -1,0 +1,67 @@
+# Jimmy.ai Configuration
+# Place this file at ~/.local/share/jimmy/jimmy.yaml
+# or use environment variables (JIMMY_SERVER_PORT, etc.)
+
+server:
+  address: 0.0.0.0
+  port: 8080
+  read_timeout: 30
+  write_timeout: 30
+
+llm:
+  default_provider: kimi
+  providers:
+    kimi:
+      api_key: "your-kimi-api-key-here"
+      base_url: "https://api.moonshot.cn/v1"
+      model: "kimi-k2.5"
+      timeout: 60
+      max_tokens: 4096
+    openrouter:
+      api_key: "your-openrouter-key-here"
+      base_url: "https://openrouter.ai/api/v1"
+      model: "anthropic/claude-3.5-sonnet"
+      timeout: 60
+      max_tokens: 4096
+
+storage:
+  data_dir: "~/.local/share/jimmy"
+
+channels:
+  telegram:
+    enabled: false
+    bot_token: ""
+    webhook: ""
+  whatsapp:
+    enabled: false
+  discord:
+    enabled: false
+    token: ""
+
+tools:
+  enabled:
+    - read_file
+    - write_file
+    - list_dir
+    - exec_command
+    - web_search
+    - fetch_url
+    - thinking
+  allowed_commands:
+    - git
+    - ls
+    - cat
+    - grep
+    - find
+    - curl
+    - wget
+    - echo
+    - mkdir
+    - pwd
+  sandbox: true
+
+security:
+  jwt_secret: ""  # Auto-generated if empty
+  admin_password: ""  # Leave empty for no password (first-time setup)
+  allow_origins:
+    - "*"

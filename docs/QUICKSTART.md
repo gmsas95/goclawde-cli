@@ -6,11 +6,11 @@
 Download the latest release for your platform:
 ```bash
 # Linux/macOS
-curl -L https://github.com/YOUR_USERNAME/nanobot/releases/latest/download/nanobot-linux-amd64 -o nanobot
-chmod +x nanobot
+curl -L https://github.com/YOUR_USERNAME/jimmy/releases/latest/download/jimmy-linux-amd64 -o jimmy
+chmod +x jimmy
 
 # Run
-./nanobot
+./jimmy
 ```
 
 ### Option 2: Build from Source
@@ -18,28 +18,28 @@ Requirements: Go 1.23+, Node.js 20+
 
 ```bash
 # Clone
-git clone https://github.com/YOUR_USERNAME/nanobot.git
-cd nanobot
+git clone https://github.com/YOUR_USERNAME/jimmy.git
+cd jimmy
 
 # Build (with embedded web UI)
 make build-prod
 
 # Run
-./bin/nanobot
+./bin/jimmy
 ```
 
 ### Option 3: Docker
 ```bash
 docker run -d \
   -p 8080:8080 \
-  -v nanobot-data:/app/data \
+  -v jimmy-data:/app/data \
   -e NANOBOT_API_KEY=sk-... \
-  ghcr.io/YOUR_USERNAME/nanobot:latest
+  ghcr.io/YOUR_USERNAME/jimmy:latest
 ```
 
 ## Configuration
 
-Create `config.yaml` in your data directory:
+Create `jimmy.yaml` in your data directory:
 
 ```yaml
 server:
@@ -72,7 +72,7 @@ export NANOBOT_SERVER_PORT=8080
 
 1. Start the server:
 ```bash
-./nanobot
+./jimmy
 ```
 
 2. Open http://localhost:8080
@@ -82,8 +82,8 @@ export NANOBOT_SERVER_PORT=8080
 ## Project Structure
 
 ```
-~/nanobot-data/
-├── nanobot.db          # SQLite database (chats, agents, config)
+~/jimmy-data/
+├── jimmy.db          # SQLite database (chats, agents, config)
 ├── badger/             # BadgerDB (sessions, queue, vectors)
 ├── files/              # Uploaded files
 └── config.yaml         # Configuration file
