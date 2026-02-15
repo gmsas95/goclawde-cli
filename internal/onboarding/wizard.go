@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/YOUR_USERNAME/jimmy.ai/internal/persona"
+	"github.com/gmsas95/goclawde-cli/internal/persona"
 	"go.uber.org/zap"
 )
 

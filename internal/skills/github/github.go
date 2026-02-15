@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/YOUR_USERNAME/jimmy.ai/internal/skills"
+	"github.com/gmsas95/goclawde-cli/internal/skills"
 )
 
 // GitHubSkill provides GitHub integration

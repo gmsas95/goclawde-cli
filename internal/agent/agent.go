@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/YOUR_USERNAME/jimmy.ai/internal/llm"
-	"github.com/YOUR_USERNAME/jimmy.ai/internal/persona"
-	"github.com/YOUR_USERNAME/jimmy.ai/internal/skills"
-	"github.com/YOUR_USERNAME/jimmy.ai/internal/store"
-	"github.com/YOUR_USERNAME/jimmy.ai/pkg/tools"
+	"github.com/gmsas95/goclawde-cli/internal/llm"
+	"github.com/gmsas95/goclawde-cli/internal/persona"
+	"github.com/gmsas95/goclawde-cli/internal/skills"
+	"github.com/gmsas95/goclawde-cli/internal/store"
+	"github.com/gmsas95/goclawde-cli/pkg/tools"
 	"go.uber.org/zap"
 )
 

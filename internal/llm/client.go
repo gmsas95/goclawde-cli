@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/YOUR_USERNAME/jimmy.ai/internal/config"
+	"github.com/gmsas95/goclawde-cli/internal/config"
 )
 
 // Client provides LLM API access

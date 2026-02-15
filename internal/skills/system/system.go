@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/YOUR_USERNAME/jimmy.ai/internal/skills"
+	"github.com/gmsas95/goclawde-cli/internal/skills"
 )
 
 // SystemSkill provides system-level tools

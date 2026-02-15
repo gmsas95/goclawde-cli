@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/YOUR_USERNAME/jimmy.ai/internal/config"
+	"github.com/gmsas95/goclawde-cli/internal/config"
 	"github.com/dgraph-io/badger/v4"
 	_ "github.com/glebarez/go-sqlite" // Pure Go SQLite driver
 	"gorm.io/driver/sqlite"

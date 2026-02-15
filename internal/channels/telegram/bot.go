@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/YOUR_USERNAME/jimmy.ai/internal/agent"
-	"github.com/YOUR_USERNAME/jimmy.ai/internal/store"
+	"github.com/gmsas95/goclawde-cli/internal/agent"
+	"github.com/gmsas95/goclawde-cli/internal/store"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
 )

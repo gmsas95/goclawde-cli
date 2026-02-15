@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/YOUR_USERNAME/jimmy.ai/internal/store"
+	"github.com/gmsas95/goclawde-cli/internal/store"
 )
 
 // Skill represents a plugin/skill that can be registered
