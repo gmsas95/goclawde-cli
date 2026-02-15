@@ -26,7 +26,11 @@ All in a **single 50MB binary** with **zero dependencies**.
 | **Time Awareness** | ✅ Built-in | ❌ | ❌ |
 | **Project Context** | ✅ LRU Management | ❌ | ⚠️ Sessions |
 | **Persistent Memory** | ✅ SQLite + BadgerDB | ⚠️ Files | ✅ Markdown-based |
-| **Multi-Channel** | ✅ Web, CLI, Telegram | ⚠️ CLI | ✅ 10+ channels |
+| **Vector Search** | ✅ Multi-provider embeddings | ❌ | ❌ |
+| **Multi-Channel** | ✅ Web, CLI, Discord, Telegram | ⚠️ CLI | ✅ 10+ channels |
+| **Cron Jobs** | ✅ Scheduled automation | ❌ | ❌ |
+| **MCP Server** | ✅ SSE streaming | ❌ | ❌ |
+| **Batch Processing** | ✅ Tier 3 optimized (200 concurrent) | ❌ | ❌ |
 
 ---
 
@@ -188,23 +192,117 @@ goclawde user edit
 
 ## 💬 Multi-Channel Support
 
-### Telegram Bot
+### Discord Bot
 
-```bash
-# 1. Get token from @BotFather
-# 2. Add to config:
+```yaml
+channels:
+  discord:
+    enabled: true
+    token: "${DISCORD_BOT_TOKEN}"
+    allow_dm: true
+    # Optional: restrict to specific channels
+    # channels: ["channel-id-1", "channel-id-2"]
 ```
+
+Features:
+- Responds to mentions (@GoClawde) and DMs
+- Typing indicators while processing
+- Automatic message splitting for long responses
+- Commands: `/help`, `/new`, `/status`, `/ping`
+
+### Telegram Bot
 
 ```yaml
 channels:
   telegram:
     enabled: true
     bot_token: "${TELEGRAM_BOT_TOKEN}"
+    # Optional: allowlist specific users
+    # allowlist: [123456789]
 ```
 
 ### Web UI
 
 Access the web interface at `http://localhost:8080` when running in server mode.
+
+---
+
+## 🤖 MCP Server
+
+GoClawde includes an MCP (Model Context Protocol) server for external tool integration:
+
+```yaml
+mcp:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8081
+```
+
+The MCP server exposes tools via SSE streaming at `http://localhost:8081/mcp`.
+
+---
+
+## ⏰ Cron Jobs
+
+Schedule automated tasks:
+
+```yaml
+cron:
+  enabled: true
+  interval_minutes: 5
+  max_concurrent: 3
+```
+
+Create scheduled jobs via API:
+```bash
+curl -X POST http://localhost:8080/api/cron/jobs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "daily-report",
+    "prompt": "Generate daily summary",
+    "schedule": "@daily"
+  }'
+```
+
+Supported schedules: `30m`, `1h`, `@hourly`, `@daily`, `@weekly`, cron expressions
+
+---
+
+## 🔍 Vector Search
+
+Semantic memory search using embeddings:
+
+```yaml
+vector:
+  enabled: true
+  provider: "openai"  # or "ollama" for local
+  openai:
+    api_key: "${OPENAI_API_KEY}"
+    model: "text-embedding-3-small"
+```
+
+API endpoints:
+- `POST /api/search` - Semantic search across memories
+- `POST /api/memories/:id/index` - Index a memory
+
+---
+
+## ⚡ Batch Processing
+
+High-throughput batch processing optimized for Tier 3 rate limits:
+
+```bash
+# Process with Tier 3 limits (200 concurrent, 5000 RPM)
+goclawde batch -i prompts.jsonl --tier 3 -o results.json
+
+# Available tiers: 3, 4, 5
+```
+
+Features:
+- Token bucket rate limiting
+- Progress tracking with ETA
+- Checkpoint/resume (survives crashes)
+- Supports .txt and .jsonl formats
 
 ---
 
@@ -247,6 +345,7 @@ Built-in skills:
 | `github` | Repository operations | "Search for Go web frameworks" |
 | `weather` | Weather forecasts | "What's the weather in Tokyo?" |
 | `notes` | Note management | "Take a note: call mom tomorrow" |
+| `vision` | Image analysis | "Describe this image" |
 | `system` | File operations, shell commands | Built-in |
 
 ---
@@ -276,10 +375,10 @@ Optimized for speed:
 
 ## 🗺️ Roadmap
 
-- ✅ **v0.3** - Persona system, project management, Telegram bot
-- 🔄 **v0.4** - Discord/Slack integration, cron jobs, more skills
-- 🔄 **v0.5** - Vector memory (RAG), MCP protocol, web browsing
-- 🔄 **v1.0** - Multi-LLM support, skill marketplace, mobile apps
+- ✅ **v0.3** - Discord bot, MCP server, cron jobs, vector search, batch processing
+- 🔄 **v0.4** - Slack integration, web browsing skill, memory visualization
+- 🔄 **v0.5** - Multi-LLM routing, skill marketplace, agent workflows
+- 🔄 **v1.0** - Mobile apps, team collaboration, enterprise features
 
 ---
 
@@ -293,10 +392,18 @@ GoClawde (~50MB single binary)
 ├── SQLite (conversations, WAL mode)
 ├── BadgerDB (sessions, optimized)
 ├── HTTP API + WebSocket (Go/Fiber)
+├── MCP Server (SSE streaming)
 ├── Agent Runtime (goroutines)
 ├── Tool System (file, shell, web)
 ├── Skills Registry (extensible)
-└── Telegram Bot (multi-channel)
+│   ├── GitHub
+│   ├── Weather
+│   ├── Notes
+│   └── Vision (image analysis)
+├── Cron Runner (scheduled jobs)
+├── Vector Search (semantic memory)
+├── Batch Processor (high-throughput)
+└── Multi-Channel (Discord, Telegram, Web)
 ```
 
 ---
