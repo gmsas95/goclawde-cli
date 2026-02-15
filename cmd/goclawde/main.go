@@ -14,6 +14,7 @@ import (
 
 	"github.com/gmsas95/goclawde-cli/internal/agent"
 	"github.com/gmsas95/goclawde-cli/internal/api"
+	"github.com/gmsas95/goclawde-cli/internal/batch"
 	"github.com/gmsas95/goclawde-cli/internal/channels/telegram"
 	"github.com/gmsas95/goclawde-cli/internal/config"
 	"github.com/gmsas95/goclawde-cli/internal/llm"
@@ -64,6 +65,9 @@ func main() {
 			return
 		case "user":
 			handleUserCommand(os.Args[2:])
+			return
+		case "batch":
+			handleBatchCommand(os.Args[2:])
 			return
 		case "help", "--help", "-h":
 			printExtendedHelp()
@@ -392,6 +396,151 @@ func handleUserCommand(args []string) {
 	}
 }
 
+func handleBatchCommand(args []string) {
+	if len(args) == 0 {
+		printBatchHelp()
+		return
+	}
+
+	inputFile := ""
+	outputFile := ""
+	concurrency := 3
+	timeout := 60
+
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "-i", "--input":
+			if i+1 < len(args) {
+				inputFile = args[i+1]
+				i++
+			}
+		case "-o", "--output":
+			if i+1 < len(args) {
+				outputFile = args[i+1]
+				i++
+			}
+		case "-c", "--concurrency":
+			if i+1 < len(args) {
+				fmt.Sscanf(args[i+1], "%d", &concurrency)
+				i++
+			}
+		case "-t", "--timeout":
+			if i+1 < len(args) {
+				fmt.Sscanf(args[i+1], "%d", &timeout)
+				i++
+			}
+		case "-h", "--help":
+			printBatchHelp()
+			return
+		}
+	}
+
+	if inputFile == "" {
+		fmt.Println("Error: Input file is required")
+		fmt.Println("Usage: goclawde batch -i <input_file> [-o <output_file>]")
+		os.Exit(1)
+	}
+
+	if _, err := os.Stat(inputFile); os.IsNotExist(err) {
+		fmt.Printf("Error: Input file not found: %s\n", inputFile)
+		os.Exit(1)
+	}
+
+	logger, _ := zap.NewDevelopment()
+	defer logger.Sync()
+
+	cfg, err := config.Load("", "")
+	if err != nil {
+		fmt.Printf("Error loading config: %v\n", err)
+		os.Exit(1)
+	}
+
+	st, err := store.New(cfg)
+	if err != nil {
+		fmt.Printf("Error initializing store: %v\n", err)
+		os.Exit(1)
+	}
+	defer st.Close()
+
+	workspacePath := cfg.Storage.DataDir
+	pm, err := persona.NewPersonaManager(workspacePath, logger)
+	if err != nil {
+		logger.Warn("Failed to initialize persona manager", zap.Error(err))
+	}
+
+	provider, err := cfg.DefaultProvider()
+	if err != nil {
+		fmt.Printf("Error getting LLM provider: %v\n", err)
+		os.Exit(1)
+	}
+	llmClient := llm.NewClient(provider)
+
+	skillsRegistry := skills.NewRegistry(st)
+	registerSkills(cfg, skillsRegistry)
+
+	agentInstance := agent.New(llmClient, nil, st, logger, pm)
+	agentInstance.SetSkillsRegistry(skillsRegistry)
+
+	batchConfig := batch.Config{
+		MaxConcurrency: concurrency,
+		Timeout:        time.Duration(timeout) * time.Second,
+		RetryCount:     2,
+		RetryDelay:     1 * time.Second,
+		SkipInvalid:    true,
+		ValidateInput:  true,
+	}
+
+	processor := batch.NewProcessor(agentInstance, batchConfig, logger)
+
+	fmt.Printf("🤖 Processing batch file: %s\n", inputFile)
+	fmt.Printf("   Concurrency: %d | Timeout: %ds\n", concurrency, timeout)
+	fmt.Println()
+
+	ctx := context.Background()
+	result, err := processor.ProcessFile(ctx, inputFile, outputFile)
+	if err != nil {
+		fmt.Printf("Error processing batch: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println(result.Summary())
+
+	if outputFile != "" {
+		fmt.Printf("✓ Results saved to: %s\n", outputFile)
+	}
+
+	if result.Failed > 0 {
+		fmt.Println("\nFailed items:")
+		for _, item := range result.Items {
+			if !item.Success && item.Error != "skipped" {
+				fmt.Printf("  - %s: %s\n", item.ID, item.Error)
+			}
+		}
+	}
+}
+
+func printBatchHelp() {
+	fmt.Println("Batch Processing Commands:")
+	fmt.Println()
+	fmt.Println("  goclawde batch -i <input> [-o <output>] [options]")
+	fmt.Println()
+	fmt.Println("Options:")
+	fmt.Println("  -i, --input <file>       Input file (txt or jsonl)")
+	fmt.Println("  -o, --output <file>      Output file (optional)")
+	fmt.Println("  -c, --concurrency <n>    Max concurrent requests (default: 3)")
+	fmt.Println("  -t, --timeout <sec>      Request timeout in seconds (default: 60)")
+	fmt.Println("  -h, --help               Show this help")
+	fmt.Println()
+	fmt.Println("Input Formats:")
+	fmt.Println("  Text file:  One prompt per line (comments with #)")
+	fmt.Println("  JSONL file: {\"id\": \"...\", \"message\": \"...\"}")
+	fmt.Println()
+	fmt.Println("Examples:")
+	fmt.Println("  goclawde batch -i prompts.txt")
+	fmt.Println("  goclawde batch -i prompts.jsonl -o results.json")
+	fmt.Println("  goclawde batch -i prompts.txt -c 5 -t 120")
+}
+
 func getMode() string {
 	if *cliMode || *message != "" {
 		return "cli"
@@ -643,6 +792,10 @@ func printExtendedHelp() {
 	fmt.Println("  goclawde project switch <name>       Switch to project")
 	fmt.Println("  goclawde project archive <name>      Archive a project")
 	fmt.Println("  goclawde project delete <name>       Delete a project")
+	fmt.Println()
+	fmt.Println("Batch Processing:")
+	fmt.Println("  goclawde batch -i <file>             Process prompts from file")
+	fmt.Println("  goclawde batch -i in.txt -o out.json Process and save results")
 	fmt.Println()
 	fmt.Println("Persona Commands:")
 	fmt.Println("  goclawde persona            Show current AI identity")

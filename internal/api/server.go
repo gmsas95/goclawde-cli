@@ -12,6 +12,7 @@ import (
 	"github.com/gmsas95/goclawde-cli/internal/agent"
 	"github.com/gmsas95/goclawde-cli/internal/config"
 	"github.com/gmsas95/goclawde-cli/internal/llm"
+	"github.com/gmsas95/goclawde-cli/internal/metrics"
 	"github.com/gmsas95/goclawde-cli/internal/persona"
 	"github.com/gmsas95/goclawde-cli/internal/skills"
 	"github.com/gmsas95/goclawde-cli/internal/store"
@@ -100,6 +101,12 @@ func (s *Server) setupRoutes() {
 
 	// Health check
 	s.app.Get("/api/health", s.handleHealth)
+
+	// Metrics endpoint (Prometheus format)
+	s.app.Get("/metrics", s.handleMetrics)
+
+	// Metrics endpoint (JSON format)
+	s.app.Get("/api/metrics", s.handleMetricsJSON)
 
 	// API routes
 	api := s.app.Group("/api")
@@ -197,6 +204,15 @@ func (s *Server) handleHealth(c *fiber.Ctx) error {
 		"version":   "0.1.0",
 		"timestamp": time.Now().Unix(),
 	})
+}
+
+func (s *Server) handleMetrics(c *fiber.Ctx) error {
+	c.Set("Content-Type", "text/plain; charset=utf-8")
+	return c.SendString(metrics.Prometheus())
+}
+
+func (s *Server) handleMetricsJSON(c *fiber.Ctx) error {
+	return c.JSON(metrics.Snapshot())
 }
 
 func (s *Server) handleLogin(c *fiber.Ctx) error {
