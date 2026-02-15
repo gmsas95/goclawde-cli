@@ -16,7 +16,6 @@ coverage.html
 
 # Go
 vendor/
-go.sum
 
 # Data directories
 data/

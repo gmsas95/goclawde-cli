@@ -1,53 +1,42 @@
 # Build stage
-FROM golang:1.23-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
-# Install build dependencies
 RUN apk add --no-cache git gcc musl-dev sqlite-dev
 
 WORKDIR /build
 
-# Copy go mod files
-COPY go.mod go.sum ./
-RUN go mod download
+COPY go.mod ./
+RUN go mod download || true
 
-# Copy source code
 COPY . .
 
-# Copy web UI
-RUN mkdir -p bin/web && cp web/index.html bin/web/
+RUN mkdir -p bin/web && cp web/index.html bin/web/ 2>/dev/null || mkdir -p bin/web
 
-# Build Go binary
 RUN CGO_ENABLED=1 GOOS=linux go build \
     -ldflags "-X main.version=$(git describe --tags --always 2>/dev/null || echo 'dev') -s -w" \
     -o goclawde ./cmd/goclawde
 
-# Final stage
 FROM alpine:latest
 
-# Install runtime dependencies
-RUN apk add --no-cache ca-certificates
+LABEL org.opencontainers.image.title="GoClawde"
+LABEL org.opencontainers.image.description="Personal AI Assistant"
+LABEL org.opencontainers.image.source="https://github.com/gmsas95/goclawde-cli"
+
+RUN apk add --no-cache ca-certificates sqlite-libs
 
 WORKDIR /app
 
-# Copy binary from builder
 COPY --from=builder /build/goclawde /app/goclawde
-
-# Copy web UI
 COPY --from=builder /build/bin/web /app/web
 
-# Create data directory
 RUN mkdir -p /app/data
 
-# Expose port
 EXPOSE 8080
 
-# Volume for data persistence
 VOLUME ["/app/data"]
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/health || exit 1
 
-# Run the binary
 ENTRYPOINT ["/app/goclawde"]
-CMD ["-data", "/app/data"]
+CMD ["--data", "/app/data"]
