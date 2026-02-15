@@ -55,7 +55,7 @@ cd goclawde-cli
 make build
 
 # Or with Go directly
-go build -o bin/goclawde ./cmd/jimmy
+go build -o bin/goclawde ./cmd/goclawde
 
 # Install
 sudo cp bin/goclawde /usr/local/bin/
@@ -68,7 +68,7 @@ docker run -d \
   --name goclawde \
   -p 8080:8080 \
   -v ~/.goclawde:/app/data \
-  -e JIMMY_LLM_PROVIDERS_KIMI_API_KEY="sk-..." \
+  -e GOCLAWDE_LLM_PROVIDERS_KIMI_API_KEY="sk-..." \
   ghcr.io/gmsas95/goclawde-cli:latest
 ```
 
@@ -210,7 +210,7 @@ Access the web interface at `http://localhost:8080` when running in server mode.
 
 ## 🔧 Configuration
 
-### Minimal Config (`~/.goclawde/jimmy.yaml`)
+### Minimal Config (`~/.goclawde/goclawde.yaml`)
 
 ```yaml
 llm:
@@ -228,7 +228,7 @@ storage:
 ### Environment Variables
 
 ```bash
-export JIMMY_LLM_PROVIDERS_KIMI_API_KEY="sk-..."
+export GOCLAWDE_LLM_PROVIDERS_KIMI_API_KEY="sk-..."
 export TELEGRAM_BOT_TOKEN="..."
 ```
 

@@ -1,11 +1,11 @@
-# Jimmy.ai v0.3 - OpenClaw-Style Features
+# GoClawde v0.3 - OpenClaw-Style Features
 
-This release brings comprehensive OpenClaw-style capabilities to Jimmy.ai, transforming it from a simple chatbot into a powerful AI agent with skills, multi-channel support, and scheduled automation.
+This release brings comprehensive OpenClaw-style capabilities to GoClawde, transforming it from a simple chatbot into a powerful AI agent with skills, multi-channel support, and scheduled automation.
 
 ## 🎯 New Features Overview
 
 ### 1. Skills Architecture (Plugin System)
-A modular skill system that allows extending Jimmy.ai's capabilities without modifying core code.
+A modular skill system that allows extending GoClawde's capabilities without modifying core code.
 
 **Built-in Skills:**
 
@@ -45,7 +45,7 @@ skills:
 ```
 
 ### 2. Telegram Bot Integration
-Chat with Jimmy.ai directly from Telegram on any device.
+Chat with GoClawde directly from Telegram on any device.
 
 **Features:**
 - 💬 Direct message support
@@ -118,7 +118,7 @@ User Query → Embedding → Vector Search → Relevant Docs → LLM Response
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                           Jimmy.ai v0.3                                 │
+│                           GoClawde v0.3                                 │
 ├─────────────────────────────────────────────────────────────────────────┤
 │  Channels Layer                                                         │
 │  ┌──────────────┐  ┌──────────────┐  ┌─────────────────────────────┐  │
@@ -152,14 +152,14 @@ User Query → Embedding → Vector Search → Relevant Docs → LLM Response
 ### Installation
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/jimmy.ai.git
-cd jimmy.ai
+git clone https://github.com/YOUR_USERNAME/goclawde.ai.git
+cd goclawde.ai
 
 # Build
 make build
 
 # Run
-./bin/jimmy
+./bin/goclawde
 ```
 
 ### Configuration
@@ -176,7 +176,7 @@ vim config.yaml
 # Create .env file
 cat > .env << 'EOF'
 # LLM Configuration
-JIMMY_LLM_PROVIDERS_KIMI_API_KEY=your_kimi_api_key
+GOCLAWDE_LLM_PROVIDERS_KIMI_API_KEY=your_kimi_api_key
 
 # Skills Configuration
 GITHUB_TOKEN=your_github_token
@@ -272,7 +272,7 @@ func (s *Skill) Execute(ctx context.Context, args map[string]interface{}) (inter
 
 ## 📊 Feature Comparison
 
-| Feature | Jimmy.ai v0.2 | Jimmy.ai v0.3 | OpenClaw |
+| Feature | GoClawde v0.2 | GoClawde v0.3 | OpenClaw |
 |---------|---------------|---------------|----------|
 | LLM Support | ✅ Kimi | ✅ Kimi | ✅ Multiple |
 | Web UI | ✅ | ✅ | ✅ |

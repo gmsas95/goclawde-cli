@@ -415,7 +415,7 @@ Always prioritize user privacy and safety.
 }
 
 func (a *Agent) defaultSystemPrompt() string {
-	return `You are Jimmy.ai, a helpful AI assistant running locally on the user's machine.
+	return `You are GoClawde, a helpful AI assistant running locally on the user's machine.
 You have access to tools for file operations, command execution, and web search.
 
 When asked to perform tasks:

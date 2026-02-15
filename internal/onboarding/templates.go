@@ -3,10 +3,10 @@ package onboarding
 // DefaultIdentityTemplate is the default IDENTITY.md template
 const DefaultIdentityTemplate = `# Identity
 
-Name: Jimmy
+Name: GoClawde
 
 ## Personality
-You are Jimmy, a helpful and capable AI assistant. You are:
+You are GoClawde, a helpful and capable AI assistant. You are:
 - Friendly but professional
 - Concise yet thorough in your responses
 - Proactive in suggesting solutions
@@ -109,13 +109,13 @@ const DefaultAgentsTemplate = `# Agent Guidelines
 const SetupWizardWelcome = `
 ╔════════════════════════════════════════════════════════════════╗
 ║                                                                ║
-║                    🤖 Welcome to Jimmy.ai                      ║
+║                    🤖 Welcome to GoClawde                      ║
 ║                                                                ║
 ║          Your Personal AI Assistant - Setup Wizard             ║
 ║                                                                ║
 ╚════════════════════════════════════════════════════════════════╝
 
-This wizard will guide you through setting up Jimmy.ai.
+This wizard will guide you through setting up GoClawde.
 It takes about 2-3 minutes and will create your personalized
 AI assistant workspace.
 
@@ -130,7 +130,7 @@ const SetupCompleteMessage = `
 ║                                                                ║
 ╚════════════════════════════════════════════════════════════════╝
 
-Your Jimmy.ai workspace has been created at:
+Your GoClawde workspace has been created at:
   {{.WorkspacePath}}
 
 Configuration file:
@@ -138,27 +138,27 @@ Configuration file:
 
 ## Next Steps:
 
-1. Start Jimmy.ai:
-   $ jimmy
+1. Start GoClawde:
+   $ goclawde
 
 2. Or start with the server:
-   $ jimmy --server
+   $ goclawde --server
 
 3. Try the CLI mode:
-   $ jimmy --cli
+   $ goclawde --cli
 
 ## Useful Commands:
 
-  jimmy project new "My Project" coding    # Create a new project
-  jimmy project list                        # List all projects
-  jimmy project switch "My Project"        # Switch to a project
-  jimmy persona edit                        # Edit your AI's personality
-  jimmy user edit                           # Edit your profile
+  goclawde project new "My Project" coding    # Create a new project
+  goclawde project list                        # List all projects
+  goclawde project switch "My Project"        # Switch to a project
+  goclawde persona edit                        # Edit your AI's personality
+  goclawde user edit                           # Edit your profile
 
 ## Help:
 
-  jimmy --help
-  jimmy help
+  goclawde --help
+  goclawde help
 
 Happy assisting! 🤖
 `

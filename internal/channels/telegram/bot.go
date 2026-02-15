@@ -146,7 +146,7 @@ func (b *Bot) handleCommand(msg *tgbotapi.Message) error {
 
 	switch msg.Command() {
 	case "start":
-		_, err := b.sendMessage(chatID, `🤖 *Jimmy.ai Bot*
+		_, err := b.sendMessage(chatID, `🤖 *GoClawde Bot*
 
 Welcome! I'm your AI assistant. I can help you with:
 

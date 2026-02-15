@@ -61,7 +61,7 @@ func NewPersonaManager(workspacePath string, logger *zap.Logger) (*PersonaManage
 	pm := &PersonaManager{
 		workspacePath: workspacePath,
 		logger:        logger,
-		identity:      &Identity{Name: "Jimmy"},
+		identity:      &Identity{Name: "GoClawde"},
 		user: &UserProfile{
 			Preferences: make(map[string]string),
 			CreatedAt:   time.Now(),
@@ -466,7 +466,7 @@ func (u *UserProfile) String() string {
 // Parse functions for deserialization
 
 func parseIdentity(data string) *Identity {
-	i := &Identity{Name: "Jimmy"}
+	i := &Identity{Name: "GoClawde"}
 	lines := strings.Split(data, "\n")
 	var currentSection string
 

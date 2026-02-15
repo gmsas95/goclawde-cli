@@ -96,9 +96,9 @@ func (w *Wizard) setupWorkspace() error {
 	if err != nil {
 		home = "."
 	}
-	defaultWorkspace := filepath.Join(home, ".jimmy")
+	defaultWorkspace := filepath.Join(home, ".goclawde")
 
-	fmt.Printf("Where should Jimmy.ai store its data? [default: %s]: ", defaultWorkspace)
+	fmt.Printf("Where should GoClawde store its data? [default: %s]: ", defaultWorkspace)
 	workspace, _ := w.reader.ReadString('\n')
 	workspace = strings.TrimSpace(workspace)
 
@@ -144,7 +144,7 @@ func (w *Wizard) setupUserProfile() error {
 
 	// Communication style
 	fmt.Println()
-	fmt.Println("How would you prefer Jimmy to communicate?")
+	fmt.Println("How would you prefer GoClawde to communicate?")
 	for i, style := range CommunicationStyles {
 		fmt.Printf("  %d. %s\n", i+1, style)
 	}
@@ -172,7 +172,7 @@ func (w *Wizard) setupUserProfile() error {
 
 	// Goals
 	fmt.Println()
-	fmt.Println("What are your main goals for using Jimmy.ai? (comma-separated)")
+	fmt.Println("What are your main goals for using GoClawde? (comma-separated)")
 	fmt.Print("> ")
 	goals, _ := w.reader.ReadString('\n')
 	goals = strings.TrimSpace(goals)
@@ -194,7 +194,7 @@ func (w *Wizard) setupAIConfiguration() error {
 	fmt.Println()
 
 	// API Key
-	fmt.Println("Jimmy.ai uses the Kimi API by default.")
+	fmt.Println("GoClawde uses the Kimi API by default.")
 	fmt.Println("Get your API key from: https://platform.moonshot.cn")
 	fmt.Println()
 	fmt.Print("Enter your Kimi API Key (starts with 'sk-'): ")
@@ -239,7 +239,7 @@ func (w *Wizard) setupIntegrations() error {
 
 	// Telegram
 	fmt.Println("Would you like to enable Telegram integration?")
-	fmt.Println("This allows you to chat with Jimmy via Telegram.")
+	fmt.Println("This allows you to chat with GoClawde via Telegram.")
 	fmt.Print("Enable Telegram? (y/n) [default: n]: ")
 	enableTelegram, _ := w.reader.ReadString('\n')
 	enableTelegram = strings.ToLower(strings.TrimSpace(enableTelegram))
@@ -265,9 +265,9 @@ func (w *Wizard) setupIntegrations() error {
 
 func (w *Wizard) createConfiguration() error {
 	// Create config.yaml
-	configPath := filepath.Join(w.workspace, "jimmy.yaml")
+	configPath := filepath.Join(w.workspace, "goclawde.yaml")
 
-	configContent := fmt.Sprintf(`# Jimmy.ai Configuration
+	configContent := fmt.Sprintf(`# GoClawde Configuration
 # Generated on %s
 
 server:
@@ -313,10 +313,10 @@ security:
 
 	// Create .env file
 	envPath := filepath.Join(w.workspace, ".env")
-	envContent := fmt.Sprintf(`# Jimmy.ai Environment Variables
+	envContent := fmt.Sprintf(`# GoClawde Environment Variables
 # Generated on %s
 
-JIMMY_LLM_PROVIDERS_KIMI_API_KEY=%s
+GOCLAWDE_LLM_PROVIDERS_KIMI_API_KEY=%s
 `, time.Now().Format("2006-01-02"), w.config.APIKey)
 
 	if w.config.EnableTelegram && w.config.TelegramToken != "" {
@@ -339,7 +339,7 @@ func (w *Wizard) createPersonaFiles() error {
 
 	// Set identity from template
 	identity := &persona.Identity{
-		Name:        "Jimmy",
+		Name:        "GoClawde",
 		Personality: "Friendly, professional, and helpful AI assistant",
 		Voice:       "Clear, approachable, and conversational",
 		Values:      []string{"Privacy", "Transparency", "Efficiency"},
@@ -393,7 +393,7 @@ func (w *Wizard) showCompletion() {
 		ConfigPath    string
 	}{
 		WorkspacePath: w.workspace,
-		ConfigPath:    filepath.Join(w.workspace, "jimmy.yaml"),
+		ConfigPath:    filepath.Join(w.workspace, "goclawde.yaml"),
 	}
 
 	// Simple template replacement
@@ -437,8 +437,8 @@ func CheckFirstRun() bool {
 		home = "."
 	}
 
-	workspace := filepath.Join(home, ".jimmy")
-	configPath := filepath.Join(workspace, "jimmy.yaml")
+	workspace := filepath.Join(home, ".goclawde")
+	configPath := filepath.Join(workspace, "goclawde.yaml")
 
 	_, err = os.Stat(configPath)
 	return os.IsNotExist(err)
@@ -450,5 +450,5 @@ func GetWorkspacePath() string {
 	if err != nil {
 		home = "."
 	}
-	return filepath.Join(home, ".jimmy")
+	return filepath.Join(home, ".goclawde")
 }

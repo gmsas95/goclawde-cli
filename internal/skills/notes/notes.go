@@ -21,7 +21,7 @@ type NotesSkill struct {
 func NewNotesSkill(notesDir string) *NotesSkill {
 	if notesDir == "" {
 		home, _ := os.UserHomeDir()
-		notesDir = filepath.Join(home, ".jimmy", "notes")
+		notesDir = filepath.Join(home, ".goclawde", "notes")
 	}
 
 	// Create notes directory if it doesn't exist

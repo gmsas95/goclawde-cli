@@ -28,7 +28,7 @@ func New(cfg *config.Config) (*Store, error) {
 	// Initialize SQLite
 	sqlitePath := cfg.Storage.SQLitePath
 	if sqlitePath == "" {
-		sqlitePath = filepath.Join(cfg.Storage.DataDir, "jimmy.db")
+		sqlitePath = filepath.Join(cfg.Storage.DataDir, "goclawde.db")
 	}
 
 	// Open SQLite with optimizations

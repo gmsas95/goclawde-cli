@@ -15,11 +15,11 @@ The persona system allows Jimmy to:
 
 ## 📁 File Structure
 
-Your Jimmy workspace (`~/.jimmy/` by default) contains:
+Your Jimmy workspace (`~/.goclawde/` by default) contains:
 
 ```
-~/.jimmy/
-├── jimmy.yaml              # Main configuration
+~/.goclawde/
+├── goclawde.yaml              # Main configuration
 ├── .env                    # Environment variables
 ├── IDENTITY.md             # AI personality & characteristics
 ├── USER.md                 # Your profile & preferences
@@ -67,8 +67,8 @@ You communicate in a clear, approachable manner:
 ### Editing Identity
 
 ```bash
-jimmy persona edit    # Opens in $EDITOR
-jimmy persona show    # Display full file
+goclawde persona edit    # Opens in $EDITOR
+goclawde persona show    # Display full file
 ```
 
 ## 👤 USER.md - Your Profile
@@ -104,8 +104,8 @@ Updated: 2026-02-15T10:30:00Z
 ### Editing Profile
 
 ```bash
-jimmy user edit       # Opens in $EDITOR
-jimmy user show       # Display full file
+goclawde user edit       # Opens in $EDITOR
+goclawde user show       # Display full file
 ```
 
 ## 📦 Project Management
@@ -115,7 +115,7 @@ Projects allow Jimmy to maintain separate contexts for different work:
 ### Creating a Project
 
 ```bash
-jimmy project new "Web API" coding
+goclawde project new "Web API" coding
 # Description: Building a REST API for user management
 ```
 
@@ -131,10 +131,10 @@ jimmy project new "Web API" coding
 ### Project Commands
 
 ```bash
-jimmy project list                    # List all projects
-jimmy project switch "Web API"       # Switch active project
-jimmy project archive "Old Project"  # Archive a project
-jimmy project delete "Test Project"  # Delete permanently
+goclawde project list                    # List all projects
+goclawde project switch "Web API"       # Switch active project
+goclawde project archive "Old Project"  # Archive a project
+goclawde project delete "Test Project"  # Delete permanently
 ```
 
 ### How Projects Work
@@ -175,7 +175,7 @@ Jimmy builds the system prompt dynamically:
 ### First-Time Setup
 
 ```bash
-jimmy onboard
+goclawde onboard
 ```
 
 This interactive wizard will:
@@ -190,10 +190,10 @@ If you prefer manual configuration:
 
 ```bash
 # Create workspace
-mkdir -p ~/.jimmy/{projects,diary,memory}
+mkdir -p ~/.goclawde/{projects,diary,memory}
 
 # Create config
-cat > ~/.jimmy/jimmy.yaml << 'EOF'
+cat > ~/.goclawde/goclawde.yaml << 'EOF'
 server:
   address: 0.0.0.0
   port: 8080
@@ -207,12 +207,12 @@ llm:
       base_url: "https://api.moonshot.cn/v1"
 
 storage:
-  data_dir: "~/.jimmy"
+  data_dir: "~/.goclawde"
 EOF
 
 # Create default persona files
-jimmy persona edit
-jimmy user edit
+goclawde persona edit
+goclawde user edit
 ```
 
 ## 💡 Tips
@@ -252,26 +252,26 @@ You have complete control over your data.
 
 ```bash
 # 1. Start Jimmy
-jimmy
+goclawde
 
 # 2. Create a new coding project
-jimmy project new "API Refactor" coding
+goclawde project new "API Refactor" coding
 
 # 3. Chat with project context
-jimmy --cli
+goclawde --cli
 > Let's refactor the authentication middleware
 # Jimmy knows you're working on the API Refactor project
 
 # 4. Switch to writing project
-jimmy project switch "Blog Post"
+goclawde project switch "Blog Post"
 
 # 5. Jimmy now has different context
-jimmy --cli  
+goclawde --cli  
 > Help me outline this article
 # Jimmy knows you're writing a blog post
 
 # 6. Archive completed project
-jimmy project archive "API Refactor"
+goclawde project archive "API Refactor"
 ```
 
 ## 🎓 Advanced: Custom Templates
@@ -279,7 +279,7 @@ jimmy project archive "API Refactor"
 You can create custom project templates by adding markdown files to your workspace:
 
 ```
-~/.jimmy/templates/
+~/.goclawde/templates/
 ├── frontend-dev.md
 ├── backend-api.md
 ├── technical-writing.md
@@ -290,4 +290,4 @@ These will be used when creating new projects of matching types.
 
 ---
 
-**Note**: This system is inspired by [AI MemoryCore](https://github.com/Kiyoraka/Project-AI-MemoryCore) but adapted for the Go-based Jimmy.ai architecture with persistent storage and CLI integration.
+**Note**: This system is inspired by [AI MemoryCore](https://github.com/Kiyoraka/Project-AI-MemoryCore) but adapted for the Go-based GoClawde architecture with persistent storage and CLI integration.

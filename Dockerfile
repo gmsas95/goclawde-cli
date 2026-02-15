@@ -19,7 +19,7 @@ RUN mkdir -p bin/web && cp web/index.html bin/web/
 # Build Go binary
 RUN CGO_ENABLED=1 GOOS=linux go build \
     -ldflags "-X main.version=$(git describe --tags --always 2>/dev/null || echo 'dev') -s -w" \
-    -o jimmy ./cmd/jimmy
+    -o goclawde ./cmd/goclawde
 
 # Final stage
 FROM alpine:latest
@@ -30,7 +30,7 @@ RUN apk add --no-cache ca-certificates
 WORKDIR /app
 
 # Copy binary from builder
-COPY --from=builder /build/jimmy /app/jimmy
+COPY --from=builder /build/goclawde /app/goclawde
 
 # Copy web UI
 COPY --from=builder /build/bin/web /app/web
@@ -49,5 +49,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/health || exit 1
 
 # Run the binary
-ENTRYPOINT ["/app/jimmy"]
+ENTRYPOINT ["/app/goclawde"]
 CMD ["-data", "/app/data"]

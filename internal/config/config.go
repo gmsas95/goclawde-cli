@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Config holds all configuration for Jimmy.ai
+// Config holds all configuration for GoClawde
 type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
 	LLM      LLMConfig      `mapstructure:"llm"`
@@ -125,12 +125,12 @@ func Load(configPath, dataDir string) (*Config, error) {
 	}
 
 	v.Set("storage.data_dir", dataDir)
-	v.Set("storage.sqlite_path", filepath.Join(dataDir, "jimmy.db"))
+	v.Set("storage.sqlite_path", filepath.Join(dataDir, "goclawde.db"))
 	v.Set("storage.badger_path", filepath.Join(dataDir, "badger"))
 
 	// Config file path
 	if configPath == "" {
-		configPath = filepath.Join(dataDir, "jimmy.yaml")
+		configPath = filepath.Join(dataDir, "goclawde.yaml")
 	}
 
 	// If config file exists, load it
@@ -141,8 +141,8 @@ func Load(configPath, dataDir string) (*Config, error) {
 		}
 	}
 
-	// Environment variables (JIMMY_SERVER_PORT, JIMMY_LLM_API_KEY, etc.)
-	v.SetEnvPrefix("JIMMY")
+	// Environment variables (GOCLAWDE_SERVER_PORT, GOCLAWDE_LLM_API_KEY, etc.)
+	v.SetEnvPrefix("GOCLAWDE")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
@@ -188,7 +188,7 @@ func setDefaults(v *viper.Viper) {
 func getDefaultDataDir() string {
 	// Try XDG_DATA_HOME first
 	if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
-		return filepath.Join(xdg, "jimmy")
+		return filepath.Join(xdg, "goclawde")
 	}
 
 	// Fall back to home directory
@@ -197,7 +197,7 @@ func getDefaultDataDir() string {
 		return "./data"
 	}
 
-	return filepath.Join(home, ".local", "share", "jimmy")
+	return filepath.Join(home, ".local", "share", "goclawde")
 }
 
 // loadEnvOverrides loads specific env vars that Viper doesn't handle well with nested maps
@@ -211,7 +211,7 @@ func loadEnvOverrides(cfg *Config) {
 	}
 
 	// LLM Provider settings
-	cfg.LLM.DefaultProvider = getEnv("JIMMY_LLM_DEFAULT_PROVIDER", cfg.LLM.DefaultProvider)
+	cfg.LLM.DefaultProvider = getEnv("GOCLAWDE_LLM_DEFAULT_PROVIDER", cfg.LLM.DefaultProvider)
 
 	// Initialize providers map if nil
 	if cfg.LLM.Providers == nil {
@@ -219,41 +219,41 @@ func loadEnvOverrides(cfg *Config) {
 	}
 
 	// Kimi provider
-	if apiKey := os.Getenv("JIMMY_LLM_PROVIDERS_KIMI_API_KEY"); apiKey != "" {
+	if apiKey := os.Getenv("GOCLAWDE_LLM_PROVIDERS_KIMI_API_KEY"); apiKey != "" {
 		kimi := cfg.LLM.Providers["kimi"]
 		kimi.APIKey = apiKey
-		kimi.BaseURL = getEnv("JIMMY_LLM_PROVIDERS_KIMI_BASE_URL", kimi.BaseURL)
-		kimi.Model = getEnv("JIMMY_LLM_PROVIDERS_KIMI_MODEL", kimi.Model)
+		kimi.BaseURL = getEnv("GOCLAWDE_LLM_PROVIDERS_KIMI_BASE_URL", kimi.BaseURL)
+		kimi.Model = getEnv("GOCLAWDE_LLM_PROVIDERS_KIMI_MODEL", kimi.Model)
 		cfg.LLM.Providers["kimi"] = kimi
 	}
 
 	// OpenRouter provider
-	if apiKey := os.Getenv("JIMMY_LLM_PROVIDERS_OPENROUTER_API_KEY"); apiKey != "" {
+	if apiKey := os.Getenv("GOCLAWDE_LLM_PROVIDERS_OPENROUTER_API_KEY"); apiKey != "" {
 		or := cfg.LLM.Providers["openrouter"]
 		or.APIKey = apiKey
-		or.BaseURL = getEnv("JIMMY_LLM_PROVIDERS_OPENROUTER_BASE_URL", or.BaseURL)
-		or.Model = getEnv("JIMMY_LLM_PROVIDERS_OPENROUTER_MODEL", or.Model)
+		or.BaseURL = getEnv("GOCLAWDE_LLM_PROVIDERS_OPENROUTER_BASE_URL", or.BaseURL)
+		or.Model = getEnv("GOCLAWDE_LLM_PROVIDERS_OPENROUTER_MODEL", or.Model)
 		cfg.LLM.Providers["openrouter"] = or
 	}
 
 	// Server settings
-	cfg.Server.Address = getEnv("JIMMY_SERVER_ADDRESS", cfg.Server.Address)
-	if port := os.Getenv("JIMMY_SERVER_PORT"); port != "" {
+	cfg.Server.Address = getEnv("GOCLAWDE_SERVER_ADDRESS", cfg.Server.Address)
+	if port := os.Getenv("GOCLAWDE_SERVER_PORT"); port != "" {
 		if p, err := strconv.Atoi(port); err == nil {
 			cfg.Server.Port = p
 		}
 	}
 
 	// Storage settings
-	cfg.Storage.DataDir = getEnv("JIMMY_STORAGE_DATA_DIR", cfg.Storage.DataDir)
+	cfg.Storage.DataDir = getEnv("GOCLAWDE_STORAGE_DATA_DIR", cfg.Storage.DataDir)
 
 	// Security settings
-	cfg.Security.JWTSecret = getEnv("JIMMY_SECURITY_JWT_SECRET", cfg.Security.JWTSecret)
-	cfg.Security.AdminPassword = getEnv("JIMMY_SECURITY_ADMIN_PASSWORD", cfg.Security.AdminPassword)
+	cfg.Security.JWTSecret = getEnv("GOCLAWDE_SECURITY_JWT_SECRET", cfg.Security.JWTSecret)
+	cfg.Security.AdminPassword = getEnv("GOCLAWDE_SECURITY_ADMIN_PASSWORD", cfg.Security.AdminPassword)
 
 	// Skills settings
-	cfg.Skills.GitHub.Token = getEnv("JIMMY_SKILLS_GITHUB_TOKEN", cfg.Skills.GitHub.Token)
-	cfg.Skills.Weather.APIKey = getEnv("JIMMY_SKILLS_WEATHER_API_KEY", cfg.Skills.Weather.APIKey)
+	cfg.Skills.GitHub.Token = getEnv("GOCLAWDE_SKILLS_GITHUB_TOKEN", cfg.Skills.GitHub.Token)
+	cfg.Skills.Weather.APIKey = getEnv("GOCLAWDE_SKILLS_WEATHER_API_KEY", cfg.Skills.Weather.APIKey)
 }
 
 func validate(cfg *Config) error {

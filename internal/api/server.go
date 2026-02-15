@@ -157,9 +157,9 @@ func (s *Server) setupRoutes() {
 		s.app.Get("/", func(c *fiber.Ctx) error {
 			return c.SendString(`<!DOCTYPE html>
 <html>
-<head><title>Jimmy.ai</title></head>
+<head><title>GoClawde</title></head>
 <body style="font-family: sans-serif; max-width: 800px; margin: 50px auto; padding: 20px;">
-<h1>🤖 Jimmy.ai</h1>
+<h1>🤖 GoClawde</h1>
 <p>Web UI files not found. Please ensure the web/dist directory exists.</p>
 <p>You can still use the API at <code>/api</code> or the CLI.</p>
 </body>

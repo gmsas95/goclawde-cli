@@ -34,8 +34,8 @@ func TestNewPersonaManager(t *testing.T) {
 	}
 	
 	// Check default identity
-	if pm.GetIdentity().Name != "Jimmy" {
-		t.Errorf("Expected default name 'Jimmy', got %s", pm.GetIdentity().Name)
+	if pm.GetIdentity().Name != "GoClawde" {
+		t.Errorf("Expected default name 'GoClawde', got %s", pm.GetIdentity().Name)
 	}
 }
 
