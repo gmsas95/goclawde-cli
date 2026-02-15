@@ -1,6 +1,6 @@
-# Jimmy.ai Persona & Memory System
+# GoClawde Persona & Memory System
 
-Jimmy.ai features a powerful persona and memory system inspired by [AI MemoryCore](https://github.com/Kiyoraka/Project-AI-MemoryCore), adapted for a self-hosted Go application.
+GoClawde features a powerful persona and memory system inspired by [OpenClaw](https://github.com/openclaw/openclaw)'s markdown-based memory files (SOUL.md, IDENTITY.md, USER.md, AGENTS.md) and [AI MemoryCore](https://github.com/Kiyoraka/Project-AI-MemoryCore), adapted for a self-hosted Go application with performance optimizations (caching, SQLite persistence).
 
 ## 🧠 Overview
 

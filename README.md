@@ -22,10 +22,10 @@ All in a **single 50MB binary** with **zero dependencies**.
 | **Binary Size** | ~50MB | ~10MB | ~2GB (Node) |
 | **Memory** | ~25MB | <10MB | >1GB |
 | **Startup** | 50ms | 1s | Minutes |
-| **Persona System** | ✅ Markdown-based | ❌ | ⚠️ Basic |
+| **Persona System** | ✅ Markdown-based + Caching | ❌ | ✅ SOUL.md, IDENTITY.md |
 | **Time Awareness** | ✅ Built-in | ❌ | ❌ |
 | **Project Context** | ✅ LRU Management | ❌ | ⚠️ Sessions |
-| **Persistent Memory** | ✅ SQLite + BadgerDB | ⚠️ Files | ✅ |
+| **Persistent Memory** | ✅ SQLite + BadgerDB | ⚠️ Files | ✅ Markdown-based |
 | **Multi-Channel** | ✅ Web, CLI, Telegram | ⚠️ CLI | ✅ 10+ channels |
 
 ---
@@ -127,9 +127,9 @@ $ goclawde --server
 
 ---
 
-## 🧠 Persona System (MemoryCore-Inspired)
+## 🧠 Persona System
 
-GoClawde features a unique persona system that makes your AI assistant truly personal:
+GoClawde features a markdown-based persona system (inspired by OpenClaw's SOUL.md and MemoryCore) that makes your AI assistant truly personal:
 
 ### Core Files
 
@@ -330,9 +330,9 @@ MIT License - see [LICENSE](LICENSE) file.
 
 ## 🙏 Acknowledgments
 
-- **[OpenClaw](https://github.com/openclaw/openclaw)** - Inspiration for features and UX
-- **[PicoClaw](https://github.com/gmsas95/picoclaw)** - Inspiration for performance optimization
-- **[MemoryCore](https://github.com/Kiyoraka/Project-AI-MemoryCore)** - Inspiration for persona system
+- **[OpenClaw](https://github.com/openclaw/openclaw)** - Inspiration for features, UX, and the markdown-based persona system (SOUL.md, IDENTITY.md, USER.md, AGENTS.md)
+- **[PicoClaw](https://github.com/gmsas95/picoclaw)** - Inspiration for performance optimization and Go implementation
+- **[MemoryCore](https://github.com/Kiyoraka/Project-AI-MemoryCore)** - Inspiration for time-awareness and project context features
 - **[nanobot](https://github.com/HKUDS/nanobot)** - Original concept by HKUDS
 
 Built with Go, SQLite, BadgerDB, and ❤️
