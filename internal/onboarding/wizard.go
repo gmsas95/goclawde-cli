@@ -402,6 +402,9 @@ func (w *Wizard) showCompletion() {
 	message = strings.ReplaceAll(message, "{{.ConfigPath}}", data.ConfigPath)
 
 	fmt.Print(message)
+	fmt.Println()
+	fmt.Print("Press Enter to exit...")
+	w.reader.ReadString('\n')
 }
 
 func (w *Wizard) clearScreen() {
