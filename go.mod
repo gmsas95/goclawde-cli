@@ -4,6 +4,7 @@ go 1.23
 
 require (
 	github.com/dgraph-io/badger/v4 v4.5.0
+	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 	github.com/gofiber/fiber/v2 v2.52.6
 	github.com/gofiber/websocket/v2 v2.2.1
 	github.com/golang-jwt/jwt/v5 v5.2.1

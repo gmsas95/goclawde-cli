@@ -4,12 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/YOUR_USERNAME/jimmy.ai/internal/agent"
 	"github.com/YOUR_USERNAME/jimmy.ai/internal/config"
 	"github.com/YOUR_USERNAME/jimmy.ai/internal/llm"
+	"github.com/YOUR_USERNAME/jimmy.ai/internal/persona"
+	"github.com/YOUR_USERNAME/jimmy.ai/internal/skills"
 	"github.com/YOUR_USERNAME/jimmy.ai/internal/store"
 	"github.com/YOUR_USERNAME/jimmy.ai/pkg/tools"
 	"github.com/gofiber/fiber/v2"
@@ -23,13 +27,15 @@ import (
 
 // Server handles HTTP API and WebSocket
 type Server struct {
-	app       *fiber.App
-	config    *config.Config
-	store     *store.Store
-	agent     *agent.Agent
-	llmClient *llm.Client
-	tools     *tools.Registry
-	logger    *zap.Logger
+	app            *fiber.App
+	config         *config.Config
+	store          *store.Store
+	agent          *agent.Agent
+	llmClient      *llm.Client
+	tools          *tools.Registry
+	skillsRegistry *skills.Registry
+	logger         *zap.Logger
+	personaManager *persona.PersonaManager
 }
 
 // New creates a new API server
@@ -44,8 +50,15 @@ func New(cfg *config.Config, store *store.Store, logger *zap.Logger) *Server {
 	// Create tool registry
 	toolRegistry := tools.NewRegistry(cfg.Tools.AllowedCmds)
 
+	// Create persona manager
+	personaManager, err := persona.NewPersonaManager(cfg.Storage.DataDir, logger)
+	if err != nil {
+		logger.Warn("Failed to initialize persona manager", zap.Error(err))
+		personaManager = nil
+	}
+
 	// Create agent
-	agentInstance := agent.New(llmClient, toolRegistry, store, logger)
+	agentInstance := agent.New(llmClient, toolRegistry, store, logger, personaManager)
 
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  30 * time.Second,
@@ -54,13 +67,19 @@ func New(cfg *config.Config, store *store.Store, logger *zap.Logger) *Server {
 	})
 
 	s := &Server{
-		app:       app,
-		config:    cfg,
-		store:     store,
-		agent:     agentInstance,
-		llmClient: llmClient,
-		tools:     toolRegistry,
-		logger:    logger,
+		app:            app,
+		config:         cfg,
+		store:          store,
+		agent:          agentInstance,
+		llmClient:      llmClient,
+		tools:          toolRegistry,
+		logger:         logger,
+		personaManager: personaManager,
+	}
+
+	// Set skills registry on agent if available
+	if s.skillsRegistry != nil {
+		s.agent.SetSkillsRegistry(s.skillsRegistry)
 	}
 
 	s.setupRoutes()
@@ -118,11 +137,43 @@ func (s *Server) setupRoutes() {
 	// WebSocket
 	s.app.Get("/ws", websocket.New(s.handleWebSocket))
 	
-	// Static files (embedded web UI)
-	s.app.Static("/", "./web/dist")
-	s.app.Get("/*", func(c *fiber.Ctx) error {
-		return c.SendFile("./web/dist/index.html")
-	})
+	// Static files (embedded web UI) - try multiple paths
+	webPaths := []string{"./web/dist", "./web", "../web/dist", "/app/web"}
+	var webPath string
+	for _, p := range webPaths {
+		if _, err := os.Stat(p); err == nil {
+			webPath = p
+			break
+		}
+	}
+	
+	if webPath != "" {
+		s.app.Static("/", webPath)
+		s.app.Get("/*", func(c *fiber.Ctx) error {
+			return c.SendFile(filepath.Join(webPath, "index.html"))
+		})
+	} else {
+		// Fallback: serve a simple message
+		s.app.Get("/", func(c *fiber.Ctx) error {
+			return c.SendString(`<!DOCTYPE html>
+<html>
+<head><title>Jimmy.ai</title></head>
+<body style="font-family: sans-serif; max-width: 800px; margin: 50px auto; padding: 20px;">
+<h1>🤖 Jimmy.ai</h1>
+<p>Web UI files not found. Please ensure the web/dist directory exists.</p>
+<p>You can still use the API at <code>/api</code> or the CLI.</p>
+</body>
+</html>`)
+		})
+	}
+}
+
+// SetSkillsRegistry sets the skills registry on the server
+func (s *Server) SetSkillsRegistry(registry *skills.Registry) {
+	s.skillsRegistry = registry
+	if s.agent != nil {
+		s.agent.SetSkillsRegistry(registry)
+	}
 }
 
 // Start starts the server

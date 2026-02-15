@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -17,6 +18,7 @@ type Config struct {
 	Channels ChannelsConfig `mapstructure:"channels"`
 	Tools    ToolsConfig    `mapstructure:"tools"`
 	Security SecurityConfig `mapstructure:"security"`
+	Skills   SkillsConfig   `mapstructure:"skills"`
 }
 
 // ServerConfig holds HTTP server settings
@@ -58,9 +60,10 @@ type ChannelsConfig struct {
 
 // TelegramConfig holds Telegram bot settings
 type TelegramConfig struct {
-	Enabled  bool   `mapstructure:"enabled"`
-	BotToken string `mapstructure:"bot_token"`
-	Webhook  string `mapstructure:"webhook"`
+	Enabled   bool    `mapstructure:"enabled"`
+	BotToken  string  `mapstructure:"bot_token"`
+	Webhook   string  `mapstructure:"webhook"`
+	AllowList []int64 `mapstructure:"allow_list"`
 }
 
 // WhatsAppConfig holds WhatsApp settings
@@ -83,9 +86,25 @@ type ToolsConfig struct {
 
 // SecurityConfig holds security settings
 type SecurityConfig struct {
-	JWTSecret     string `mapstructure:"jwt_secret"`
-	AdminPassword string `mapstructure:"admin_password"`
+	JWTSecret     string   `mapstructure:"jwt_secret"`
+	AdminPassword string   `mapstructure:"admin_password"`
 	AllowOrigins  []string `mapstructure:"allow_origins"`
+}
+
+// SkillsConfig holds skills configuration
+type SkillsConfig struct {
+	GitHub  GitHubSkillConfig  `mapstructure:"github"`
+	Weather WeatherSkillConfig `mapstructure:"weather"`
+}
+
+// GitHubSkillConfig holds GitHub skill settings
+type GitHubSkillConfig struct {
+	Token string `mapstructure:"token"`
+}
+
+// WeatherSkillConfig holds weather skill settings
+type WeatherSkillConfig struct {
+	APIKey string `mapstructure:"api_key"`
 }
 
 // Load loads configuration from file, env, and defaults
@@ -133,6 +152,9 @@ func Load(configPath, dataDir string) (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
+	// Load API keys from environment (Viper doesn't handle nested maps well with env vars)
+	loadEnvOverrides(&cfg)
+
 	// Validate
 	if err := validate(&cfg); err != nil {
 		return nil, err
@@ -176,6 +198,62 @@ func getDefaultDataDir() string {
 	}
 
 	return filepath.Join(home, ".local", "share", "jimmy")
+}
+
+// loadEnvOverrides loads specific env vars that Viper doesn't handle well with nested maps
+func loadEnvOverrides(cfg *Config) {
+	// Helper to get env var
+	getEnv := func(key, fallback string) string {
+		if val := os.Getenv(key); val != "" {
+			return val
+		}
+		return fallback
+	}
+
+	// LLM Provider settings
+	cfg.LLM.DefaultProvider = getEnv("JIMMY_LLM_DEFAULT_PROVIDER", cfg.LLM.DefaultProvider)
+
+	// Initialize providers map if nil
+	if cfg.LLM.Providers == nil {
+		cfg.LLM.Providers = make(map[string]Provider)
+	}
+
+	// Kimi provider
+	if apiKey := os.Getenv("JIMMY_LLM_PROVIDERS_KIMI_API_KEY"); apiKey != "" {
+		kimi := cfg.LLM.Providers["kimi"]
+		kimi.APIKey = apiKey
+		kimi.BaseURL = getEnv("JIMMY_LLM_PROVIDERS_KIMI_BASE_URL", kimi.BaseURL)
+		kimi.Model = getEnv("JIMMY_LLM_PROVIDERS_KIMI_MODEL", kimi.Model)
+		cfg.LLM.Providers["kimi"] = kimi
+	}
+
+	// OpenRouter provider
+	if apiKey := os.Getenv("JIMMY_LLM_PROVIDERS_OPENROUTER_API_KEY"); apiKey != "" {
+		or := cfg.LLM.Providers["openrouter"]
+		or.APIKey = apiKey
+		or.BaseURL = getEnv("JIMMY_LLM_PROVIDERS_OPENROUTER_BASE_URL", or.BaseURL)
+		or.Model = getEnv("JIMMY_LLM_PROVIDERS_OPENROUTER_MODEL", or.Model)
+		cfg.LLM.Providers["openrouter"] = or
+	}
+
+	// Server settings
+	cfg.Server.Address = getEnv("JIMMY_SERVER_ADDRESS", cfg.Server.Address)
+	if port := os.Getenv("JIMMY_SERVER_PORT"); port != "" {
+		if p, err := strconv.Atoi(port); err == nil {
+			cfg.Server.Port = p
+		}
+	}
+
+	// Storage settings
+	cfg.Storage.DataDir = getEnv("JIMMY_STORAGE_DATA_DIR", cfg.Storage.DataDir)
+
+	// Security settings
+	cfg.Security.JWTSecret = getEnv("JIMMY_SECURITY_JWT_SECRET", cfg.Security.JWTSecret)
+	cfg.Security.AdminPassword = getEnv("JIMMY_SECURITY_ADMIN_PASSWORD", cfg.Security.AdminPassword)
+
+	// Skills settings
+	cfg.Skills.GitHub.Token = getEnv("JIMMY_SKILLS_GITHUB_TOKEN", cfg.Skills.GitHub.Token)
+	cfg.Skills.Weather.APIKey = getEnv("JIMMY_SKILLS_WEATHER_API_KEY", cfg.Skills.Weather.APIKey)
 }
 
 func validate(cfg *Config) error {

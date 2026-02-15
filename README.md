@@ -5,16 +5,19 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/badge/go-%3E%3D1.23-blue)](https://golang.org)
 
-**Jimmy.ai** is an open-source, self-hosted AI assistant inspired by [Clawdbot/OpenClaw](https://github.com/openclaw/openclaw). It keeps your data local while providing powerful AI capabilities through your choice of LLM providers.
+**Jimmy.ai** is an open-source, self-hosted AI assistant inspired by [OpenClaw](https://github.com/openclaw/openclaw). It keeps your data local while providing powerful AI capabilities through your choice of LLM providers.
 
 ## 🌟 Features
 
 - 🔒 **Privacy First** - Your data never leaves your machine
 - 💻 **Self-Hosted** - Single binary, zero external dependencies
-- 🧠 **Persistent Memory** - Remembers conversations and facts
+- 🧩 **Skills System** - Extensible plugin architecture (GitHub, Weather, Notes)
+- 💬 **Multi-Channel** - Web UI, CLI, Telegram bot (Discord/Slack coming)
+- 🔄 **Persistent Memory** - Remembers conversations and facts
 - 🔧 **Tool Use** - File operations, web search, shell commands
 - 🤖 **Background Tasks** - Spawn subagents for complex work
-- 📱 **Multi-Channel** - Web UI, CLI, Telegram, WhatsApp (coming soon)
+- ⏰ **Cron Jobs** - Scheduled automation (coming in v0.4)
+- 🧠 **Vector Memory** - RAG with semantic search (coming in v0.5)
 - ⚡ **Lightning Fast** - Written in Go for maximum performance
 
 ## 🚀 Quick Start
@@ -74,6 +77,53 @@ Jimmy.ai works great as a command-line tool:
 cat error.log | ./jimmy -m "What errors do you see?"
 ```
 
+## 🤖 Telegram Bot
+
+Chat with Jimmy.ai directly on Telegram:
+
+1. Get a bot token from [@BotFather](https://t.me/botfather)
+2. Configure in `config.yaml`:
+```yaml
+channels:
+  telegram:
+    enabled: true
+    bot_token: "${TELEGRAM_BOT_TOKEN}"
+```
+3. Start Jimmy.ai and send `/start` to your bot
+
+**Commands:**
+- `/start` - Welcome message
+- `/help` - List available commands
+- `/new` - Start a new conversation
+- `/status` - Check bot status
+
+## 🧩 Skills System
+
+Jimmy.ai includes a powerful skills system for extending capabilities:
+
+| Skill | Description | Example |
+|-------|-------------|---------|
+| `github` | GitHub operations | "Search for Go web frameworks" |
+| `weather` | Weather forecasts | "What's the weather in Tokyo?" |
+| `notes` | Note management | "Take a note: call mom tomorrow" |
+
+**Configuration:**
+```yaml
+skills:
+  enabled:
+    - github
+    - weather
+    - notes
+  
+  github:
+    token: "${GITHUB_TOKEN}"
+  
+  weather:
+    api_key: "${WEATHER_API_KEY}"
+```
+
+See [FEATURES_v0.3.md](FEATURES_v0.3.md) for full documentation.
+
 ## 📝 Configuration
 
 Create `~/.local/share/jimmy/jimmy.yaml`:
@@ -95,6 +145,7 @@ llm:
       model: "anthropic/claude-3.5-sonnet"
       base_url: "https://openrouter.ai/api/v1"
 
+# Built-in tools (system-level)
 tools:
   enabled:
     - read_file
@@ -102,11 +153,30 @@ tools:
     - list_dir
     - exec_command
     - web_search
+
+# Skills (high-level integrations)
+skills:
+  enabled:
+    - github
+    - weather
+    - notes
+  github:
+    token: "${GITHUB_TOKEN}"
+  weather:
+    api_key: "${WEATHER_API_KEY}"
+
+# Communication channels
+channels:
+  telegram:
+    enabled: true
+    bot_token: "${TELEGRAM_BOT_TOKEN}"
 ```
 
 Or use environment variables:
 ```bash
 export JIMMY_LLM_PROVIDERS_KIMI_API_KEY="sk-..."
+export JIMMY_SKILLS_GITHUB_TOKEN="ghp_..."
+export JIMMY_CHANNELS_TELEGRAM_BOT_TOKEN="..."
 export JIMMY_SERVER_PORT=8080
 ```
 
@@ -119,6 +189,8 @@ Jimmy.ai (~50MB single binary)
 ├── HTTP API + WebSocket Server (Go/Fiber)
 ├── Agent Runtime (goroutines for concurrency)
 ├── Tool System (file, shell, web, etc.)
+├── Skills Registry (GitHub, Weather, Notes)
+├── Telegram Bot (multi-channel support)
 └── Static Web UI (embedded)
 ```
 
@@ -132,6 +204,13 @@ Jimmy.ai (~50MB single binary)
 | Concurrent Chats | 10 | 20 | **100+** |
 | Deploy Command | `kubectl` | `docker-compose` | **`./jimmy`** |
 
+## 🗺️ Roadmap
+
+- ✅ **v0.3** - Skills system, Telegram bot, tool streaming
+- 🔄 **v0.4** - Cron scheduler, Discord/Slack, more skills
+- 🔄 **v0.5** - Vector memory (RAG), MCP protocol, web browsing
+- 🔄 **v1.0** - Multi-LLM support, skill marketplace, mobile apps
+
 ## 🤝 Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
@@ -142,7 +221,7 @@ MIT License - see [LICENSE](LICENSE) file.
 
 ## 🙏 Acknowledgments
 
-- Inspired by [Clawdbot/OpenClaw](https://github.com/openclaw/openclaw)
+- Inspired by [OpenClaw](https://github.com/openclaw/openclaw)
 - Original [nanobot](https://github.com/HKUDS/nanobot) by HKUDS
 - Built with Go, SQLite, and ❤️
 

@@ -11,6 +11,8 @@ all: build
 # Build the web UI (just copy index.html for now)
 build-web:
 	@echo "Preparing web UI..."
+	@mkdir -p $(WEB_DIR)/dist
+	@cp $(WEB_DIR)/index.html $(WEB_DIR)/dist/
 	@mkdir -p $(BUILD_DIR)/web
 	@cp $(WEB_DIR)/index.html $(BUILD_DIR)/web/
 

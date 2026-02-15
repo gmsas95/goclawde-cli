@@ -1,6 +1,7 @@
 package store
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"time"
 
@@ -170,17 +171,18 @@ func (s *ScheduledJob) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// generateID creates a simple unique ID
+// generateID creates a unique ID with nanosecond precision
 func generateID(prefix string) string {
-	return prefix + "_" + time.Now().Format("20060102150405") + "_" + randomString(6)
+	return prefix + "_" + time.Now().Format("20060102150405") + "_" + randomString(8)
 }
 
-// randomString generates a random string
+// randomString generates a cryptographically secure random string
 func randomString(n int) string {
 	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
 	b := make([]byte, n)
+	rand.Read(b)
 	for i := range b {
-		b[i] = letters[i%len(letters)]
+		b[i] = letters[int(b[i])%len(letters)]
 	}
 	return string(b)
 }

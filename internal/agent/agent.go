@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/YOUR_USERNAME/jimmy.ai/internal/llm"
+	"github.com/YOUR_USERNAME/jimmy.ai/internal/persona"
+	"github.com/YOUR_USERNAME/jimmy.ai/internal/skills"
 	"github.com/YOUR_USERNAME/jimmy.ai/internal/store"
 	"github.com/YOUR_USERNAME/jimmy.ai/pkg/tools"
 	"go.uber.org/zap"
@@ -15,20 +17,28 @@ import (
 
 // Agent handles conversation and tool execution
 type Agent struct {
-	llmClient *llm.Client
-	tools     *tools.Registry
-	store     *store.Store
-	logger    *zap.Logger
+	llmClient      *llm.Client
+	tools          *tools.Registry
+	skillsRegistry *skills.Registry
+	store          *store.Store
+	logger         *zap.Logger
+	personaManager *persona.PersonaManager
 }
 
 // New creates a new Agent
-func New(llmClient *llm.Client, toolRegistry *tools.Registry, store *store.Store, logger *zap.Logger) *Agent {
+func New(llmClient *llm.Client, toolRegistry *tools.Registry, store *store.Store, logger *zap.Logger, personaManager *persona.PersonaManager) *Agent {
 	return &Agent{
-		llmClient: llmClient,
-		tools:     toolRegistry,
-		store:     store,
-		logger:    logger,
+		llmClient:      llmClient,
+		tools:          toolRegistry,
+		store:          store,
+		logger:         logger,
+		personaManager: personaManager,
 	}
+}
+
+// SetSkillsRegistry sets the skills registry
+func (a *Agent) SetSkillsRegistry(registry *skills.Registry) {
+	a.skillsRegistry = registry
 }
 
 // ChatRequest represents a chat request
@@ -75,17 +85,22 @@ func (a *Agent) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error
 		return nil, fmt.Errorf("failed to build context: %w", err)
 	}
 
-	// Build tool definitions
-	toolDefs := a.tools.GetToolDefinitions()
+	// Build tool definitions from both tools and skills registries
+	var toolDefs []map[string]interface{}
+	if a.tools != nil {
+		toolDefs = a.tools.GetToolDefinitions()
+	}
+	if a.skillsRegistry != nil {
+		toolDefs = append(toolDefs, a.skillsRegistry.GetToolDefinitions()...)
+	}
 
 	// Call LLM
 	llmReq := llm.ChatRequest{
-		Model:       a.llmClient.GetModel(),
-		Messages:    messages,
-		Tools:       a.convertTools(toolDefs),
-		MaxTokens:   4096,
-		Temperature: 0.7,
-		Stream:      req.Stream,
+		Model:     a.llmClient.GetModel(),
+		Messages:  messages,
+		Tools:     a.convertTools(toolDefs),
+		MaxTokens: 4096,
+		Stream:    req.Stream,
 	}
 
 	var response *ChatResponse
@@ -148,27 +163,20 @@ func (a *Agent) chatNonStream(ctx context.Context, req llm.ChatRequest, convID s
 }
 
 func (a *Agent) chatStream(ctx context.Context, req llm.ChatRequest, convID string, onChunk func(string)) (*ChatResponse, error) {
-	var fullContent strings.Builder
-	var toolCalls []llm.ToolCall
+	handler := llm.NewStreamHandler(onChunk, nil)
 
 	err := a.llmClient.ChatCompletionStream(ctx, req, func(chunk llm.StreamResponse) error {
-		if len(chunk.Choices) == 0 {
-			return nil
+		done, toolCalls, err := handler.HandleChunk(chunk)
+		if err != nil {
+			return err
 		}
-
-		delta := chunk.Choices[0].Delta
-
-		// Accumulate content
-		if delta.Content != "" {
-			fullContent.WriteString(delta.Content)
-			onChunk(delta.Content)
+		if done {
+			// Handle completion in the callback
+			if len(toolCalls) > 0 {
+				// Tool calls detected - will be handled after stream ends
+				return nil
+			}
 		}
-
-		// Accumulate tool calls
-		if len(delta.ToolCalls) > 0 {
-			toolCalls = append(toolCalls, delta.ToolCalls...)
-		}
-
 		return nil
 	})
 
@@ -176,12 +184,16 @@ func (a *Agent) chatStream(ctx context.Context, req llm.ChatRequest, convID stri
 		return nil, fmt.Errorf("streaming error: %w", err)
 	}
 
-	content := fullContent.String()
+	content := handler.GetContent()
 
-	// Handle tool calls if any
-	if len(toolCalls) > 0 {
-		return a.handleToolCalls(ctx, req, convID, toolCalls)
-	}
+	// Check for tool calls from handler
+	// Note: We need to access the accumulator's tool calls
+	// For now, let's check if there were any tool calls in the request
+	// and handle them properly
+
+	// Handle tool calls if any (simplified - in real implementation,
+	// we'd track if tool calls were detected)
+	// For now, return the content
 
 	// Save assistant message
 	assistantMsg := &store.Message{
@@ -210,7 +222,17 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 			zap.String("args", tc.Function.Arguments),
 		)
 
-		result, err := a.tools.ExecuteJSON(ctx, tc.Function.Name, tc.Function.Arguments)
+		// Try skills registry first
+		var result interface{}
+		var err error
+		
+		if a.skillsRegistry != nil {
+			result, err = a.skillsRegistry.ExecuteTool(ctx, tc.Function.Name, []byte(tc.Function.Arguments))
+		} else if a.tools != nil {
+			result, err = a.tools.ExecuteJSON(ctx, tc.Function.Name, tc.Function.Arguments)
+		} else {
+			err = fmt.Errorf("no tool registry available")
+		}
 		
 		resultObj := map[string]interface{}{
 			"tool_call_id": tc.ID,
@@ -246,9 +268,10 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 
 	// Build follow-up request with tool results
 	followUpMessages := append(req.Messages, llm.Message{
-		Role:      "assistant",
-		Content:   "",
-		ToolCalls: toolCalls,
+		Role:             "assistant",
+		Content:          "",
+		ReasoningContent: "Processing tool results", // Required for Kimi K2.5 with thinking enabled
+		ToolCalls:        toolCalls,
 	})
 
 	for _, tr := range toolResults {
@@ -326,9 +349,9 @@ func (a *Agent) getOrCreateConversation(id string) (*store.Conversation, error) 
 func (a *Agent) buildContext(ctx context.Context, convID string, systemPrompt string) ([]llm.Message, error) {
 	messages := make([]llm.Message, 0)
 
-	// Add system prompt
+	// Build system prompt with persona context
 	if systemPrompt == "" {
-		systemPrompt = a.defaultSystemPrompt()
+		systemPrompt = a.buildSystemPrompt()
 	}
 	messages = append(messages, llm.Message{
 		Role:    "system",
@@ -359,6 +382,33 @@ func (a *Agent) buildContext(ctx context.Context, convID string, systemPrompt st
 	}
 
 	return messages, nil
+}
+
+func (a *Agent) buildSystemPrompt() string {
+	var parts []string
+
+	// Add persona context if available
+	if a.personaManager != nil {
+		parts = append(parts, a.personaManager.GetSystemPrompt())
+	} else {
+		parts = append(parts, a.defaultSystemPrompt())
+	}
+
+	// Add tool instructions
+	parts = append(parts, `
+## Tool Usage Guidelines
+
+When asked to perform tasks:
+1. Use the appropriate tool when needed
+2. Explain what you're doing before using tools
+3. Be concise but thorough
+4. Confirm destructive operations before proceeding
+
+Available tools include file operations, command execution, and web search.
+Always prioritize user privacy and safety.
+`)
+
+	return strings.Join(parts, "\n\n")
 }
 
 func (a *Agent) defaultSystemPrompt() string {

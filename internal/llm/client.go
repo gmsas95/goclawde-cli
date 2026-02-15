@@ -37,11 +37,12 @@ func NewClient(provider config.Provider) *Client {
 
 // Message represents a chat message
 type Message struct {
-	Role       string     `json:"role"`
-	Content    string     `json:"content"`
-	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
-	ToolCallID string     `json:"tool_call_id,omitempty"`
-	Name       string     `json:"name,omitempty"`
+	Role             string     `json:"role"`
+	Content          string     `json:"content"`
+	ToolCalls        []ToolCall `json:"tool_calls,omitempty"`
+	ToolCallID       string     `json:"tool_call_id,omitempty"`
+	Name             string     `json:"name,omitempty"`
+	ReasoningContent string     `json:"reasoning_content,omitempty"`
 }
 
 // ToolCall represents a tool call from the model
@@ -232,8 +233,7 @@ func (c *Client) SimpleChat(ctx context.Context, systemPrompt, userMessage strin
 			{Role: "system", Content: systemPrompt},
 			{Role: "user", Content: userMessage},
 		},
-		MaxTokens:   c.provider.MaxTokens,
-		Temperature: 0.7,
+		MaxTokens: c.provider.MaxTokens,
 	}
 
 	resp, err := c.ChatCompletion(ctx, req)
@@ -256,8 +256,7 @@ func (c *Client) SimpleChatStream(ctx context.Context, systemPrompt, userMessage
 			{Role: "system", Content: systemPrompt},
 			{Role: "user", Content: userMessage},
 		},
-		MaxTokens:   c.provider.MaxTokens,
-		Temperature: 0.7,
+		MaxTokens: c.provider.MaxTokens,
 	}
 
 	return c.ChatCompletionStream(ctx, req, func(chunk StreamResponse) error {
