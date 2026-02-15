@@ -240,11 +240,11 @@ func (s *BrowserSkill) handleScreenshot(ctx context.Context, args map[string]int
 	encoded := base64.StdEncoding.EncodeToString(buf)
 
 	return map[string]interface{}{
-		"status":      "success",
-		"screenshot":  encoded,
-		"format":      "png",
-		"size_bytes":  len(buf),
-		"message":     "Screenshot captured. Use the base64 data to display or save.",
+		"status":     "success",
+		"screenshot": encoded,
+		"format":     "png",
+		"size_bytes": len(buf),
+		"message":    "Screenshot captured. Use the base64 data to display or save.",
 	}, nil
 }
 
@@ -426,10 +426,16 @@ func (s *BrowserSkill) getContext(ctx context.Context) (context.Context, context
 	}
 
 	// Create allocator
-	allocCtx, cancel := chromedp.NewExecAllocator(ctx, opts...)
+	allocCtx, allocCancel := chromedp.NewExecAllocator(ctx, opts...)
 
 	// Create context
-	taskCtx, _ := chromedp.NewContext(allocCtx)
+	taskCtx, taskCancel := chromedp.NewContext(allocCtx)
+
+	// Return a combined cancel function that cleans up both
+	cancel := func() {
+		taskCancel()
+		allocCancel()
+	}
 
 	return taskCtx, cancel, nil
 }
