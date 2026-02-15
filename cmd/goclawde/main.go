@@ -633,7 +633,7 @@ func (app *App) runServer() {
 	agentInstance := agent.New(llmClient, nil, app.store, app.logger, app.personaManager)
 	agentInstance.SetSkillsRegistry(app.skillsRegistry)
 
-	// Initialize Telegram bot if enabled
+	// Initialize Telegram bot if enabled (with timeout)
 	if app.config.Channels.Telegram.Enabled {
 		telegramCfg := telegram.Config{
 			Token:     app.config.Channels.Telegram.BotToken,
@@ -641,20 +641,23 @@ func (app *App) runServer() {
 			AllowList: app.config.Channels.Telegram.AllowList,
 		}
 
-		bot, err := telegram.NewBot(telegramCfg, agentInstance, app.store, app.logger)
-		if err != nil {
-			app.logger.Error("Failed to create Telegram bot", zap.Error(err))
-		} else {
+		// Use goroutine with timeout to prevent blocking on network issues
+		go func() {
+			bot, err := telegram.NewBot(telegramCfg, agentInstance, app.store, app.logger)
+			if err != nil {
+				app.logger.Error("Failed to create Telegram bot", zap.Error(err))
+				return
+			}
 			if err := bot.Start(); err != nil {
 				app.logger.Error("Failed to start Telegram bot", zap.Error(err))
-			} else {
-				app.telegramBot = bot
-				app.logger.Info("Telegram bot started")
+				return
 			}
-		}
+			app.telegramBot = bot
+			app.logger.Info("Telegram bot started")
+		}()
 	}
 
-	// Initialize Discord bot if enabled
+	// Initialize Discord bot if enabled (async to prevent blocking)
 	if app.config.Channels.Discord.Enabled && app.config.Channels.Discord.Token != "" {
 		discordCfg := discord.Config{
 			Token:    app.config.Channels.Discord.Token,
@@ -662,17 +665,19 @@ func (app *App) runServer() {
 			AllowDM:  true,
 		}
 
-		db, err := discord.NewBot(discordCfg, agentInstance, app.store, app.logger)
-		if err != nil {
-			app.logger.Error("Failed to create Discord bot", zap.Error(err))
-		} else {
+		go func() {
+			db, err := discord.NewBot(discordCfg, agentInstance, app.store, app.logger)
+			if err != nil {
+				app.logger.Error("Failed to create Discord bot", zap.Error(err))
+				return
+			}
 			if err := db.Start(); err != nil {
 				app.logger.Error("Failed to start Discord bot", zap.Error(err))
-			} else {
-				app.discordBot = db
-				app.logger.Info("Discord bot started")
+				return
 			}
-		}
+			app.discordBot = db
+			app.logger.Info("Discord bot started")
+		}()
 	}
 
 	// Start MCP server if enabled
