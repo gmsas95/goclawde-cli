@@ -15,7 +15,10 @@ import (
 	"github.com/gmsas95/goclawde-cli/internal/agent"
 	"github.com/gmsas95/goclawde-cli/internal/api"
 	"github.com/gmsas95/goclawde-cli/internal/batch"
+	"github.com/gmsas95/goclawde-cli/internal/channels/discord"
 	"github.com/gmsas95/goclawde-cli/internal/channels/telegram"
+	"github.com/gmsas95/goclawde-cli/internal/cron"
+	"github.com/gmsas95/goclawde-cli/internal/mcp"
 	"github.com/gmsas95/goclawde-cli/internal/config"
 	"github.com/gmsas95/goclawde-cli/internal/llm"
 	"github.com/gmsas95/goclawde-cli/internal/onboarding"
@@ -27,6 +30,7 @@ import (
 	"github.com/gmsas95/goclawde-cli/internal/skills/system"
 	"github.com/gmsas95/goclawde-cli/internal/skills/weather"
 	"github.com/gmsas95/goclawde-cli/internal/store"
+	"github.com/gmsas95/goclawde-cli/pkg/tools"
 	"go.uber.org/zap"
 )
 
@@ -47,6 +51,8 @@ type App struct {
 	logger         *zap.Logger
 	skillsRegistry *skills.Registry
 	telegramBot    *telegram.Bot
+	discordBot     *discord.Bot
+	cronRunner     *cron.Runner
 	personaManager *persona.PersonaManager
 }
 
@@ -406,6 +412,7 @@ func handleBatchCommand(args []string) {
 	outputFile := ""
 	concurrency := 3
 	timeout := 60
+	tier := "" // "3", "4", "5" for Moonshot tiers
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
@@ -427,6 +434,11 @@ func handleBatchCommand(args []string) {
 		case "-t", "--timeout":
 			if i+1 < len(args) {
 				fmt.Sscanf(args[i+1], "%d", &timeout)
+				i++
+			}
+		case "--tier":
+			if i+1 < len(args) {
+				tier = args[i+1]
 				i++
 			}
 		case "-h", "--help":
@@ -490,14 +502,43 @@ func handleBatchCommand(args []string) {
 		ValidateInput:  true,
 	}
 
-	processor := batch.NewProcessor(agentInstance, batchConfig, logger)
-
-	fmt.Printf("🤖 Processing batch file: %s\n", inputFile)
-	fmt.Printf("   Concurrency: %d | Timeout: %ds\n", concurrency, timeout)
-	fmt.Println()
-
+	baseProcessor := batch.NewProcessor(agentInstance, batchConfig, logger)
+	
+	var result *batch.Result
+	
 	ctx := context.Background()
-	result, err := processor.ProcessFile(ctx, inputFile, outputFile)
+	
+	// Use rate-limited processor if tier is specified
+	if tier != "" {
+		var rlConfig batch.RateLimiterConfig
+		switch tier {
+		case "3":
+			rlConfig = batch.Tier3Config()
+			fmt.Println("⚡ Using Tier 3 rate limits: 200 concurrent, 5000 RPM, 3M TPM")
+		case "4":
+			rlConfig = batch.Tier4Config()
+			fmt.Println("⚡ Using Tier 4 rate limits: 400 concurrent, 5000 RPM, 4M TPM")
+		case "5":
+			rlConfig = batch.Tier5Config()
+			fmt.Println("⚡ Using Tier 5 rate limits: 1000 concurrent, 10000 RPM, 5M TPM")
+		default:
+			fmt.Printf("Unknown tier: %s. Using default limits.\n", tier)
+			rlConfig = batch.RateLimiterConfig{MaxConcurrency: concurrency}
+		}
+		
+		processor := batch.NewRateLimitedProcessor(baseProcessor, rlConfig)
+		fmt.Printf("🤖 Processing batch file: %s\n", inputFile)
+		fmt.Printf("   Concurrency: %d | Timeout: %ds | Tier: %s\n", rlConfig.MaxConcurrency, timeout, tier)
+		fmt.Println()
+		
+		result, err = processor.ProcessFileWithRateLimit(ctx, inputFile, outputFile)
+	} else {
+		fmt.Printf("🤖 Processing batch file: %s\n", inputFile)
+		fmt.Printf("   Concurrency: %d | Timeout: %ds\n", concurrency, timeout)
+		fmt.Println()
+		
+		result, err = baseProcessor.ProcessFile(ctx, inputFile, outputFile)
+	}
 	if err != nil {
 		fmt.Printf("Error processing batch: %v\n", err)
 		os.Exit(1)
@@ -529,6 +570,7 @@ func printBatchHelp() {
 	fmt.Println("  -o, --output <file>      Output file (optional)")
 	fmt.Println("  -c, --concurrency <n>    Max concurrent requests (default: 3)")
 	fmt.Println("  -t, --timeout <sec>      Request timeout in seconds (default: 60)")
+	fmt.Println("  --tier <3|4|5>           Use rate limits for Moonshot tier (optional)")
 	fmt.Println("  -h, --help               Show this help")
 	fmt.Println()
 	fmt.Println("Input Formats:")
@@ -539,6 +581,12 @@ func printBatchHelp() {
 	fmt.Println("  goclawde batch -i prompts.txt")
 	fmt.Println("  goclawde batch -i prompts.jsonl -o results.json")
 	fmt.Println("  goclawde batch -i prompts.txt -c 5 -t 120")
+	fmt.Println("  goclawde batch -i big_file.jsonl --tier 3 -o results.json")
+	fmt.Println()
+	fmt.Println("Moonshot Tier Limits:")
+	fmt.Println("  Tier 3: 200 concurrent, 5000 RPM, 3M TPM")
+	fmt.Println("  Tier 4: 400 concurrent, 5000 RPM, 4M TPM")
+	fmt.Println("  Tier 5: 1000 concurrent, 10000 RPM, 5M TPM")
 }
 
 func getMode() string {
@@ -606,6 +654,55 @@ func (app *App) runServer() {
 		}
 	}
 
+	// Initialize Discord bot if enabled
+	if app.config.Channels.Discord.Enabled && app.config.Channels.Discord.Token != "" {
+		discordCfg := discord.Config{
+			Token:    app.config.Channels.Discord.Token,
+			Enabled:  true,
+			AllowDM:  true,
+		}
+
+		db, err := discord.NewBot(discordCfg, agentInstance, app.store, app.logger)
+		if err != nil {
+			app.logger.Error("Failed to create Discord bot", zap.Error(err))
+		} else {
+			if err := db.Start(); err != nil {
+				app.logger.Error("Failed to start Discord bot", zap.Error(err))
+			} else {
+				app.discordBot = db
+				app.logger.Info("Discord bot started")
+			}
+		}
+	}
+
+	// Start MCP server if enabled
+	if app.config.MCP.Enabled {
+		// Create a tools registry for MCP
+		toolRegistry := tools.NewRegistry(app.config.Tools.AllowedCmds)
+		mcpServer := mcp.NewServer(app.config, toolRegistry)
+		go func() {
+			addr := fmt.Sprintf("%s:%d", app.config.MCP.Host, app.config.MCP.Port)
+			app.logger.Info("Starting MCP server", zap.String("addr", addr))
+			if err := mcpServer.Start(addr); err != nil {
+				app.logger.Error("MCP server error", zap.Error(err))
+			}
+		}()
+	}
+
+	// Initialize cron runner if enabled
+	if app.config.Cron.Enabled {
+		cronConfig := cron.Config{
+			CheckInterval: app.config.Cron.IntervalMinutes,
+			MaxConcurrent: app.config.Cron.MaxConcurrent,
+		}
+		app.cronRunner = cron.NewRunner(cronConfig, agentInstance, app.store, app.logger)
+		if err := app.cronRunner.Start(); err != nil {
+			app.logger.Error("Failed to start cron runner", zap.Error(err))
+		} else {
+			app.logger.Info("Cron runner started")
+		}
+	}
+
 	// Initialize and start API server
 	server := api.New(app.config, app.store, app.logger)
 	server.SetSkillsRegistry(app.skillsRegistry)
@@ -651,6 +748,16 @@ func (app *App) runServer() {
 	// Stop Telegram bot
 	if app.telegramBot != nil {
 		app.telegramBot.Stop()
+	}
+
+	// Stop Discord bot
+	if app.discordBot != nil {
+		app.discordBot.Stop()
+	}
+
+	// Stop cron runner
+	if app.cronRunner != nil {
+		app.cronRunner.Stop()
 	}
 
 	if err := server.Shutdown(); err != nil {

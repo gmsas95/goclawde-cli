@@ -349,3 +349,47 @@ func FromContext(ctx context.Context) (*Store, bool) {
 	s, ok := ctx.Value("store").(*Store)
 	return s, ok
 }
+
+// ==================== Scheduled Job Methods ====================
+
+// CreateJob creates a new scheduled job
+func (s *Store) CreateJob(job *ScheduledJob) error {
+	return s.db.Create(job).Error
+}
+
+// GetJob retrieves a job by ID
+func (s *Store) GetJob(id string) (*ScheduledJob, error) {
+	var job ScheduledJob
+	if err := s.db.First(&job, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &job, nil
+}
+
+// UpdateJob updates a scheduled job
+func (s *Store) UpdateJob(job *ScheduledJob) error {
+	return s.db.Save(job).Error
+}
+
+// DeleteJob deletes a scheduled job
+func (s *Store) DeleteJob(id string) error {
+	return s.db.Delete(&ScheduledJob{}, "id = ?", id).Error
+}
+
+// GetDueJobs retrieves jobs that are due to run
+func (s *Store) GetDueJobs(limit int) ([]*ScheduledJob, error) {
+	var jobs []*ScheduledJob
+	now := time.Now()
+	err := s.db.Where("is_active = ? AND next_run_at <= ?", true, now).
+		Order("next_run_at ASC").
+		Limit(limit).
+		Find(&jobs).Error
+	return jobs, err
+}
+
+// ListJobs retrieves all scheduled jobs
+func (s *Store) ListJobs() ([]*ScheduledJob, error) {
+	var jobs []*ScheduledJob
+	err := s.db.Order("created_at DESC").Find(&jobs).Error
+	return jobs, err
+}

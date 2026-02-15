@@ -18,6 +18,9 @@ type Config struct {
 	Tools    ToolsConfig    `mapstructure:"tools"`
 	Security SecurityConfig `mapstructure:"security"`
 	Skills   SkillsConfig   `mapstructure:"skills"`
+	MCP      MCPConfig      `mapstructure:"mcp"`
+	Cron     CronConfig     `mapstructure:"cron"`
+	Vector   VectorConfig   `mapstructure:"vector"`
 }
 
 type ServerConfig struct {
@@ -111,6 +114,30 @@ type BrowserSkillConfig struct {
 
 type BraveSkillConfig struct {
 	APIKey string `mapstructure:"api_key"`
+}
+
+// MCPConfig holds MCP server configuration
+type MCPConfig struct {
+	Enabled bool   `mapstructure:"enabled"`
+	Host    string `mapstructure:"host"`
+	Port    int    `mapstructure:"port"`
+}
+
+// CronConfig holds cron runner configuration
+type CronConfig struct {
+	Enabled         bool `mapstructure:"enabled"`
+	IntervalMinutes int  `mapstructure:"interval_minutes"`
+	MaxConcurrent   int  `mapstructure:"max_concurrent"`
+}
+
+// VectorConfig holds vector search configuration
+type VectorConfig struct {
+	Enabled        bool   `mapstructure:"enabled"`
+	Provider       string `mapstructure:"provider"` // "local", "openai", "ollama"
+	EmbeddingModel string `mapstructure:"embedding_model"`
+	Dimension      int    `mapstructure:"dimension"`
+	OpenAIAPIKey   string `mapstructure:"openai_api_key"`
+	OllamaHost     string `mapstructure:"ollama_host"`
 }
 
 // Load loads configuration from file, env, and defaults
@@ -270,6 +297,23 @@ func setDefaults(v *viper.Viper) {
 
 	// Security defaults
 	v.SetDefault("security.allow_origins", []string{"*"})
+
+	// MCP defaults
+	v.SetDefault("mcp.enabled", false)
+	v.SetDefault("mcp.host", "0.0.0.0")
+	v.SetDefault("mcp.port", 8081)
+
+	// Cron defaults
+	v.SetDefault("cron.enabled", true)
+	v.SetDefault("cron.interval_minutes", 1)
+	v.SetDefault("cron.max_concurrent", 3)
+
+	// Vector defaults
+	v.SetDefault("vector.enabled", false)
+	v.SetDefault("vector.provider", "local")
+	v.SetDefault("vector.embedding_model", "all-MiniLM-L6-v2")
+	v.SetDefault("vector.dimension", 384)
+	v.SetDefault("vector.ollama_host", "http://localhost:11434")
 }
 
 func getDefaultDataDir() string {

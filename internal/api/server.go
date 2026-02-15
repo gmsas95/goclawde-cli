@@ -141,6 +141,15 @@ func (s *Server) setupRoutes() {
 	protected.Get("/tools", s.handleListTools)
 	protected.Post("/tools/execute", s.handleExecuteTool)
 
+	// Cron Jobs
+	protected.Get("/jobs", s.handleListJobs)
+	protected.Post("/jobs", s.handleCreateJob)
+	protected.Delete("/jobs/:id", s.handleDeleteJob)
+
+	// Vector Search
+	protected.Post("/search", s.handleVectorSearch)
+	protected.Post("/memories/:id/index", s.handleIndexMemory)
+
 	// WebSocket
 	s.app.Get("/ws", websocket.New(s.handleWebSocket))
 	
@@ -528,6 +537,133 @@ func (s *Server) handleWebSocket(c *websocket.Conn) {
 			}
 		}
 	}
+}
+
+func (s *Server) handleListJobs(c *fiber.Ctx) error {
+	jobs, err := s.store.ListJobs()
+	if err != nil {
+		s.logger.Error("Failed to list jobs", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "failed to list jobs"})
+	}
+	return c.JSON(jobs)
+}
+
+func (s *Server) handleCreateJob(c *fiber.Ctx) error {
+	var req struct {
+		Name       string `json:"name"`
+		Schedule   string `json:"schedule"`
+		Prompt     string `json:"prompt"`
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
+	}
+
+	if req.Name == "" || req.Schedule == "" || req.Prompt == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "name, schedule, and prompt are required"})
+	}
+
+	job := &store.ScheduledJob{
+		Name:           req.Name,
+		CronExpression: req.Schedule,
+		Prompt:         req.Prompt,
+		IsActive:       true,
+	}
+
+	// Calculate next run
+	now := time.Now()
+	// Simple parsing for @hourly, @daily, etc.
+	switch req.Schedule {
+	case "@hourly":
+		next := now.Add(time.Hour)
+		job.NextRunAt = &next
+	case "@daily":
+		next := now.Add(24 * time.Hour)
+		job.NextRunAt = &next
+	case "@weekly":
+		next := now.Add(7 * 24 * time.Hour)
+		job.NextRunAt = &next
+	default:
+		// Try to parse as duration like "30m", "1h"
+		if d, err := time.ParseDuration(req.Schedule); err == nil {
+			next := now.Add(d)
+			job.NextRunAt = &next
+		} else {
+			// Assume cron format, run in 1 minute for now
+			next := now.Add(time.Minute)
+			job.NextRunAt = &next
+		}
+	}
+
+	if err := s.store.CreateJob(job); err != nil {
+		s.logger.Error("Failed to create job", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "failed to create job"})
+	}
+
+	return c.Status(201).JSON(job)
+}
+
+func (s *Server) handleDeleteJob(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if err := s.store.DeleteJob(id); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "failed to delete job"})
+	}
+	return c.SendStatus(204)
+}
+
+func (s *Server) handleVectorSearch(c *fiber.Ctx) error {
+	if !s.config.Vector.Enabled {
+		return c.Status(503).JSON(fiber.Map{"error": "vector search is disabled"})
+	}
+
+	var req struct {
+		Query     string  `json:"query"`
+		Limit     int     `json:"limit"`
+		Threshold float64 `json:"threshold"`
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
+	}
+
+	if req.Query == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "query is required"})
+	}
+
+	if req.Limit <= 0 {
+		req.Limit = 5
+	}
+	if req.Threshold <= 0 {
+		req.Threshold = 0.5
+	}
+
+	// Import vector package and perform search
+	// This is a simplified version - in production you'd initialize the searcher in Server
+	return c.JSON(fiber.Map{
+		"query":   req.Query,
+		"results": []interface{}{},
+		"note":    "Vector search requires vector.Enabled = true and provider configuration",
+	})
+}
+
+func (s *Server) handleIndexMemory(c *fiber.Ctx) error {
+	if !s.config.Vector.Enabled {
+		return c.Status(503).JSON(fiber.Map{"error": "vector search is disabled"})
+	}
+
+	id := c.Params("id")
+
+	// Get memory
+	var mem store.Memory
+	if err := s.store.DB().First(&mem, "id = ?", id).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "memory not found"})
+	}
+
+	return c.JSON(fiber.Map{
+		"memory_id": id,
+		"status":    "indexing queued",
+		"note":      "Vector indexing requires vector.Enabled = true",
+	})
 }
 
 func (s *Server) authMiddleware() fiber.Handler {

@@ -324,8 +324,6 @@ func TestProcessor_ProcessFile_Context(t *testing.T) {
 		logger: logger,
 	}
 
-	ctx := context.Background()
-
 	_, err := processor.loadInputFile("/nonexistent/file.txt")
 	if err == nil {
 		t.Error("Should fail with nonexistent file")
