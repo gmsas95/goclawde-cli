@@ -1,6 +1,8 @@
 # GoClawde Persona & Memory System
 
-GoClawde features a powerful persona and memory system inspired by [OpenClaw](https://github.com/openclaw/openclaw)'s markdown-based memory files (SOUL.md, IDENTITY.md, USER.md, AGENTS.md) and [AI MemoryCore](https://github.com/Kiyoraka/Project-AI-MemoryCore), adapted for a self-hosted Go application with performance optimizations (caching, SQLite persistence).
+**History:** The markdown-based persona system was originally created by a Malaysian developer as MemoryCore for local private use before being publicized. OpenClaw later brought the concept to wider attention with their implementation. GoClawde builds on both with a Go implementation featuring performance optimizations (caching, SQLite persistence).
+
+GoClawde features a powerful persona and memory system using markdown files (IDENTITY.md, USER.md, TOOLS.md, AGENTS.md) adapted for a self-hosted Go application.
 
 ## 🧠 Overview
 

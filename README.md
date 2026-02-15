@@ -129,7 +129,7 @@ $ goclawde --server
 
 ## 🧠 Persona System
 
-GoClawde features a markdown-based persona system (inspired by OpenClaw's SOUL.md and MemoryCore) that makes your AI assistant truly personal:
+GoClawde features a markdown-based persona system (originally created by MemoryCore, popularized by OpenClaw's SOUL.md) that makes your AI assistant truly personal:
 
 ### Core Files
 
@@ -330,9 +330,11 @@ MIT License - see [LICENSE](LICENSE) file.
 
 ## 🙏 Acknowledgments
 
-- **[OpenClaw](https://github.com/openclaw/openclaw)** - Inspiration for features, UX, and the markdown-based persona system (SOUL.md, IDENTITY.md, USER.md, AGENTS.md)
+**History:** The markdown-based persona system was originally created by a Malaysian developer (MemoryCore) for local use before being publicized. OpenClaw brought the concept to wider attention with their implementation.
+
+- **[MemoryCore](https://github.com/Kiyoraka/Project-AI-MemoryCore)** - Original creator of the markdown-based persona system concept (local/private use, not commercialized)
+- **[OpenClaw](https://github.com/openclaw/openclaw)** - First to publicize and popularize the markdown-based persona system (SOUL.md, IDENTITY.md, USER.md, AGENTS.md)
 - **[PicoClaw](https://github.com/gmsas95/picoclaw)** - Inspiration for performance optimization and Go implementation
-- **[MemoryCore](https://github.com/Kiyoraka/Project-AI-MemoryCore)** - Inspiration for time-awareness and project context features
 - **[nanobot](https://github.com/HKUDS/nanobot)** - Original concept by HKUDS
 
 Built with Go, SQLite, BadgerDB, and ❤️
