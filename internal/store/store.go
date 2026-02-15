@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/YOUR_USERNAME/jimmy.ai/internal/config"
 	"github.com/dgraph-io/badger/v4"
+	_ "github.com/glebarez/go-sqlite" // Pure Go SQLite driver
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -29,8 +31,21 @@ func New(cfg *config.Config) (*Store, error) {
 		sqlitePath = filepath.Join(cfg.Storage.DataDir, "jimmy.db")
 	}
 
-	db, err := gorm.Open(sqlite.Open(sqlitePath), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
+	// Open SQLite with optimizations
+	sqliteDB, err := sql.Open("sqlite", sqlitePath+"?_journal=WAL&_synchronous=NORMAL&_busy_timeout=5000&_cache_size=-64000")
+	if err != nil {
+		return nil, fmt.Errorf("failed to open sqlite: %w", err)
+	}
+	
+	// Configure connection pool
+	sqliteDB.SetMaxOpenConns(10)
+	sqliteDB.SetMaxIdleConns(5)
+	sqliteDB.SetConnMaxLifetime(time.Hour)
+	
+	db, err := gorm.Open(sqlite.Dialector{Conn: sqliteDB}, &gorm.Config{
+		Logger:                 logger.Default.LogMode(logger.Silent),
+		SkipDefaultTransaction: true,
+		PrepareStmt:            true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite: %w", err)
@@ -56,7 +71,15 @@ func New(cfg *config.Config) (*Store, error) {
 		badgerPath = filepath.Join(cfg.Storage.DataDir, "badger")
 	}
 
-	badgerDB, err := badger.Open(badger.DefaultOptions(badgerPath))
+	// Open BadgerDB with optimizations
+	badgerOpts := badger.DefaultOptions(badgerPath).
+		WithLogger(nil). // Disable verbose logging
+		WithNumVersionsToKeep(1).
+		WithCompactL0OnClose(true).
+		WithValueLogFileSize(16 << 20). // 16MB value log files
+		WithMemTableSize(16 << 20)      // 16MB memtable
+	
+	badgerDB, err := badger.Open(badgerOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open badger: %w", err)
 	}

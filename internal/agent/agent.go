@@ -349,10 +349,13 @@ func (a *Agent) getOrCreateConversation(id string) (*store.Conversation, error) 
 func (a *Agent) buildContext(ctx context.Context, convID string, systemPrompt string) ([]llm.Message, error) {
 	messages := make([]llm.Message, 0)
 
-	// Build system prompt with persona context
+	// Build system prompt with persona context (cached internally by personaManager)
 	if systemPrompt == "" {
 		systemPrompt = a.buildSystemPrompt()
 	}
+	
+	// Preallocate message slice with capacity for efficiency
+	messages = make([]llm.Message, 0, 25)
 	messages = append(messages, llm.Message{
 		Role:    "system",
 		Content: systemPrompt,

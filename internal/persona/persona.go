@@ -27,6 +27,11 @@ type PersonaManager struct {
 	currentProject *Project
 	projects       *ProjectManager
 	timeAwareness  *TimeAwareness
+	
+	// Caching
+	systemPromptCache string
+	cacheValid        bool
+	cacheMu           sync.RWMutex
 
 	mu sync.RWMutex
 }
@@ -140,12 +145,20 @@ func (pm *PersonaManager) Save() error {
 
 // GetSystemPrompt builds the complete system prompt with all context
 func (pm *PersonaManager) GetSystemPrompt() string {
-	pm.mu.RLock()
-	defer pm.mu.RUnlock()
+	// Check cache first
+	pm.cacheMu.RLock()
+	if pm.cacheValid && pm.systemPromptCache != "" {
+		cached := pm.systemPromptCache
+		pm.cacheMu.RUnlock()
+		return cached
+	}
+	pm.cacheMu.RUnlock()
 
+	// Build new prompt
+	pm.mu.RLock()
 	var parts []string
 
-	// Time awareness context
+	// Time awareness context (this changes, so don't cache it)
 	parts = append(parts, pm.timeAwareness.GetContext())
 
 	// Identity context
@@ -168,8 +181,25 @@ func (pm *PersonaManager) GetSystemPrompt() string {
 	if pm.agents != "" {
 		parts = append(parts, pm.agents)
 	}
+	pm.mu.RUnlock()
 
-	return strings.Join(parts, "\n\n")
+	result := strings.Join(parts, "\n\n")
+	
+	// Cache the result (except time-sensitive parts will be handled by caller)
+	pm.cacheMu.Lock()
+	pm.systemPromptCache = result
+	pm.cacheValid = true
+	pm.cacheMu.Unlock()
+
+	return result
+}
+
+// InvalidateCache invalidates the system prompt cache
+func (pm *PersonaManager) InvalidateCache() {
+	pm.cacheMu.Lock()
+	pm.cacheValid = false
+	pm.systemPromptCache = ""
+	pm.cacheMu.Unlock()
 }
 
 // GetIdentity returns the AI's identity
@@ -184,6 +214,7 @@ func (pm *PersonaManager) SetIdentity(identity *Identity) error {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 	pm.identity = identity
+	pm.InvalidateCache()
 	return pm.Save()
 }
 
@@ -200,6 +231,7 @@ func (pm *PersonaManager) UpdateUserPreference(key, value string) error {
 	defer pm.mu.Unlock()
 	pm.user.Preferences[key] = value
 	pm.user.UpdatedAt = time.Now()
+	pm.InvalidateCache()
 	return pm.Save()
 }
 
@@ -218,8 +250,10 @@ func (pm *PersonaManager) SwitchProject(name string) error {
 	}
 
 	pm.mu.Lock()
-	defer pm.mu.Unlock()
 	pm.currentProject = project
+	pm.mu.Unlock()
+	
+	pm.InvalidateCache()
 	return nil
 }
 

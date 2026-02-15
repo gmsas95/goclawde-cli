@@ -36,14 +36,14 @@ type Conversation struct {
 // Message represents a chat message
 type Message struct {
 	ID             string          `gorm:"primaryKey" json:"id"`
-	ConversationID string          `json:"conversation_id"`
+	ConversationID string          `gorm:"index:idx_conv_created" json:"conversation_id"`
 	Role           string          `json:"role"` // user, assistant, system, tool
 	Content        string          `json:"content"`
 	Tokens         int             `json:"tokens"`
 	ToolCalls      json.RawMessage `json:"tool_calls,omitempty" gorm:"type:text"`
 	ToolResults    json.RawMessage `json:"tool_results,omitempty" gorm:"type:text"`
 	LatencyMs      int             `json:"latency_ms"`
-	CreatedAt      time.Time       `json:"created_at"`
+	CreatedAt      time.Time       `gorm:"index:idx_conv_created" json:"created_at"`
 }
 
 // Memory represents a stored fact or preference
