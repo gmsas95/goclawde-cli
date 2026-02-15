@@ -12,15 +12,17 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/term"
+
 	"github.com/gmsas95/goclawde-cli/internal/agent"
 	"github.com/gmsas95/goclawde-cli/internal/api"
 	"github.com/gmsas95/goclawde-cli/internal/batch"
 	"github.com/gmsas95/goclawde-cli/internal/channels/discord"
 	"github.com/gmsas95/goclawde-cli/internal/channels/telegram"
-	"github.com/gmsas95/goclawde-cli/internal/cron"
-	"github.com/gmsas95/goclawde-cli/internal/mcp"
 	"github.com/gmsas95/goclawde-cli/internal/config"
+	"github.com/gmsas95/goclawde-cli/internal/cron"
 	"github.com/gmsas95/goclawde-cli/internal/llm"
+	"github.com/gmsas95/goclawde-cli/internal/mcp"
 	"github.com/gmsas95/goclawde-cli/internal/onboarding"
 	"github.com/gmsas95/goclawde-cli/internal/persona"
 	"github.com/gmsas95/goclawde-cli/internal/skills"
@@ -86,19 +88,19 @@ func main() {
 
 	flag.Parse()
 
-	// Check if onboarding is needed
-	if onboarding.CheckFirstRun() && !*onboard {
+	// Check if onboarding is needed (only in interactive terminal)
+	if onboarding.CheckFirstRun() && !*onboard && term.IsTerminal(int(os.Stdin.Fd())) {
 		fmt.Println("🤖 Welcome to GoClawde!")
 		fmt.Println()
 		fmt.Println("It looks like this is your first time running GoClawde.")
 		fmt.Println("Let's set up your personal AI assistant.")
 		fmt.Println()
 		fmt.Print("Run onboarding wizard? (Y/n): ")
-		
+
 		reader := bufio.NewReader(os.Stdin)
 		response, _ := reader.ReadString('\n')
 		response = strings.TrimSpace(strings.ToLower(response))
-		
+
 		if response == "" || response == "y" || response == "yes" {
 			runOnboarding()
 			return
@@ -146,7 +148,7 @@ func main() {
 
 	// Initialize skills registry
 	skillsRegistry := skills.NewRegistry(st)
-	
+
 	// Register built-in skills
 	registerSkills(cfg, skillsRegistry)
 
@@ -205,7 +207,7 @@ func handleProjectCommand(args []string) {
 		}
 		name := args[1]
 		projectType := args[2]
-		
+
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Print("Project description: ")
 		description, _ := reader.ReadString('\n')
@@ -249,7 +251,7 @@ func handleProjectCommand(args []string) {
 			os.Exit(1)
 		}
 		name := args[1]
-		
+
 		if err := pm.SwitchProject(name); err != nil {
 			fmt.Printf("Error switching project: %v\n", err)
 			os.Exit(1)
@@ -262,7 +264,7 @@ func handleProjectCommand(args []string) {
 			os.Exit(1)
 		}
 		name := args[1]
-		
+
 		projects, _ := pm.ListProjects()
 		var found bool
 		for _, p := range projects {
@@ -275,7 +277,7 @@ func handleProjectCommand(args []string) {
 			fmt.Printf("Project '%s' not found\n", name)
 			os.Exit(1)
 		}
-		
+
 		projectsMgr := pm.GetCurrentProject()
 		_ = projectsMgr
 		// Access project manager through persona
@@ -288,12 +290,12 @@ func handleProjectCommand(args []string) {
 			os.Exit(1)
 		}
 		name := args[1]
-		
+
 		fmt.Printf("Are you sure you want to delete project '%s'? (yes/no): ", name)
 		reader := bufio.NewReader(os.Stdin)
 		response, _ := reader.ReadString('\n')
 		response = strings.TrimSpace(strings.ToLower(response))
-		
+
 		if response != "yes" {
 			fmt.Println("Cancelled")
 			return
@@ -316,7 +318,7 @@ func handlePersonaCommand(args []string) {
 		logger, _ := zap.NewDevelopment()
 		workspace := onboarding.GetWorkspacePath()
 		pm, _ := persona.NewPersonaManager(workspace, logger)
-		
+
 		identity := pm.GetIdentity()
 		fmt.Println("Current AI Identity:")
 		fmt.Println("====================")
@@ -334,13 +336,13 @@ func handlePersonaCommand(args []string) {
 	case "edit":
 		workspace := onboarding.GetWorkspacePath()
 		identityPath := workspace + "/IDENTITY.md"
-		
+
 		// Open in default editor
 		editor := os.Getenv("EDITOR")
 		if editor == "" {
 			editor = "nano"
 		}
-		
+
 		syscall.Exec(editor, []string{editor, identityPath}, os.Environ())
 
 	case "show":
@@ -363,7 +365,7 @@ func handleUserCommand(args []string) {
 		logger, _ := zap.NewDevelopment()
 		workspace := onboarding.GetWorkspacePath()
 		pm, _ := persona.NewPersonaManager(workspace, logger)
-		
+
 		user := pm.GetUserProfile()
 		fmt.Println("Your Profile:")
 		fmt.Println("=============")
@@ -380,12 +382,12 @@ func handleUserCommand(args []string) {
 	case "edit":
 		workspace := onboarding.GetWorkspacePath()
 		userPath := workspace + "/USER.md"
-		
+
 		editor := os.Getenv("EDITOR")
 		if editor == "" {
 			editor = "nano"
 		}
-		
+
 		syscall.Exec(editor, []string{editor, userPath}, os.Environ())
 
 	case "show":
@@ -503,11 +505,11 @@ func handleBatchCommand(args []string) {
 	}
 
 	baseProcessor := batch.NewProcessor(agentInstance, batchConfig, logger)
-	
+
 	var result *batch.Result
-	
+
 	ctx := context.Background()
-	
+
 	// Use rate-limited processor if tier is specified
 	if tier != "" {
 		var rlConfig batch.RateLimiterConfig
@@ -525,18 +527,18 @@ func handleBatchCommand(args []string) {
 			fmt.Printf("Unknown tier: %s. Using default limits.\n", tier)
 			rlConfig = batch.RateLimiterConfig{MaxConcurrency: concurrency}
 		}
-		
+
 		processor := batch.NewRateLimitedProcessor(baseProcessor, rlConfig)
 		fmt.Printf("🤖 Processing batch file: %s\n", inputFile)
 		fmt.Printf("   Concurrency: %d | Timeout: %ds | Tier: %s\n", rlConfig.MaxConcurrency, timeout, tier)
 		fmt.Println()
-		
+
 		result, err = processor.ProcessFileWithRateLimit(ctx, inputFile, outputFile)
 	} else {
 		fmt.Printf("🤖 Processing batch file: %s\n", inputFile)
 		fmt.Printf("   Concurrency: %d | Timeout: %ds\n", concurrency, timeout)
 		fmt.Println()
-		
+
 		result, err = baseProcessor.ProcessFile(ctx, inputFile, outputFile)
 	}
 	if err != nil {
@@ -660,9 +662,9 @@ func (app *App) runServer() {
 	// Initialize Discord bot if enabled (async to prevent blocking)
 	if app.config.Channels.Discord.Enabled && app.config.Channels.Discord.Token != "" {
 		discordCfg := discord.Config{
-			Token:    app.config.Channels.Discord.Token,
-			Enabled:  true,
-			AllowDM:  true,
+			Token:   app.config.Channels.Discord.Token,
+			Enabled: true,
+			AllowDM: true,
 		}
 
 		go func() {
@@ -728,7 +730,7 @@ func (app *App) runServer() {
 	skillsList := app.skillsRegistry.ListSkills()
 	app.logger.Info("Loaded skills", zap.Int("count", len(skillsList)))
 	for _, skill := range skillsList {
-		app.logger.Info("Skill", 
+		app.logger.Info("Skill",
 			zap.String("name", skill.Name()),
 			zap.String("version", skill.Version()),
 			zap.Int("tools", len(skill.Tools())),
