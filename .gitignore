@@ -1,4 +1,5 @@
 # Binaries
+goclawde
 jimmy
 *.exe
 *.dll
@@ -23,11 +24,14 @@ data/
 *.db-journal
 *.db-wal
 badger/
+.goclawde/
 .jimmy/
 
-# Environment files (local configs - template .env is tracked)
+# Environment files (keep .env.example, ignore actual .env files)
+.env
 .env.local
 .env.*.local
+!.env.example
 
 # IDE
 .idea/

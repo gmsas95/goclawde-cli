@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Config holds all configuration for GoClawde
 type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
 	LLM      LLMConfig      `mapstructure:"llm"`
@@ -21,7 +20,6 @@ type Config struct {
 	Skills   SkillsConfig   `mapstructure:"skills"`
 }
 
-// ServerConfig holds HTTP server settings
 type ServerConfig struct {
 	Address      string `mapstructure:"address"`
 	Port         int    `mapstructure:"port"`
@@ -29,36 +27,32 @@ type ServerConfig struct {
 	WriteTimeout int    `mapstructure:"write_timeout"`
 }
 
-// LLMConfig holds language model settings
 type LLMConfig struct {
-	DefaultProvider string            `mapstructure:"default_provider"`
+	DefaultProvider string              `mapstructure:"default_provider"`
 	Providers       map[string]Provider `mapstructure:"providers"`
 }
 
-// Provider holds individual LLM provider configuration
 type Provider struct {
-	APIKey   string `mapstructure:"api_key"`
-	BaseURL  string `mapstructure:"base_url"`
-	Model    string `mapstructure:"model"`
-	Timeout  int    `mapstructure:"timeout"`
-	MaxTokens int   `mapstructure:"max_tokens"`
+	APIKey    string `mapstructure:"api_key"`
+	BaseURL   string `mapstructure:"base_url"`
+	Model     string `mapstructure:"model"`
+	Timeout   int    `mapstructure:"timeout"`
+	MaxTokens int    `mapstructure:"max_tokens"`
 }
 
-// StorageConfig holds database settings
 type StorageConfig struct {
-	DataDir     string `mapstructure:"data_dir"`
-	SQLitePath  string `mapstructure:"sqlite_path"`
-	BadgerPath  string `mapstructure:"badger_path"`
+	DataDir    string `mapstructure:"data_dir"`
+	SQLitePath string `mapstructure:"sqlite_path"`
+	BadgerPath string `mapstructure:"badger_path"`
 }
 
-// ChannelsConfig holds integration settings
 type ChannelsConfig struct {
 	Telegram TelegramConfig `mapstructure:"telegram"`
 	WhatsApp WhatsAppConfig `mapstructure:"whatsapp"`
 	Discord  DiscordConfig  `mapstructure:"discord"`
+	Slack    SlackConfig    `mapstructure:"slack"`
 }
 
-// TelegramConfig holds Telegram bot settings
 type TelegramConfig struct {
 	Enabled   bool    `mapstructure:"enabled"`
 	BotToken  string  `mapstructure:"bot_token"`
@@ -66,68 +60,76 @@ type TelegramConfig struct {
 	AllowList []int64 `mapstructure:"allow_list"`
 }
 
-// WhatsAppConfig holds WhatsApp settings
 type WhatsAppConfig struct {
 	Enabled bool `mapstructure:"enabled"`
 }
 
-// DiscordConfig holds Discord bot settings
 type DiscordConfig struct {
 	Enabled bool   `mapstructure:"enabled"`
 	Token   string `mapstructure:"token"`
 }
 
-// ToolsConfig holds tool system settings
-type ToolsConfig struct {
-	Enabled    []string          `mapstructure:"enabled"`
-	AllowedCmds []string         `mapstructure:"allowed_commands"`
-	Sandbox    bool              `mapstructure:"sandbox"`
+type SlackConfig struct {
+	Enabled  bool   `mapstructure:"enabled"`
+	BotToken string `mapstructure:"bot_token"`
+	AppToken string `mapstructure:"app_token"`
 }
 
-// SecurityConfig holds security settings
+type ToolsConfig struct {
+	Enabled     []string `mapstructure:"enabled"`
+	AllowedCmds []string `mapstructure:"allowed_commands"`
+	Sandbox     bool     `mapstructure:"sandbox"`
+}
+
 type SecurityConfig struct {
 	JWTSecret     string   `mapstructure:"jwt_secret"`
 	AdminPassword string   `mapstructure:"admin_password"`
 	AllowOrigins  []string `mapstructure:"allow_origins"`
+	GatewayToken  string   `mapstructure:"gateway_token"`
 }
 
-// SkillsConfig holds skills configuration
 type SkillsConfig struct {
 	GitHub  GitHubSkillConfig  `mapstructure:"github"`
 	Weather WeatherSkillConfig `mapstructure:"weather"`
 	Browser BrowserSkillConfig `mapstructure:"browser"`
+	Brave   BraveSkillConfig   `mapstructure:"brave"`
 }
 
-// GitHubSkillConfig holds GitHub skill settings
 type GitHubSkillConfig struct {
 	Token string `mapstructure:"token"`
 }
 
-// WeatherSkillConfig holds weather skill settings
 type WeatherSkillConfig struct {
 	APIKey string `mapstructure:"api_key"`
 }
 
-// BrowserSkillConfig holds browser skill settings
 type BrowserSkillConfig struct {
 	Enabled        bool   `mapstructure:"enabled"`
 	Headless       bool   `mapstructure:"headless"`
 	ExecutablePath string `mapstructure:"executable_path"`
 }
 
+type BraveSkillConfig struct {
+	APIKey string `mapstructure:"api_key"`
+}
+
 // Load loads configuration from file, env, and defaults
 func Load(configPath, dataDir string) (*Config, error) {
+	if err := LoadEnvFiles(); err != nil {
+		// Log but don't fail - .env files are optional
+		fmt.Fprintf(os.Stderr, "Warning: error loading .env files: %v\n", err)
+	}
+
 	v := viper.New()
 
-	// Set defaults
 	setDefaults(v)
 
-	// Determine data directory
 	if dataDir == "" {
 		dataDir = getDefaultDataDir()
 	}
-	
-	// Ensure data directory exists
+
+	dataDir = expandPath(dataDir)
+
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create data directory: %w", err)
 	}
@@ -136,12 +138,12 @@ func Load(configPath, dataDir string) (*Config, error) {
 	v.Set("storage.sqlite_path", filepath.Join(dataDir, "goclawde.db"))
 	v.Set("storage.badger_path", filepath.Join(dataDir, "badger"))
 
-	// Config file path
 	if configPath == "" {
 		configPath = filepath.Join(dataDir, "goclawde.yaml")
 	}
 
-	// If config file exists, load it
+	configPath = expandPath(configPath)
+
 	if _, err := os.Stat(configPath); err == nil {
 		v.SetConfigFile(configPath)
 		if err := v.ReadInConfig(); err != nil {
@@ -149,26 +151,103 @@ func Load(configPath, dataDir string) (*Config, error) {
 		}
 	}
 
-	// Environment variables (GOCLAWDE_SERVER_PORT, GOCLAWDE_LLM_API_KEY, etc.)
 	v.SetEnvPrefix("GOCLAWDE")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
-	// Unmarshal to struct
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	// Load API keys from environment (Viper doesn't handle nested maps well with env vars)
 	loadEnvOverrides(&cfg)
+	loadStandardEnvVars(&cfg)
 
-	// Validate
 	if err := validate(&cfg); err != nil {
 		return nil, err
 	}
 
 	return &cfg, nil
+}
+
+func expandPath(path string) string {
+	if strings.HasPrefix(path, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return path
+		}
+		return filepath.Join(home, path[2:])
+	}
+	return path
+}
+
+func loadStandardEnvVars(cfg *Config) {
+	if cfg.LLM.Providers == nil {
+		cfg.LLM.Providers = make(map[string]Provider)
+	}
+
+	loadProviderFromEnv(cfg, "openai", "OPENAI_API_KEY", "https://api.openai.com/v1", "gpt-4o")
+	loadProviderFromEnv(cfg, "anthropic", "ANTHROPIC_API_KEY", "https://api.anthropic.com/v1", "claude-sonnet-4-20250514")
+	loadProviderFromEnv(cfg, "google", "GOOGLE_API_KEY", "https://generativelanguage.googleapis.com/v1beta", "gemini-2.0-flash")
+	loadProviderFromEnv(cfg, "openrouter", "OPENROUTER_API_KEY", "https://openrouter.ai/api/v1", "anthropic/claude-sonnet-4")
+	loadProviderFromEnv(cfg, "kimi", "KIMI_API_KEY", "https://api.moonshot.cn/v1", "kimi-k2.5")
+	loadProviderFromEnv(cfg, "deepseek", "DEEPSEEK_API_KEY", "https://api.deepseek.com/v1", "deepseek-chat")
+
+	if token := GetEnvWithFallback("GOCLAWDE_GATEWAY_TOKEN", "GATEWAY_TOKEN"); token != "" {
+		cfg.Security.GatewayToken = token
+	}
+
+	if token := ResolveEnvWithAliases("GOCLAWDE_CHANNELS_TELEGRAM_BOT_TOKEN"); token != "" {
+		cfg.Channels.Telegram.BotToken = token
+		cfg.Channels.Telegram.Enabled = true
+	}
+
+	if token := ResolveEnvWithAliases("GOCLAWDE_CHANNELS_DISCORD_TOKEN"); token != "" {
+		cfg.Channels.Discord.Token = token
+		cfg.Channels.Discord.Enabled = true
+	}
+
+	if token := GetEnvWithFallback("SLACK_BOT_TOKEN"); token != "" {
+		cfg.Channels.Slack.BotToken = token
+		cfg.Channels.Slack.Enabled = true
+	}
+
+	if token := GetEnvWithFallback("SLACK_APP_TOKEN"); token != "" {
+		cfg.Channels.Slack.AppToken = token
+	}
+
+	if token := ResolveEnvWithAliases("GOCLAWDE_SKILLS_GITHUB_TOKEN"); token != "" {
+		cfg.Skills.GitHub.Token = token
+	}
+
+	if key := ResolveEnvWithAliases("GOCLAWDE_SKILLS_BRAVE_API_KEY"); key != "" {
+		cfg.Skills.Brave.APIKey = key
+	}
+}
+
+func loadProviderFromEnv(cfg *Config, name, envKey, defaultBaseURL, defaultModel string) {
+	apiKey := os.Getenv(envKey)
+	if apiKey == "" {
+		return
+	}
+
+	provider := cfg.LLM.Providers[name]
+	provider.APIKey = apiKey
+
+	if provider.BaseURL == "" {
+		provider.BaseURL = GetEnvDefault(strings.ToUpper(name)+"_BASE_URL", defaultBaseURL)
+	}
+	if provider.Model == "" {
+		provider.Model = GetEnvDefault(strings.ToUpper(name)+"_MODEL", defaultModel)
+	}
+	if provider.Timeout == 0 {
+		provider.Timeout = 60
+	}
+	if provider.MaxTokens == 0 {
+		provider.MaxTokens = 4096
+	}
+
+	cfg.LLM.Providers[name] = provider
 }
 
 func setDefaults(v *viper.Viper) {
@@ -208,80 +287,75 @@ func getDefaultDataDir() string {
 	return filepath.Join(home, ".local", "share", "goclawde")
 }
 
-// loadEnvOverrides loads specific env vars that Viper doesn't handle well with nested maps
 func loadEnvOverrides(cfg *Config) {
-	// Helper to get env var
-	getEnv := func(key, fallback string) string {
-		if val := os.Getenv(key); val != "" {
-			return val
-		}
-		return fallback
-	}
+	cfg.LLM.DefaultProvider = GetEnvDefault("GOCLAWDE_LLM_DEFAULT_PROVIDER", cfg.LLM.DefaultProvider)
 
-	// LLM Provider settings
-	cfg.LLM.DefaultProvider = getEnv("GOCLAWDE_LLM_DEFAULT_PROVIDER", cfg.LLM.DefaultProvider)
-
-	// Initialize providers map if nil
 	if cfg.LLM.Providers == nil {
 		cfg.LLM.Providers = make(map[string]Provider)
 	}
 
-	// Kimi provider
-	if apiKey := os.Getenv("GOCLAWDE_LLM_PROVIDERS_KIMI_API_KEY"); apiKey != "" {
+	if apiKey := ResolveEnvWithAliases("GOCLAWDE_LLM_PROVIDERS_KIMI_API_KEY"); apiKey != "" {
 		kimi := cfg.LLM.Providers["kimi"]
 		kimi.APIKey = apiKey
-		kimi.BaseURL = getEnv("GOCLAWDE_LLM_PROVIDERS_KIMI_BASE_URL", kimi.BaseURL)
-		kimi.Model = getEnv("GOCLAWDE_LLM_PROVIDERS_KIMI_MODEL", kimi.Model)
+		kimi.BaseURL = GetEnvDefault("GOCLAWDE_LLM_PROVIDERS_KIMI_BASE_URL", kimi.BaseURL)
+		kimi.Model = GetEnvDefault("GOCLAWDE_LLM_PROVIDERS_KIMI_MODEL", kimi.Model)
 		cfg.LLM.Providers["kimi"] = kimi
 	}
 
-	// OpenRouter provider
-	if apiKey := os.Getenv("GOCLAWDE_LLM_PROVIDERS_OPENROUTER_API_KEY"); apiKey != "" {
+	if apiKey := ResolveEnvWithAliases("GOCLAWDE_LLM_PROVIDERS_OPENROUTER_API_KEY"); apiKey != "" {
 		or := cfg.LLM.Providers["openrouter"]
 		or.APIKey = apiKey
-		or.BaseURL = getEnv("GOCLAWDE_LLM_PROVIDERS_OPENROUTER_BASE_URL", or.BaseURL)
-		or.Model = getEnv("GOCLAWDE_LLM_PROVIDERS_OPENROUTER_MODEL", or.Model)
+		or.BaseURL = GetEnvDefault("GOCLAWDE_LLM_PROVIDERS_OPENROUTER_BASE_URL", or.BaseURL)
+		or.Model = GetEnvDefault("GOCLAWDE_LLM_PROVIDERS_OPENROUTER_MODEL", or.Model)
 		cfg.LLM.Providers["openrouter"] = or
 	}
 
-	// Server settings
-	cfg.Server.Address = getEnv("GOCLAWDE_SERVER_ADDRESS", cfg.Server.Address)
+	cfg.Server.Address = GetEnvDefault("GOCLAWDE_SERVER_ADDRESS", cfg.Server.Address)
 	if port := os.Getenv("GOCLAWDE_SERVER_PORT"); port != "" {
 		if p, err := strconv.Atoi(port); err == nil {
 			cfg.Server.Port = p
 		}
 	}
 
-	// Storage settings
-	cfg.Storage.DataDir = getEnv("GOCLAWDE_STORAGE_DATA_DIR", cfg.Storage.DataDir)
+	cfg.Storage.DataDir = GetEnvDefault("GOCLAWDE_STORAGE_DATA_DIR", cfg.Storage.DataDir)
 
-	// Security settings
-	cfg.Security.JWTSecret = getEnv("GOCLAWDE_SECURITY_JWT_SECRET", cfg.Security.JWTSecret)
-	cfg.Security.AdminPassword = getEnv("GOCLAWDE_SECURITY_ADMIN_PASSWORD", cfg.Security.AdminPassword)
+	cfg.Security.JWTSecret = ResolveEnvWithAliases("GOCLAWDE_SECURITY_JWT_SECRET")
+	cfg.Security.AdminPassword = ResolveEnvWithAliases("GOCLAWDE_SECURITY_ADMIN_PASSWORD")
 
-	// Skills settings
-	cfg.Skills.GitHub.Token = getEnv("GOCLAWDE_SKILLS_GITHUB_TOKEN", cfg.Skills.GitHub.Token)
-	cfg.Skills.Weather.APIKey = getEnv("GOCLAWDE_SKILLS_WEATHER_API_KEY", cfg.Skills.Weather.APIKey)
+	cfg.Skills.GitHub.Token = ResolveEnvWithAliases("GOCLAWDE_SKILLS_GITHUB_TOKEN")
+	cfg.Skills.Weather.APIKey = ResolveEnvWithAliases("GOCLAWDE_SKILLS_WEATHER_API_KEY")
+
+	cfg.Channels.Telegram.BotToken = ResolveEnvWithAliases("GOCLAWDE_CHANNELS_TELEGRAM_BOT_TOKEN")
+	cfg.Channels.Discord.Token = ResolveEnvWithAliases("GOCLAWDE_CHANNELS_DISCORD_TOKEN")
 }
 
 func validate(cfg *Config) error {
-	// Check for required LLM configuration
 	if cfg.LLM.DefaultProvider == "" {
-		return fmt.Errorf("llm.default_provider is required")
+		cfg.LLM.DefaultProvider = "kimi"
 	}
 
 	provider, ok := cfg.LLM.Providers[cfg.LLM.DefaultProvider]
-	if !ok {
-		return fmt.Errorf("provider %s not configured", cfg.LLM.DefaultProvider)
+	if !ok || provider.APIKey == "" {
+		hasAnyProvider := false
+		for name, p := range cfg.LLM.Providers {
+			if p.APIKey != "" {
+				cfg.LLM.DefaultProvider = name
+				hasAnyProvider = true
+				break
+			}
+		}
+
+		if !hasAnyProvider {
+			return fmt.Errorf("no LLM provider configured. Set an API key via environment variable (e.g., OPENAI_API_KEY, ANTHROPIC_API_KEY, KIMI_API_KEY) or in goclawde.yaml")
+		}
 	}
 
-	if provider.APIKey == "" {
-		return fmt.Errorf("llm.providers.%s.api_key is required", cfg.LLM.DefaultProvider)
-	}
-
-	// Generate JWT secret if not provided
 	if cfg.Security.JWTSecret == "" {
 		cfg.Security.JWTSecret = generateRandomString(32)
+	}
+
+	if cfg.Security.GatewayToken == "" {
+		cfg.Security.GatewayToken = generateRandomString(32)
 	}
 
 	return nil
