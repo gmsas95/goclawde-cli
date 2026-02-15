@@ -3,6 +3,8 @@ module github.com/gmsas95/goclawde-cli
 go 1.24
 
 require (
+	github.com/bwmarrin/discordgo v0.29.0
+	github.com/chromedp/chromedp v0.14.2
 	github.com/dgraph-io/badger/v4 v4.5.0
 	github.com/glebarez/go-sqlite v1.22.0
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
@@ -17,10 +19,8 @@ require (
 
 require (
 	github.com/andybalholm/brotli v1.1.0 // indirect
-	github.com/bwmarrin/discordgo v0.29.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chromedp/cdproto v0.0.0-20250724212937-08a3db8b4327 // indirect
-	github.com/chromedp/chromedp v0.14.2 // indirect
 	github.com/chromedp/sysutil v1.1.0 // indirect
 	github.com/dgraph-io/ristretto/v2 v2.0.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
