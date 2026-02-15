@@ -1,6 +1,7 @@
 package security
 
 import (
+	"errors"
 	"regexp"
 	"strings"
 )

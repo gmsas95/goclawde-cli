@@ -342,14 +342,14 @@ func TestHelperFunctions(t *testing.T) {
 	RecordSecretsDetected()
 	RecordDangerousCommand()
 
-	s := Snapshot()
+	s := GetSnapshot()
 	if s == nil {
-		t.Error("Snapshot helper returned nil")
+		t.Error("GetSnapshot helper returned nil")
 	}
 
-	p := Prometheus()
+	p := GetPrometheus()
 	if p == "" {
-		t.Error("Prometheus helper returned empty string")
+		t.Error("GetPrometheus helper returned empty string")
 	}
 }
 

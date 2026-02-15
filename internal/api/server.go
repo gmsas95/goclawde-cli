@@ -208,11 +208,11 @@ func (s *Server) handleHealth(c *fiber.Ctx) error {
 
 func (s *Server) handleMetrics(c *fiber.Ctx) error {
 	c.Set("Content-Type", "text/plain; charset=utf-8")
-	return c.SendString(metrics.Prometheus())
+	return c.SendString(metrics.GetPrometheus())
 }
 
 func (s *Server) handleMetricsJSON(c *fiber.Ctx) error {
-	return c.JSON(metrics.Snapshot())
+	return c.JSON(metrics.GetSnapshot())
 }
 
 func (s *Server) handleLogin(c *fiber.Ctx) error {

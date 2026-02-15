@@ -385,10 +385,10 @@ func RecordDangerousCommand() {
 	Default().RecordDangerousCommand()
 }
 
-func Snapshot() *Snapshot {
+func GetSnapshot() *Snapshot {
 	return Default().Snapshot()
 }
 
-func Prometheus() string {
+func GetPrometheus() string {
 	return Default().Prometheus()
 }
