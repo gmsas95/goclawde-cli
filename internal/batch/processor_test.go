@@ -5,12 +5,9 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"go.uber.org/zap"
 )
-
-type mockLogger struct{}
-
-func (m *mockLogger) Info(msg string, fields ...interface{})  {}
-func (m *mockLogger) Error(msg string, fields ...interface{}) {}
 
 func TestDefaultConfig(t *testing.T) {
 	cfg := DefaultConfig()
@@ -321,9 +318,10 @@ func TestProcessor_ProcessFile_Context(t *testing.T) {
 	cfg.MaxConcurrency = 1
 	cfg.Timeout = 5 * time.Second
 
+	logger := zap.NewNop()
 	processor := &Processor{
 		config: cfg,
-		logger: &mockLogger{},
+		logger: logger,
 	}
 
 	ctx := context.Background()

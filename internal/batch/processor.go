@@ -12,24 +12,22 @@ import (
 
 	"github.com/gmsas95/goclawde-cli/internal/agent"
 	"github.com/gmsas95/goclawde-cli/internal/security"
+	"go.uber.org/zap"
 )
 
 type Processor struct {
-	agent     *agent.Agent
-	config    Config
-	logger    interface {
-		Info(msg string, fields ...interface{})
-		Error(msg string, fields ...interface{})
-	}
+	agent  *agent.Agent
+	config Config
+	logger *zap.Logger
 }
 
 type Config struct {
-	MaxConcurrency int
-	Timeout        time.Duration
-	RetryCount     int
-	RetryDelay     time.Duration
-	SkipInvalid    bool
-	ValidateInput  bool
+	MaxConcurrency   int
+	Timeout          time.Duration
+	RetryCount       int
+	RetryDelay       time.Duration
+	SkipInvalid      bool
+	ValidateInput    bool
 }
 
 type InputItem struct {
@@ -72,10 +70,7 @@ func DefaultConfig() Config {
 	}
 }
 
-func NewProcessor(ag *agent.Agent, cfg Config, logger interface {
-	Info(msg string, fields ...interface{})
-	Error(msg string, fields ...interface{})
-}) *Processor {
+func NewProcessor(ag *agent.Agent, cfg Config, logger *zap.Logger) *Processor {
 	if cfg.MaxConcurrency <= 0 {
 		cfg.MaxConcurrency = 1
 	}
