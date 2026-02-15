@@ -20,6 +20,7 @@ import (
 	"github.com/gmsas95/goclawde-cli/internal/onboarding"
 	"github.com/gmsas95/goclawde-cli/internal/persona"
 	"github.com/gmsas95/goclawde-cli/internal/skills"
+	"github.com/gmsas95/goclawde-cli/internal/skills/browser"
 	"github.com/gmsas95/goclawde-cli/internal/skills/github"
 	"github.com/gmsas95/goclawde-cli/internal/skills/notes"
 	"github.com/gmsas95/goclawde-cli/internal/skills/system"
@@ -414,6 +415,13 @@ func registerSkills(cfg *config.Config, registry *skills.Registry) {
 	// Weather skill
 	weatherSkill := weather.NewWeatherSkill()
 	registry.Register(weatherSkill)
+
+	// Browser skill
+	browserSkill := browser.NewBrowserSkill(browser.Config{
+		Enabled:  cfg.Skills.Browser.Enabled,
+		Headless: cfg.Skills.Browser.Headless,
+	})
+	registry.Register(browserSkill)
 }
 
 func (app *App) runServer() {

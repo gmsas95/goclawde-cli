@@ -95,6 +95,7 @@ type SecurityConfig struct {
 type SkillsConfig struct {
 	GitHub  GitHubSkillConfig  `mapstructure:"github"`
 	Weather WeatherSkillConfig `mapstructure:"weather"`
+	Browser BrowserSkillConfig `mapstructure:"browser"`
 }
 
 // GitHubSkillConfig holds GitHub skill settings
@@ -105,6 +106,13 @@ type GitHubSkillConfig struct {
 // WeatherSkillConfig holds weather skill settings
 type WeatherSkillConfig struct {
 	APIKey string `mapstructure:"api_key"`
+}
+
+// BrowserSkillConfig holds browser skill settings
+type BrowserSkillConfig struct {
+	Enabled        bool   `mapstructure:"enabled"`
+	Headless       bool   `mapstructure:"headless"`
+	ExecutablePath string `mapstructure:"executable_path"`
 }
 
 // Load loads configuration from file, env, and defaults
