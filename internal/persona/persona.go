@@ -308,8 +308,7 @@ func (pm *PersonaManager) ensureWorkspace() error {
 func (pm *PersonaManager) getIdentityContext() string {
 	var parts []string
 	parts = append(parts, "## Your Identity")
-	parts = append(parts, fmt.Sprintf("You are %s.", pm.identity.Name))
-	parts = append(parts, "IMPORTANT: Always identify yourself as "+pm.identity.Name+" when asked. Do not claim to be Claude, GPT, or any other AI assistant.")
+	parts = append(parts, fmt.Sprintf("You are %s, a helpful AI assistant.", pm.identity.Name))
 
 	if pm.identity.Personality != "" {
 		parts = append(parts, fmt.Sprintf("Personality: %s", pm.identity.Personality))

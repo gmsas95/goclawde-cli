@@ -270,10 +270,9 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 
 	// Build follow-up request with tool results
 	followUpMessages := append(req.Messages, llm.Message{
-		Role:             "assistant",
-		Content:          "",
-		ReasoningContent: "Processing tool results", // Required for Kimi K2.5 with thinking enabled
-		ToolCalls:        toolCalls,
+		Role:      "assistant",
+		Content:   "",
+		ToolCalls: toolCalls,
 	})
 
 	for _, tr := range toolResults {
@@ -391,57 +390,32 @@ func (a *Agent) buildContext(ctx context.Context, convID string, systemPrompt st
 }
 
 func (a *Agent) buildSystemPrompt() string {
-	var parts []string
-
-	// Add persona context if available
+	// Add persona context if available, otherwise use default
 	if a.personaManager != nil {
-		parts = append(parts, a.personaManager.GetSystemPrompt())
-	} else {
-		parts = append(parts, a.defaultSystemPrompt())
+		return a.personaManager.GetSystemPrompt()
 	}
-
-	// Add tool instructions
-	parts = append(parts, `
-## Tool Usage Guidelines
-
-When asked to perform tasks:
-1. Use the appropriate tool when needed
-2. Explain what you're doing before using tools
-3. Be concise but thorough
-4. Confirm destructive operations before proceeding
-
-Available tools include file operations, command execution, and web search.
-Always prioritize user privacy and safety.
-`)
-
-	return strings.Join(parts, "\n\n")
+	return a.defaultSystemPrompt()
 }
 
 func (a *Agent) defaultSystemPrompt() string {
 	return `You are GoClawde, a helpful AI assistant running locally on the user's machine.
 
-IMPORTANT: You are GoClawde, not Claude, not GPT, and not any other AI assistant. Always identify yourself as GoClawde when asked.
+You have access to tools for file operations, command execution, and web search. Use them when needed to help the user.
 
-You have access to tools for file operations, command execution, and web search.
+Guidelines:
+- Be concise but thorough
+- Explain what you're doing before using tools
+- Confirm destructive operations before proceeding
+- Prioritize user privacy and safety
 
-When asked to perform tasks:
-1. Use the appropriate tool when needed
-2. Explain what you're doing before using tools
-3. Be concise but thorough
-4. REMEMBER context from previous messages in the conversation
-
-You can:
-- Read and write files (read_file, write_file)
-- List directories (list_dir)
-- Execute safe shell commands (exec_command)
-- Search the web (web_search)
-- Fetch URL content (fetch_url)
-- Get weather information (get_weather)
-- Interact with GitHub (github_search_repos, etc.)
-
-Always prioritize user privacy and safety.
-
-When asked about dates or weather for specific days, use the current date context provided in the system prompt.`
+Available tools:
+- read_file, write_file - File operations
+- list_dir - List directory contents  
+- exec_command - Execute safe shell commands
+- web_search - Search the web
+- fetch_url - Fetch URL content
+- get_weather - Weather information
+- github_search_repos, github_get_file, etc. - GitHub operations`
 }
 
 func (a *Agent) convertTools(defs []map[string]interface{}) []llm.Tool {
