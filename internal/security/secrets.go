@@ -5,11 +5,11 @@ import (
 )
 
 type SecretMatch struct {
-	Type        string
-	Pattern     string
-	Start       int
-	End         int
-	Redacted    string
+	Type     string
+	Pattern  string
+	Start    int
+	End      int
+	Redacted string
 }
 
 type SecretScanner struct {
@@ -27,24 +27,24 @@ var defaultSecretPatterns = []struct {
 	pattern    string
 	redactWith string
 }{
-	{"AWS Access Key", `AKIA[0-9A-Z]{16}`, "AKIA****"},
-	{"AWS Secret Key", `(?i)aws(.{0,20})?['\"][0-9a-zA-Z/+=]{40}['\"]`, "AWS_SECRET****"},
-	{"GitHub Token", `ghp_[0-9a-zA-Z]{36}`, "ghp_****"},
-	{"GitHub OAuth", `gho_[0-9a-zA-Z]{36}`, "gho_****"},
-	{"GitHub App Token", `(ghu|ghs)_[0-9a-zA-Z]{36}`, "gh*_****"},
-	{"Slack Token", `xox[baprs]-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24}`, "xox*-****"},
-	{"Slack Webhook", `https://hooks.slack.com/services/T[0-9A-Z]{8,12}/B[0-9A-Z]{8,12}/[0-9a-zA-Z]{24}`, "https://hooks.slack.com/****"},
-	{"Stripe Key", `sk_live_[0-9a-zA-Z]{24}`, "sk_live_****"},
-	{"Stripe Publishable", `pk_live_[0-9a-zA-Z]{24}`, "pk_live_****"},
-	{"Google API Key", `AIza[0-9A-Za-z\-_]{35}`, "AIza****"},
-	{"OpenAI API Key", `sk-[a-zA-Z0-9]{20}T3BlbkFJ[a-zA-Z0-9]{20}`, "sk-****"},
-	{"Generic API Key", `(?i)(api[_-]?key|apikey|access[_-]?key)['\"]?\s*[:=]\s*['\"]?[0-9a-zA-Z\-_]{20,}['\"]?`, "API_KEY****"},
+	{"AWS Access Key", `AKIA[0-9A-Z]{12,20}`, "AKIA****"},
+	{"AWS Secret Key", `(?i)aws(.{0,20})?['"][0-9a-zA-Z/+=]{40}['"]`, "AWS_SECRET****"},
+	{"GitHub Token", `ghp_[0-9a-zA-Z]{36,}`, "ghp_****"},
+	{"GitHub OAuth", `gho_[0-9a-zA-Z]{36,}`, "gho_****"},
+	{"GitHub App Token", `(ghu|ghs)_[0-9a-zA-Z]{36,}`, "gh*_****"},
+	{"Slack Token", `xox[baprs]-[0-9A-Za-z_-]{10,30}-[0-9A-Za-z_-]{10,30}-[a-zA-Z0-9_-]{20,30}`, "xox*-****"},
+	{"Slack Webhook", `https://hooks\.slack\.com/services/T[0-9A-Z]{8,12}/B[0-9A-Z]{8,12}/[0-9a-zA-Z]{24}`, "https://hooks.slack.com/****"},
+	{"Stripe Key", `sk_(?:live|test)_[0-9a-zA-Z]{24,}`, "sk_****"},
+	{"Stripe Publishable", `pk_(?:live|test)_[0-9a-zA-Z]{24,}`, "pk_****"},
+	{"Google API Key", `AIza[0-9A-Za-z\-_]{35,}`, "AIza****"},
+	{"OpenAI API Key", `sk-[a-zA-Z0-9]{20,}T3BlbkFJ[a-zA-Z0-9]{20,}`, "sk-****"},
+	{"Generic API Key", `(?i)(api[_-]?key|apikey|access[_-]?key)['"]?\s*[:=]\s*['"]?[0-9a-zA-Z\-_]{8,}['"]?`, "API_KEY****"},
 	{"Private Key", `-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----`, "PRIVATE_KEY****"},
 	{"JWT Token", `eyJ[a-zA-Z0-9\-_]+\.eyJ[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+`, "eyJ****"},
-	{"Generic Secret", `(?i)(secret|password|passwd|pwd|token)['\"]?\s*[:=]\s*['\"]?[^\s'\"]{8,}['\"]?`, "SECRET****"},
+	{"Generic Secret", `(?i)(secret|password|passwd|pwd|token)[_a-z0-9]*\s*[:=]\s*['"]?[^\s'"]{6,}['"]?`, "SECRET****"},
 	{"Telegram Bot Token", `[0-9]{8,10}:[a-zA-Z0-9_-]{35}`, "****:****"},
 	{"Discord Token", `[MN][a-zA-Z\d]{23}\.[\w-]{6}\.[\w-]{27}`, "DISCORD_TOKEN****"},
-	{"Database URL", `(?i)(postgres|mysql|mongodb|redis)://[^\s'\"]+:[^\s'\"]+@[^\s'\"]+`, "DB_URL****"},
+	{"Database URL", `(?i)(postgres|mysql|mongodb|redis)://([^\s'"]+)?:[^\s'"]*@[^\s'"]+`, "DB_URL****"},
 }
 
 func NewSecretScanner() *SecretScanner {

@@ -76,16 +76,16 @@ jobs:
         GOOS: ${{ matrix.goos }}
         GOARCH: ${{ matrix.goarch }}
       run: |
-        output="jimmy-${{ matrix.goos }}-${{ matrix.goarch }}"
+        output="myrai-${{ matrix.goos }}-${{ matrix.goarch }}"
         if [ "${{ matrix.goos }}" = "windows" ]; then
           output="${output}.exe"
         fi
-        go build -ldflags "-X main.version=${{ github.ref_name }} -s -w" -o "bin/${output}" ./cmd/nanobot
-    
+        go build -ldflags "-X main.version=${{ github.ref_name }} -s -w" -o "bin/${output}" ./cmd/myrai
+
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: jimmy-${{ matrix.goos }}-${{ matrix.goarch }}
+        name: myrai-${{ matrix.goos }}-${{ matrix.goarch }}
         path: bin/
 
   docker:

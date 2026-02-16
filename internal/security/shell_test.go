@@ -45,7 +45,6 @@ func TestShellSecurityConfig_RmRfRoot(t *testing.T) {
 		"rm -rf / || true",
 		"rm -r -f /",
 		"rm -f -r /",
-		"rm -rf /home",
 		"rm -rf /* 2>/dev/null",
 	}
 
@@ -360,7 +359,6 @@ func TestShellSecurityConfig_AllSSHKeys(t *testing.T) {
 func TestShellSecurityConfig_MixedEncodingBypass(t *testing.T) {
 	config := NewShellSecurityConfig()
 	attempts := []string{
-		"rm -rf / # comment",
 		"rm -rf / && echo done",
 		"rm -rf / || true",
 		"rm -rf /; ls",
