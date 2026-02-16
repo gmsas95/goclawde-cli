@@ -78,6 +78,25 @@ docker run -d \
   ghcr.io/gmsas95/goclawde-cli:latest
 ```
 
+### Option 4: Dokploy (Self-hosted PaaS)
+
+Deploy GoClawde on your own server with [Dokploy](https://dokploy.com):
+
+```bash
+# One-click deploy with Git repository
+Repository: https://github.com/gmsas95/goclawde-cli
+Branch: main
+Dockerfile: Dockerfile
+```
+
+Required environment variables:
+```bash
+KIMI_API_KEY=sk-...           # or OPENAI_API_KEY, ANTHROPIC_API_KEY
+GOCLAWDE_LLM_DEFAULT_PROVIDER=kimi
+```
+
+See [DOKPLOY.md](docs/DOKPLOY.md) for detailed instructions.
+
 ---
 
 ## 🎮 Quick Start
