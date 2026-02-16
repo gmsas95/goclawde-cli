@@ -38,7 +38,7 @@ func NewClient(provider config.Provider) *Client {
 // Message represents a chat message
 type Message struct {
 	Role             string     `json:"role"`
-	Content          string     `json:"content"`
+	Content          string     `json:"content,omitempty"`
 	ToolCalls        []ToolCall `json:"tool_calls,omitempty"`
 	ToolCallID       string     `json:"tool_call_id,omitempty"`
 	Name             string     `json:"name,omitempty"`
@@ -70,12 +70,14 @@ type ToolFunction struct {
 
 // ChatRequest represents an API request
 type ChatRequest struct {
-	Model       string    `json:"model"`
-	Messages    []Message `json:"messages"`
-	Tools       []Tool    `json:"tools,omitempty"`
-	MaxTokens   int       `json:"max_tokens,omitempty"`
-	Temperature float64   `json:"temperature,omitempty"`
-	Stream      bool      `json:"stream,omitempty"`
+	Model             string          `json:"model"`
+	Messages          []Message       `json:"messages"`
+	Tools             []Tool          `json:"tools,omitempty"`
+	MaxTokens         int             `json:"max_tokens,omitempty"`
+	Temperature       float64         `json:"temperature,omitempty"`
+	Stream            bool            `json:"stream,omitempty"`
+	ParallelToolCalls bool            `json:"parallel_tool_calls,omitempty"`
+	ToolChoice        json.RawMessage `json:"tool_choice,omitempty"`
 }
 
 // ChatResponse represents a non-streaming API response

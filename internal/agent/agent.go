@@ -96,12 +96,14 @@ func (a *Agent) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error
 	}
 
 	// Call LLM
+	tools := a.convertTools(toolDefs)
 	llmReq := llm.ChatRequest{
-		Model:     a.llmClient.GetModel(),
-		Messages:  messages,
-		Tools:     a.convertTools(toolDefs),
-		MaxTokens: 4096,
-		Stream:    req.Stream,
+		Model:             a.llmClient.GetModel(),
+		Messages:          messages,
+		Tools:             tools,
+		MaxTokens:         4096,
+		Stream:            req.Stream,
+		ParallelToolCalls: len(tools) > 0, // Disable parallel tool calls for better reliability
 	}
 
 	var response *ChatResponse
@@ -269,9 +271,9 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 	}
 
 	// Build follow-up request with tool results
+	// Note: Content must be omitted (not empty string) when ToolCalls are present
 	followUpMessages := append(req.Messages, llm.Message{
 		Role:      "assistant",
-		Content:   "",
 		ToolCalls: toolCalls,
 	})
 
