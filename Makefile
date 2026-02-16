@@ -1,9 +1,16 @@
-.PHONY: build build-web run clean test docker install
+.PHONY: build build-web run clean test docker install install-local release
 
 VERSION ?= dev
 BINARY_NAME = goclawde
 BUILD_DIR = bin
 WEB_DIR = web
+
+# Install directory (default: ~/.local/bin for user install, /usr/local/bin for system)
+ifeq ($(USER),root)
+    INSTALL_DIR = /usr/local/bin
+else
+    INSTALL_DIR = $(HOME)/.local/bin
+endif
 
 # Default target
 all: build
@@ -18,13 +25,13 @@ build-web:
 
 # Build the Go binary (development)
 build: build-web
-	@echo "Building Jimmy.ai..."
+	@echo "Building GoClawde..."
 	@mkdir -p $(BUILD_DIR)
 	go build -ldflags "-X main.version=$(VERSION)" -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/goclawde
 
 # Build with embedded web UI (production)
 build-prod: build-web
-	@echo "Building Jimmy.ai (production)..."
+	@echo "Building GoClawde (production)..."
 	@mkdir -p $(BUILD_DIR)
 	go build -ldflags "-X main.version=$(VERSION) -s -w" -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd/goclawde
 
@@ -65,9 +72,28 @@ release: clean
 	GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=$(VERSION) -s -w" -o $(BUILD_DIR)/release/$(BINARY_NAME)-windows-amd64.exe ./cmd/goclawde
 	@echo "Release binaries built in $(BUILD_DIR)/release/"
 
-# Install locally
+# Install locally to user's bin directory (no sudo needed)
+install-local: build
+	@mkdir -p $(INSTALL_DIR)
+	cp $(BUILD_DIR)/$(BINARY_NAME) $(INSTALL_DIR)/
+	@echo "✓ Installed to $(INSTALL_DIR)/$(BINARY_NAME)"
+	@echo ""
+	@echo "Make sure $(INSTALL_DIR) is in your PATH:"
+	@echo "  export PATH=\"\$$PATH:$(INSTALL_DIR)\""
+	@echo ""
+	@echo "Or add to your shell config (~/.bashrc, ~/.zshrc, etc.):"
+	@echo '  export PATH="$$PATH:$(INSTALL_DIR)"'
+
+# Install system-wide (requires sudo)
 install: build
-	cp $(BUILD_DIR)/$(BINARY_NAME) $(GOPATH)/bin/ 2>/dev/null || cp $(BUILD_DIR)/$(BINARY_NAME) /usr/local/bin/
+	cp $(BUILD_DIR)/$(BINARY_NAME) /usr/local/bin/
+	@echo "✓ Installed to /usr/local/bin/$(BINARY_NAME)"
+
+# Uninstall
+uninstall:
+	rm -f $(INSTALL_DIR)/$(BINARY_NAME)
+	rm -f /usr/local/bin/$(BINARY_NAME)
+	@echo "✓ Uninstalled $(BINARY_NAME)"
 
 # Format code
 fmt:
