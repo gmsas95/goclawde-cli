@@ -178,7 +178,7 @@ func Load(configPath, dataDir string) (*Config, error) {
 		}
 	}
 
-	v.SetEnvPrefix("GOCLAWDE")
+	v.SetEnvPrefix("MYRAI")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
@@ -213,12 +213,44 @@ func loadStandardEnvVars(cfg *Config) {
 		cfg.LLM.Providers = make(map[string]Provider)
 	}
 
+	// Major LLM providers (OpenAI-compatible)
 	loadProviderFromEnv(cfg, "openai", "OPENAI_API_KEY", "https://api.openai.com/v1", "gpt-4o")
 	loadProviderFromEnv(cfg, "anthropic", "ANTHROPIC_API_KEY", "https://api.anthropic.com/v1", "claude-sonnet-4-20250514")
 	loadProviderFromEnv(cfg, "google", "GOOGLE_API_KEY", "https://generativelanguage.googleapis.com/v1beta", "gemini-2.0-flash")
 	loadProviderFromEnv(cfg, "openrouter", "OPENROUTER_API_KEY", "https://openrouter.ai/api/v1", "anthropic/claude-sonnet-4")
 	loadProviderFromEnv(cfg, "kimi", "KIMI_API_KEY", "https://api.moonshot.cn/v1", "kimi-k2.5")
 	loadProviderFromEnv(cfg, "deepseek", "DEEPSEEK_API_KEY", "https://api.deepseek.com/v1", "deepseek-chat")
+
+	// Additional OpenAI-compatible providers
+	loadProviderFromEnv(cfg, "groq", "GROQ_API_KEY", "https://api.groq.com/openai/v1", "llama-3.3-70b-versatile")
+	loadProviderFromEnv(cfg, "mistral", "MISTRAL_API_KEY", "https://api.mistral.ai/v1", "mistral-large-latest")
+	loadProviderFromEnv(cfg, "together", "TOGETHER_API_KEY", "https://api.together.xyz/v1", "meta-llama/Llama-3-70b-chat-hf")
+	loadProviderFromEnv(cfg, "cerebras", "CEREBRAS_API_KEY", "https://api.cerebras.ai/v1", "llama3.1-70b")
+	loadProviderFromEnv(cfg, "xai", "XAI_API_KEY", "https://api.x.ai/v1", "grok-beta")
+	loadProviderFromEnv(cfg, "perplexity", "PERPLEXITY_API_KEY", "https://api.perplexity.ai/v1", "llama-3.1-sonar-large-128k-online")
+	loadProviderFromEnv(cfg, "fireworks", "FIREWORKS_API_KEY", "https://api.fireworks.ai/inference/v1", "accounts/fireworks/models/llama-v3-70b")
+	loadProviderFromEnv(cfg, "novita", "NOVITA_API_KEY", "https://api.novita.ai/v3/openai", "meta-llama/llama-3.1-70b-instruct")
+	loadProviderFromEnv(cfg, "siliconflow", "SILICONFLOW_API_KEY", "https://api.siliconflow.cn/v1", "Qwen/Qwen2.5-72B-Instruct")
+	loadProviderFromEnv(cfg, "zhipu", "ZHIPU_API_KEY", "https://open.bigmodel.cn/api/paas/v4", "glm-4-plus")
+	loadProviderFromEnv(cfg, "moonshot", "MOONSHOT_API_KEY", "https://api.moonshot.cn/v1", "moonshot-v1-128k")
+
+	// Local/self-hosted providers
+	loadProviderFromEnv(cfg, "ollama", "OLLAMA_API_KEY", "http://localhost:11434/v1", "llama3.2")
+	loadProviderFromEnv(cfg, "localai", "LOCALAI_API_KEY", "http://localhost:8080/v1", "llama3")
+	loadProviderFromEnv(cfg, "vllm", "VLLM_API_KEY", "http://localhost:8000/v1", "llama3")
+
+	// Azure OpenAI (special handling)
+	if apiKey := os.Getenv("AZURE_OPENAI_API_KEY"); apiKey != "" {
+		baseURL := GetEnvDefault("AZURE_OPENAI_ENDPOINT", "https://your-resource.openai.azure.com")
+		baseURL = strings.TrimSuffix(baseURL, "/") + "/openai/deployments/" + GetEnvDefault("AZURE_OPENAI_DEPLOYMENT", "gpt-4o")
+		provider := cfg.LLM.Providers["azure"]
+		provider.APIKey = apiKey
+		provider.BaseURL = baseURL
+		provider.Model = GetEnvDefault("AZURE_OPENAI_MODEL", "gpt-4o")
+		provider.Timeout = 60
+		provider.MaxTokens = 4096
+		cfg.LLM.Providers["azure"] = provider
+	}
 
 	if token := GetEnvWithFallback("MYRAI_GATEWAY_TOKEN", "GATEWAY_TOKEN"); token != "" {
 		cfg.Security.GatewayToken = token

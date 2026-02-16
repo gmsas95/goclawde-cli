@@ -28,6 +28,7 @@ type WizardConfig struct {
 	Goals              []string
 	LLMProvider        string
 	APIKey             string
+	BaseURL            string
 	DefaultModel       string
 	EnableTelegram     bool
 	TelegramToken      string
@@ -194,47 +195,110 @@ func (w *Wizard) setupAIConfiguration() error {
 	fmt.Println("╚════════════════════════════════════════════════════════════════╝")
 	fmt.Println()
 
-	// Provider selection
 	fmt.Println("Select your LLM provider:")
 	fmt.Println()
-	fmt.Println("  1. Kimi (Moonshot) - Recommended, good for coding")
-	fmt.Println("     URL: https://platform.moonshot.cn")
+	fmt.Println("  === Cloud Providers (Recommended) ===")
+	fmt.Println("  1. OpenAI        - GPT-4o, GPT-4-turbo, o1")
+	fmt.Println("  2. Anthropic     - Claude 3.5 Sonnet, Claude 3 Opus")
+	fmt.Println("  3. Google        - Gemini 2.0 Flash, Gemini Pro")
+	fmt.Println("  4. Kimi/Moonshot - Recommended for coding, Chinese support")
 	fmt.Println()
-	fmt.Println("  2. OpenAI - GPT-4, GPT-3.5")
-	fmt.Println("     URL: https://platform.openai.com")
+	fmt.Println("  === Fast & Affordable ===")
+	fmt.Println("  5. Groq          - Ultra-fast inference, Llama models")
+	fmt.Println("  6. DeepSeek      - Great for coding, very affordable")
+	fmt.Println("  7. Together AI   - Many open-source models")
+	fmt.Println("  8. Cerebras      - Fastest inference speed")
 	fmt.Println()
-	fmt.Println("  3. Anthropic - Claude models")
-	fmt.Println("     URL: https://console.anthropic.com")
+	fmt.Println("  === Model Aggregators ===")
+	fmt.Println("  9. OpenRouter    - Access to 100+ models via one API")
+	fmt.Println("  10. Fireworks    - Fast serverless inference")
 	fmt.Println()
-	fmt.Println("  4. Ollama - Local models (no API key needed)")
-	fmt.Println("     URL: https://ollama.com")
+	fmt.Println("  === Chinese Providers ===")
+	fmt.Println("  11. Zhipu (智谱) - GLM-4 models")
+	fmt.Println("  12. SiliconFlow  - Qwen, DeepSeek, more")
+	fmt.Println("  13. Novita       - Affordable, many models")
 	fmt.Println()
-	fmt.Print("Select (1-4) [default: 1]: ")
+	fmt.Println("  === Local/Self-Hosted ===")
+	fmt.Println("  14. Ollama       - Run models locally (no API key)")
+	fmt.Println("  15. LocalAI      - OpenAI-compatible local server")
+	fmt.Println("  16. vLLM         - High-performance local inference")
+	fmt.Println()
+	fmt.Println("  === Other ===")
+	fmt.Println("  17. Mistral      - Mistral Large, Codestral")
+	fmt.Println("  18. xAI (Grok)   - Grok models by xAI")
+	fmt.Println("  19. Perplexity   - Sonar models with web search")
+	fmt.Println("  20. Azure OpenAI - Enterprise OpenAI")
+	fmt.Println()
+	fmt.Print("Select (1-20) [default: 4]: ")
 	providerChoice, _ := w.reader.ReadString('\n')
 	providerChoice = strings.TrimSpace(providerChoice)
 
-	// Set provider and configure accordingly
+	var err error
 	switch providerChoice {
-	case "2":
+	case "1":
 		w.config.LLMProvider = "openai"
-		if err := w.configureOpenAI(); err != nil {
-			return err
-		}
-	case "3":
+		err = w.configureOpenAI()
+	case "2":
 		w.config.LLMProvider = "anthropic"
-		if err := w.configureAnthropic(); err != nil {
-			return err
-		}
-	case "4":
+		err = w.configureAnthropic()
+	case "3":
+		w.config.LLMProvider = "google"
+		err = w.configureGoogle()
+	case "5":
+		w.config.LLMProvider = "groq"
+		err = w.configureGroq()
+	case "6":
+		w.config.LLMProvider = "deepseek"
+		err = w.configureDeepSeek()
+	case "7":
+		w.config.LLMProvider = "together"
+		err = w.configureTogether()
+	case "8":
+		w.config.LLMProvider = "cerebras"
+		err = w.configureCerebras()
+	case "9":
+		w.config.LLMProvider = "openrouter"
+		err = w.configureOpenRouter()
+	case "10":
+		w.config.LLMProvider = "fireworks"
+		err = w.configureFireworks()
+	case "11":
+		w.config.LLMProvider = "zhipu"
+		err = w.configureZhipu()
+	case "12":
+		w.config.LLMProvider = "siliconflow"
+		err = w.configureSiliconFlow()
+	case "13":
+		w.config.LLMProvider = "novita"
+		err = w.configureNovita()
+	case "14":
 		w.config.LLMProvider = "ollama"
-		if err := w.configureOllama(); err != nil {
-			return err
-		}
+		err = w.configureOllama()
+	case "15":
+		w.config.LLMProvider = "localai"
+		err = w.configureLocalAI()
+	case "16":
+		w.config.LLMProvider = "vllm"
+		err = w.configureVLLM()
+	case "17":
+		w.config.LLMProvider = "mistral"
+		err = w.configureMistral()
+	case "18":
+		w.config.LLMProvider = "xai"
+		err = w.configureXAI()
+	case "19":
+		w.config.LLMProvider = "perplexity"
+		err = w.configurePerplexity()
+	case "20":
+		w.config.LLMProvider = "azure"
+		err = w.configureAzure()
 	default:
 		w.config.LLMProvider = "kimi"
-		if err := w.configureKimi(); err != nil {
-			return err
-		}
+		err = w.configureKimi()
+	}
+
+	if err != nil {
+		return err
 	}
 
 	fmt.Println("\n✓ AI configured")
@@ -360,17 +424,16 @@ func (w *Wizard) configureOllama() error {
 	fmt.Println("Make sure Ollama is running locally (http://localhost:11434)")
 	fmt.Println()
 
-	// No API key needed for Ollama
 	w.config.APIKey = "ollama"
 
-	// Model selection
 	fmt.Println("Select your preferred local model:")
 	fmt.Println("  1. llama3.2 (default, good balance)")
 	fmt.Println("  2. llama3.1 (larger, more capable)")
 	fmt.Println("  3. mistral (fast, efficient)")
 	fmt.Println("  4. codellama (optimized for code)")
-	fmt.Println("  5. Other (specify)")
-	fmt.Print("\nSelect (1-5) [default: 1]: ")
+	fmt.Println("  5. qwen2.5 (great for coding)")
+	fmt.Println("  6. Other (specify)")
+	fmt.Print("\nSelect (1-6) [default: 1]: ")
 	modelChoice, _ := w.reader.ReadString('\n')
 	modelChoice = strings.TrimSpace(modelChoice)
 
@@ -382,6 +445,8 @@ func (w *Wizard) configureOllama() error {
 	case "4":
 		w.config.DefaultModel = "codellama"
 	case "5":
+		w.config.DefaultModel = "qwen2.5"
+	case "6":
 		fmt.Print("Enter model name: ")
 		customModel, _ := w.reader.ReadString('\n')
 		w.config.DefaultModel = strings.TrimSpace(customModel)
@@ -394,6 +459,581 @@ func (w *Wizard) configureOllama() error {
 
 	fmt.Println()
 	fmt.Printf("Make sure to run: ollama pull %s\n", w.config.DefaultModel)
+
+	return nil
+}
+
+func (w *Wizard) configureGoogle() error {
+	fmt.Println()
+	fmt.Println("Google AI Configuration")
+	fmt.Println("Get your API key from: https://aistudio.google.com/apikey")
+	fmt.Println()
+	fmt.Print("Enter your Google API Key: ")
+	apiKey, _ := w.reader.ReadString('\n')
+	w.config.APIKey = strings.TrimSpace(apiKey)
+
+	for w.config.APIKey == "" {
+		fmt.Println("❌ API key cannot be empty.")
+		fmt.Print("Enter your Google API Key: ")
+		apiKey, _ := w.reader.ReadString('\n')
+		w.config.APIKey = strings.TrimSpace(apiKey)
+	}
+
+	fmt.Println()
+	fmt.Println("Select your preferred model:")
+	fmt.Println("  1. gemini-2.0-flash (default, fast and capable)")
+	fmt.Println("  2. gemini-1.5-pro (more powerful)")
+	fmt.Println("  3. gemini-1.5-flash (fast, efficient)")
+	fmt.Print("\nSelect (1-3) [default: 1]: ")
+	modelChoice, _ := w.reader.ReadString('\n')
+	modelChoice = strings.TrimSpace(modelChoice)
+
+	switch modelChoice {
+	case "2":
+		w.config.DefaultModel = "gemini-1.5-pro"
+	case "3":
+		w.config.DefaultModel = "gemini-1.5-flash"
+	default:
+		w.config.DefaultModel = "gemini-2.0-flash"
+	}
+
+	return nil
+}
+
+func (w *Wizard) configureGroq() error {
+	fmt.Println()
+	fmt.Println("Groq Configuration")
+	fmt.Println("Get your API key from: https://console.groq.com/keys")
+	fmt.Println()
+	fmt.Print("Enter your Groq API Key: ")
+	apiKey, _ := w.reader.ReadString('\n')
+	w.config.APIKey = strings.TrimSpace(apiKey)
+
+	for w.config.APIKey == "" {
+		fmt.Println("❌ API key cannot be empty.")
+		fmt.Print("Enter your Groq API Key: ")
+		apiKey, _ := w.reader.ReadString('\n')
+		w.config.APIKey = strings.TrimSpace(apiKey)
+	}
+
+	fmt.Println()
+	fmt.Println("Select your preferred model:")
+	fmt.Println("  1. llama-3.3-70b-versatile (default, best balance)")
+	fmt.Println("  2. llama-3.1-8b-instant (fastest)")
+	fmt.Println("  3. mixtral-8x7b-32768 (good for long context)")
+	fmt.Println("  4. deepseek-r1-distill-llama-70b (reasoning)")
+	fmt.Print("\nSelect (1-4) [default: 1]: ")
+	modelChoice, _ := w.reader.ReadString('\n')
+	modelChoice = strings.TrimSpace(modelChoice)
+
+	switch modelChoice {
+	case "2":
+		w.config.DefaultModel = "llama-3.1-8b-instant"
+	case "3":
+		w.config.DefaultModel = "mixtral-8x7b-32768"
+	case "4":
+		w.config.DefaultModel = "deepseek-r1-distill-llama-70b"
+	default:
+		w.config.DefaultModel = "llama-3.3-70b-versatile"
+	}
+
+	return nil
+}
+
+func (w *Wizard) configureDeepSeek() error {
+	fmt.Println()
+	fmt.Println("DeepSeek Configuration")
+	fmt.Println("Get your API key from: https://platform.deepseek.com/api_keys")
+	fmt.Println()
+	fmt.Print("Enter your DeepSeek API Key: ")
+	apiKey, _ := w.reader.ReadString('\n')
+	w.config.APIKey = strings.TrimSpace(apiKey)
+
+	for w.config.APIKey == "" {
+		fmt.Println("❌ API key cannot be empty.")
+		fmt.Print("Enter your DeepSeek API Key: ")
+		apiKey, _ := w.reader.ReadString('\n')
+		w.config.APIKey = strings.TrimSpace(apiKey)
+	}
+
+	fmt.Println()
+	fmt.Println("Select your preferred model:")
+	fmt.Println("  1. deepseek-chat (default, general purpose)")
+	fmt.Println("  2. deepseek-reasoner (reasoning tasks)")
+	fmt.Print("\nSelect (1-2) [default: 1]: ")
+	modelChoice, _ := w.reader.ReadString('\n')
+	modelChoice = strings.TrimSpace(modelChoice)
+
+	switch modelChoice {
+	case "2":
+		w.config.DefaultModel = "deepseek-reasoner"
+	default:
+		w.config.DefaultModel = "deepseek-chat"
+	}
+
+	return nil
+}
+
+func (w *Wizard) configureTogether() error {
+	fmt.Println()
+	fmt.Println("Together AI Configuration")
+	fmt.Println("Get your API key from: https://api.together.xyz/settings/api-keys")
+	fmt.Println()
+	fmt.Print("Enter your Together API Key: ")
+	apiKey, _ := w.reader.ReadString('\n')
+	w.config.APIKey = strings.TrimSpace(apiKey)
+
+	for w.config.APIKey == "" {
+		fmt.Println("❌ API key cannot be empty.")
+		fmt.Print("Enter your Together API Key: ")
+		apiKey, _ := w.reader.ReadString('\n')
+		w.config.APIKey = strings.TrimSpace(apiKey)
+	}
+
+	fmt.Println()
+	fmt.Println("Select your preferred model:")
+	fmt.Println("  1. meta-llama/Llama-3.3-70B-Instruct-Turbo (default)")
+	fmt.Println("  2. meta-llama/Llama-3.1-8B-Instruct-Turbo (fast)")
+	fmt.Println("  3. mistralai/Mixtral-8x7B-Instruct-v0.1")
+	fmt.Println("  4. Qwen/Qwen2.5-72B-Instruct-Turbo")
+	fmt.Print("\nSelect (1-4) [default: 1]: ")
+	modelChoice, _ := w.reader.ReadString('\n')
+	modelChoice = strings.TrimSpace(modelChoice)
+
+	switch modelChoice {
+	case "2":
+		w.config.DefaultModel = "meta-llama/Llama-3.1-8B-Instruct-Turbo"
+	case "3":
+		w.config.DefaultModel = "mistralai/Mixtral-8x7B-Instruct-v0.1"
+	case "4":
+		w.config.DefaultModel = "Qwen/Qwen2.5-72B-Instruct-Turbo"
+	default:
+		w.config.DefaultModel = "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+	}
+
+	return nil
+}
+
+func (w *Wizard) configureCerebras() error {
+	fmt.Println()
+	fmt.Println("Cerebras Configuration")
+	fmt.Println("Get your API key from: https://cloud.cerebras.ai")
+	fmt.Println()
+	fmt.Print("Enter your Cerebras API Key: ")
+	apiKey, _ := w.reader.ReadString('\n')
+	w.config.APIKey = strings.TrimSpace(apiKey)
+
+	for w.config.APIKey == "" {
+		fmt.Println("❌ API key cannot be empty.")
+		fmt.Print("Enter your Cerebras API Key: ")
+		apiKey, _ := w.reader.ReadString('\n')
+		w.config.APIKey = strings.TrimSpace(apiKey)
+	}
+
+	fmt.Println()
+	fmt.Println("Select your preferred model:")
+	fmt.Println("  1. llama3.1-8b (default, fast)")
+	fmt.Println("  2. llama3.1-70b (more capable)")
+	fmt.Print("\nSelect (1-2) [default: 1]: ")
+	modelChoice, _ := w.reader.ReadString('\n')
+	modelChoice = strings.TrimSpace(modelChoice)
+
+	switch modelChoice {
+	case "2":
+		w.config.DefaultModel = "llama3.1-70b"
+	default:
+		w.config.DefaultModel = "llama3.1-8b"
+	}
+
+	return nil
+}
+
+func (w *Wizard) configureOpenRouter() error {
+	fmt.Println()
+	fmt.Println("OpenRouter Configuration")
+	fmt.Println("Get your API key from: https://openrouter.ai/keys")
+	fmt.Println()
+	fmt.Print("Enter your OpenRouter API Key: ")
+	apiKey, _ := w.reader.ReadString('\n')
+	w.config.APIKey = strings.TrimSpace(apiKey)
+
+	for w.config.APIKey == "" {
+		fmt.Println("❌ API key cannot be empty.")
+		fmt.Print("Enter your OpenRouter API Key: ")
+		apiKey, _ := w.reader.ReadString('\n')
+		w.config.APIKey = strings.TrimSpace(apiKey)
+	}
+
+	fmt.Println()
+	fmt.Println("Select your preferred model:")
+	fmt.Println("  1. anthropic/claude-3.5-sonnet (default)")
+	fmt.Println("  2. openai/gpt-4o")
+	fmt.Println("  3. google/gemini-2.0-flash-exp:free")
+	fmt.Println("  4. meta-llama/llama-3.3-70b-instruct")
+	fmt.Println("  5. deepseek/deepseek-chat")
+	fmt.Println("  6. Other (specify model ID)")
+	fmt.Print("\nSelect (1-6) [default: 1]: ")
+	modelChoice, _ := w.reader.ReadString('\n')
+	modelChoice = strings.TrimSpace(modelChoice)
+
+	switch modelChoice {
+	case "2":
+		w.config.DefaultModel = "openai/gpt-4o"
+	case "3":
+		w.config.DefaultModel = "google/gemini-2.0-flash-exp:free"
+	case "4":
+		w.config.DefaultModel = "meta-llama/llama-3.3-70b-instruct"
+	case "5":
+		w.config.DefaultModel = "deepseek/deepseek-chat"
+	case "6":
+		fmt.Print("Enter model ID (e.g., anthropic/claude-3-opus): ")
+		customModel, _ := w.reader.ReadString('\n')
+		w.config.DefaultModel = strings.TrimSpace(customModel)
+		if w.config.DefaultModel == "" {
+			w.config.DefaultModel = "anthropic/claude-3.5-sonnet"
+		}
+	default:
+		w.config.DefaultModel = "anthropic/claude-3.5-sonnet"
+	}
+
+	return nil
+}
+
+func (w *Wizard) configureFireworks() error {
+	fmt.Println()
+	fmt.Println("Fireworks AI Configuration")
+	fmt.Println("Get your API key from: https://fireworks.ai/api-keys")
+	fmt.Println()
+	fmt.Print("Enter your Fireworks API Key: ")
+	apiKey, _ := w.reader.ReadString('\n')
+	w.config.APIKey = strings.TrimSpace(apiKey)
+
+	for w.config.APIKey == "" {
+		fmt.Println("❌ API key cannot be empty.")
+		fmt.Print("Enter your Fireworks API Key: ")
+		apiKey, _ := w.reader.ReadString('\n')
+		w.config.APIKey = strings.TrimSpace(apiKey)
+	}
+
+	fmt.Println()
+	fmt.Println("Select your preferred model:")
+	fmt.Println("  1. accounts/fireworks/models/llama-v3-70b-instruct (default)")
+	fmt.Println("  2. accounts/fireworks/models/qwen2p5-72b-instruct")
+	fmt.Print("\nSelect (1-2) [default: 1]: ")
+	modelChoice, _ := w.reader.ReadString('\n')
+	modelChoice = strings.TrimSpace(modelChoice)
+
+	switch modelChoice {
+	case "2":
+		w.config.DefaultModel = "accounts/fireworks/models/qwen2p5-72b-instruct"
+	default:
+		w.config.DefaultModel = "accounts/fireworks/models/llama-v3-70b-instruct"
+	}
+
+	return nil
+}
+
+func (w *Wizard) configureZhipu() error {
+	fmt.Println()
+	fmt.Println("智谱 AI (Zhipu) Configuration")
+	fmt.Println("Get your API key from: https://open.bigmodel.cn/api-keys")
+	fmt.Println()
+	fmt.Print("Enter your Zhipu API Key: ")
+	apiKey, _ := w.reader.ReadString('\n')
+	w.config.APIKey = strings.TrimSpace(apiKey)
+
+	for w.config.APIKey == "" {
+		fmt.Println("❌ API key cannot be empty.")
+		fmt.Print("Enter your Zhipu API Key: ")
+		apiKey, _ := w.reader.ReadString('\n')
+		w.config.APIKey = strings.TrimSpace(apiKey)
+	}
+
+	fmt.Println()
+	fmt.Println("Select your preferred model:")
+	fmt.Println("  1. glm-4-plus (default, most capable)")
+	fmt.Println("  2. glm-4-air (faster, cheaper)")
+	fmt.Println("  3. glm-4-flash (fastest)")
+	fmt.Print("\nSelect (1-3) [default: 1]: ")
+	modelChoice, _ := w.reader.ReadString('\n')
+	modelChoice = strings.TrimSpace(modelChoice)
+
+	switch modelChoice {
+	case "2":
+		w.config.DefaultModel = "glm-4-air"
+	case "3":
+		w.config.DefaultModel = "glm-4-flash"
+	default:
+		w.config.DefaultModel = "glm-4-plus"
+	}
+
+	return nil
+}
+
+func (w *Wizard) configureSiliconFlow() error {
+	fmt.Println()
+	fmt.Println("SiliconFlow Configuration")
+	fmt.Println("Get your API key from: https://cloud.siliconflow.cn/account/ak")
+	fmt.Println()
+	fmt.Print("Enter your SiliconFlow API Key: ")
+	apiKey, _ := w.reader.ReadString('\n')
+	w.config.APIKey = strings.TrimSpace(apiKey)
+
+	for w.config.APIKey == "" {
+		fmt.Println("❌ API key cannot be empty.")
+		fmt.Print("Enter your SiliconFlow API Key: ")
+		apiKey, _ := w.reader.ReadString('\n')
+		w.config.APIKey = strings.TrimSpace(apiKey)
+	}
+
+	fmt.Println()
+	fmt.Println("Select your preferred model:")
+	fmt.Println("  1. Qwen/Qwen2.5-72B-Instruct (default)")
+	fmt.Println("  2. deepseek-ai/DeepSeek-V3")
+	fmt.Println("  3. meta-llama/Meta-Llama-3.1-70B-Instruct")
+	fmt.Print("\nSelect (1-3) [default: 1]: ")
+	modelChoice, _ := w.reader.ReadString('\n')
+	modelChoice = strings.TrimSpace(modelChoice)
+
+	switch modelChoice {
+	case "2":
+		w.config.DefaultModel = "deepseek-ai/DeepSeek-V3"
+	case "3":
+		w.config.DefaultModel = "meta-llama/Meta-Llama-3.1-70B-Instruct"
+	default:
+		w.config.DefaultModel = "Qwen/Qwen2.5-72B-Instruct"
+	}
+
+	return nil
+}
+
+func (w *Wizard) configureNovita() error {
+	fmt.Println()
+	fmt.Println("Novita AI Configuration")
+	fmt.Println("Get your API key from: https://novita.ai/settings/key-management")
+	fmt.Println()
+	fmt.Print("Enter your Novita API Key: ")
+	apiKey, _ := w.reader.ReadString('\n')
+	w.config.APIKey = strings.TrimSpace(apiKey)
+
+	for w.config.APIKey == "" {
+		fmt.Println("❌ API key cannot be empty.")
+		fmt.Print("Enter your Novita API Key: ")
+		apiKey, _ := w.reader.ReadString('\n')
+		w.config.APIKey = strings.TrimSpace(apiKey)
+	}
+
+	fmt.Println()
+	fmt.Println("Select your preferred model:")
+	fmt.Println("  1. meta-llama/llama-3.1-70b-instruct (default)")
+	fmt.Println("  2. meta-llama/llama-3.1-8b-instruct")
+	fmt.Print("\nSelect (1-2) [default: 1]: ")
+	modelChoice, _ := w.reader.ReadString('\n')
+	modelChoice = strings.TrimSpace(modelChoice)
+
+	switch modelChoice {
+	case "2":
+		w.config.DefaultModel = "meta-llama/llama-3.1-8b-instruct"
+	default:
+		w.config.DefaultModel = "meta-llama/llama-3.1-70b-instruct"
+	}
+
+	return nil
+}
+
+func (w *Wizard) configureLocalAI() error {
+	fmt.Println()
+	fmt.Println("LocalAI Configuration")
+	fmt.Println("Make sure LocalAI is running locally")
+	fmt.Println()
+	fmt.Print("Enter LocalAI server URL [default: http://localhost:8080]: ")
+	baseURL, _ := w.reader.ReadString('\n')
+	baseURL = strings.TrimSpace(baseURL)
+	if baseURL == "" {
+		baseURL = "http://localhost:8080"
+	}
+
+	w.config.APIKey = "localai"
+
+	fmt.Println()
+	fmt.Println("Select your preferred model:")
+	fmt.Println("  1. llama3 (default)")
+	fmt.Println("  2. mistral")
+	fmt.Println("  3. Other (specify)")
+	fmt.Print("\nSelect (1-3) [default: 1]: ")
+	modelChoice, _ := w.reader.ReadString('\n')
+	modelChoice = strings.TrimSpace(modelChoice)
+
+	switch modelChoice {
+	case "2":
+		w.config.DefaultModel = "mistral"
+	case "3":
+		fmt.Print("Enter model name: ")
+		customModel, _ := w.reader.ReadString('\n')
+		w.config.DefaultModel = strings.TrimSpace(customModel)
+		if w.config.DefaultModel == "" {
+			w.config.DefaultModel = "llama3"
+		}
+	default:
+		w.config.DefaultModel = "llama3"
+	}
+
+	return nil
+}
+
+func (w *Wizard) configureVLLM() error {
+	fmt.Println()
+	fmt.Println("vLLM Configuration")
+	fmt.Println("Make sure vLLM server is running locally")
+	fmt.Println()
+	fmt.Print("Enter vLLM server URL [default: http://localhost:8000]: ")
+	baseURL, _ := w.reader.ReadString('\n')
+	baseURL = strings.TrimSpace(baseURL)
+	if baseURL == "" {
+		baseURL = "http://localhost:8000"
+	}
+
+	w.config.APIKey = "vllm"
+
+	fmt.Println()
+	fmt.Print("Enter model name [default: llama3]: ")
+	modelName, _ := w.reader.ReadString('\n')
+	modelName = strings.TrimSpace(modelName)
+	if modelName == "" {
+		w.config.DefaultModel = "llama3"
+	} else {
+		w.config.DefaultModel = modelName
+	}
+
+	return nil
+}
+
+func (w *Wizard) configureMistral() error {
+	fmt.Println()
+	fmt.Println("Mistral AI Configuration")
+	fmt.Println("Get your API key from: https://console.mistral.ai/api-keys")
+	fmt.Println()
+	fmt.Print("Enter your Mistral API Key: ")
+	apiKey, _ := w.reader.ReadString('\n')
+	w.config.APIKey = strings.TrimSpace(apiKey)
+
+	for w.config.APIKey == "" {
+		fmt.Println("❌ API key cannot be empty.")
+		fmt.Print("Enter your Mistral API Key: ")
+		apiKey, _ := w.reader.ReadString('\n')
+		w.config.APIKey = strings.TrimSpace(apiKey)
+	}
+
+	fmt.Println()
+	fmt.Println("Select your preferred model:")
+	fmt.Println("  1. mistral-large-latest (default, most capable)")
+	fmt.Println("  2. mistral-small-latest (faster)")
+	fmt.Println("  3. codestral-latest (code-focused)")
+	fmt.Print("\nSelect (1-3) [default: 1]: ")
+	modelChoice, _ := w.reader.ReadString('\n')
+	modelChoice = strings.TrimSpace(modelChoice)
+
+	switch modelChoice {
+	case "2":
+		w.config.DefaultModel = "mistral-small-latest"
+	case "3":
+		w.config.DefaultModel = "codestral-latest"
+	default:
+		w.config.DefaultModel = "mistral-large-latest"
+	}
+
+	return nil
+}
+
+func (w *Wizard) configureXAI() error {
+	fmt.Println()
+	fmt.Println("xAI (Grok) Configuration")
+	fmt.Println("Get your API key from: https://console.x.ai")
+	fmt.Println()
+	fmt.Print("Enter your xAI API Key: ")
+	apiKey, _ := w.reader.ReadString('\n')
+	w.config.APIKey = strings.TrimSpace(apiKey)
+
+	for w.config.APIKey == "" {
+		fmt.Println("❌ API key cannot be empty.")
+		fmt.Print("Enter your xAI API Key: ")
+		apiKey, _ := w.reader.ReadString('\n')
+		w.config.APIKey = strings.TrimSpace(apiKey)
+	}
+
+	fmt.Println()
+	fmt.Println("Select your preferred model:")
+	fmt.Println("  1. grok-beta (default)")
+	fmt.Print("\nSelect [default: 1]: ")
+	modelChoice, _ := w.reader.ReadString('\n')
+	modelChoice = strings.TrimSpace(modelChoice)
+
+	w.config.DefaultModel = "grok-beta"
+
+	return nil
+}
+
+func (w *Wizard) configurePerplexity() error {
+	fmt.Println()
+	fmt.Println("Perplexity AI Configuration")
+	fmt.Println("Get your API key from: https://www.perplexity.ai/settings/api")
+	fmt.Println()
+	fmt.Print("Enter your Perplexity API Key: ")
+	apiKey, _ := w.reader.ReadString('\n')
+	w.config.APIKey = strings.TrimSpace(apiKey)
+
+	for w.config.APIKey == "" {
+		fmt.Println("❌ API key cannot be empty.")
+		fmt.Print("Enter your Perplexity API Key: ")
+		apiKey, _ := w.reader.ReadString('\n')
+		w.config.APIKey = strings.TrimSpace(apiKey)
+	}
+
+	fmt.Println()
+	fmt.Println("Select your preferred model:")
+	fmt.Println("  1. llama-3.1-sonar-large-128k-online (default, with web search)")
+	fmt.Println("  2. llama-3.1-sonar-small-128k-online (faster)")
+	fmt.Print("\nSelect (1-2) [default: 1]: ")
+	modelChoice, _ := w.reader.ReadString('\n')
+	modelChoice = strings.TrimSpace(modelChoice)
+
+	switch modelChoice {
+	case "2":
+		w.config.DefaultModel = "llama-3.1-sonar-small-128k-online"
+	default:
+		w.config.DefaultModel = "llama-3.1-sonar-large-128k-online"
+	}
+
+	return nil
+}
+
+func (w *Wizard) configureAzure() error {
+	fmt.Println()
+	fmt.Println("Azure OpenAI Configuration")
+	fmt.Println("Get your credentials from: https://portal.azure.com")
+	fmt.Println()
+	fmt.Print("Enter your Azure OpenAI API Key: ")
+	apiKey, _ := w.reader.ReadString('\n')
+	w.config.APIKey = strings.TrimSpace(apiKey)
+
+	for w.config.APIKey == "" {
+		fmt.Println("❌ API key cannot be empty.")
+		fmt.Print("Enter your Azure OpenAI API Key: ")
+		apiKey, _ := w.reader.ReadString('\n')
+		w.config.APIKey = strings.TrimSpace(apiKey)
+	}
+
+	fmt.Println()
+	fmt.Print("Enter your Azure endpoint (e.g., https://your-resource.openai.azure.com): ")
+	endpoint, _ := w.reader.ReadString('\n')
+	endpoint = strings.TrimSpace(endpoint)
+
+	fmt.Print("Enter your deployment name: ")
+	deployment, _ := w.reader.ReadString('\n')
+	deployment = strings.TrimSpace(deployment)
+
+	w.config.DefaultModel = deployment
+	w.config.BaseURL = strings.TrimSuffix(endpoint, "/") + "/openai/deployments/" + deployment
 
 	return nil
 }
@@ -432,41 +1072,52 @@ func (w *Wizard) setupIntegrations() error {
 }
 
 func (w *Wizard) createConfiguration() error {
-	// Create config.yaml
 	configPath := filepath.Join(w.workspace, "myrai.yaml")
 
-	// Build provider configuration based on selected provider
-	var providerConfig string
-	switch w.config.LLMProvider {
-	case "openai":
-		providerConfig = fmt.Sprintf(`    openai:
-      api_key: "%s"
-      model: "%s"
-      base_url: "https://api.openai.com/v1"
-      timeout: 60
-      max_tokens: 4096`, w.config.APIKey, w.config.DefaultModel)
-	case "anthropic":
-		providerConfig = fmt.Sprintf(`    anthropic:
-      api_key: "%s"
-      model: "%s"
-      base_url: "https://api.anthropic.com/v1"
-      timeout: 60
-      max_tokens: 4096`, w.config.APIKey, w.config.DefaultModel)
-	case "ollama":
-		providerConfig = fmt.Sprintf(`    ollama:
-      api_key: "ollama"
-      model: "%s"
-      base_url: "http://localhost:11434/v1"
-      timeout: 120
-      max_tokens: 4096`, w.config.DefaultModel)
-	default: // kimi
-		providerConfig = fmt.Sprintf(`    kimi:
-      api_key: "%s"
-      model: "%s"
-      base_url: "https://api.moonshot.cn/v1"
-      timeout: 60
-      max_tokens: 4096`, w.config.APIKey, w.config.DefaultModel)
+	// Provider configurations
+	providerConfigs := map[string]struct {
+		baseURL string
+		timeout int
+	}{
+		"openai":      {"https://api.openai.com/v1", 60},
+		"anthropic":   {"https://api.anthropic.com/v1", 60},
+		"google":      {"https://generativelanguage.googleapis.com/v1beta", 60},
+		"kimi":        {"https://api.moonshot.cn/v1", 60},
+		"deepseek":    {"https://api.deepseek.com/v1", 60},
+		"groq":        {"https://api.groq.com/openai/v1", 60},
+		"mistral":     {"https://api.mistral.ai/v1", 60},
+		"together":    {"https://api.together.xyz/v1", 60},
+		"cerebras":    {"https://api.cerebras.ai/v1", 60},
+		"xai":         {"https://api.x.ai/v1", 60},
+		"perplexity":  {"https://api.perplexity.ai/v1", 60},
+		"fireworks":   {"https://api.fireworks.ai/inference/v1", 60},
+		"novita":      {"https://api.novita.ai/v3/openai", 60},
+		"siliconflow": {"https://api.siliconflow.cn/v1", 60},
+		"zhipu":       {"https://open.bigmodel.cn/api/paas/v4", 60},
+		"moonshot":    {"https://api.moonshot.cn/v1", 60},
+		"openrouter":  {"https://openrouter.ai/api/v1", 60},
+		"ollama":      {"http://localhost:11434/v1", 120},
+		"localai":     {"http://localhost:8080/v1", 120},
+		"vllm":        {"http://localhost:8000/v1", 120},
+		"azure":       {"", 60},
 	}
+
+	cfg, ok := providerConfigs[w.config.LLMProvider]
+	if !ok {
+		cfg = providerConfigs["kimi"]
+	}
+
+	baseURL := cfg.baseURL
+	if w.config.BaseURL != "" {
+		baseURL = w.config.BaseURL
+	}
+
+	providerConfig := fmt.Sprintf(`    %s:
+      api_key: "%s"
+      model: "%s"
+      base_url: "%s"
+      timeout: %d
+      max_tokens: 4096`, w.config.LLMProvider, w.config.APIKey, w.config.DefaultModel, baseURL, cfg.timeout)
 
 	configContent := fmt.Sprintf(`# Myrai Configuration
 # Generated on %s
@@ -507,25 +1158,43 @@ security:
 		return fmt.Errorf("failed to write config: %w", err)
 	}
 
-	// Create .env file with the correct provider environment variable
+	// Create .env file
 	envPath := filepath.Join(w.workspace, ".env")
-	var apiKeyEnvVar string
-	switch w.config.LLMProvider {
-	case "openai":
-		apiKeyEnvVar = "MYRAI_LLM_PROVIDERS_OPENAI_API_KEY"
-	case "anthropic":
-		apiKeyEnvVar = "MYRAI_LLM_PROVIDERS_ANTHROPIC_API_KEY"
-	case "ollama":
-		apiKeyEnvVar = "MYRAI_LLM_PROVIDERS_OLLAMA_API_KEY"
-	default: // kimi
-		apiKeyEnvVar = "MYRAI_LLM_PROVIDERS_KIMI_API_KEY"
+
+	envKeyMap := map[string]string{
+		"openai":      "OPENAI_API_KEY",
+		"anthropic":   "ANTHROPIC_API_KEY",
+		"google":      "GOOGLE_API_KEY",
+		"kimi":        "KIMI_API_KEY",
+		"deepseek":    "DEEPSEEK_API_KEY",
+		"groq":        "GROQ_API_KEY",
+		"mistral":     "MISTRAL_API_KEY",
+		"together":    "TOGETHER_API_KEY",
+		"cerebras":    "CEREBRAS_API_KEY",
+		"xai":         "XAI_API_KEY",
+		"perplexity":  "PERPLEXITY_API_KEY",
+		"fireworks":   "FIREWORKS_API_KEY",
+		"novita":      "NOVITA_API_KEY",
+		"siliconflow": "SILICONFLOW_API_KEY",
+		"zhipu":       "ZHIPU_API_KEY",
+		"moonshot":    "MOONSHOT_API_KEY",
+		"openrouter":  "OPENROUTER_API_KEY",
+		"ollama":      "OLLAMA_API_KEY",
+		"localai":     "LOCALAI_API_KEY",
+		"vllm":        "VLLM_API_KEY",
+		"azure":       "AZURE_OPENAI_API_KEY",
+	}
+
+	envKey, ok := envKeyMap[w.config.LLMProvider]
+	if !ok {
+		envKey = "KIMI_API_KEY"
 	}
 
 	envContent := fmt.Sprintf(`# Myrai Environment Variables
 # Generated on %s
 
 %s=%s
-`, time.Now().Format("2006-01-02"), apiKeyEnvVar, w.config.APIKey)
+`, time.Now().Format("2006-01-02"), envKey, w.config.APIKey)
 
 	if w.config.EnableTelegram && w.config.TelegramToken != "" {
 		envContent += fmt.Sprintf("TELEGRAM_BOT_TOKEN=%s\n", w.config.TelegramToken)
