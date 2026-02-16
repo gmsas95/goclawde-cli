@@ -1,4 +1,4 @@
-.PHONY: build build-web run clean test docker install install-local release
+.PHONY: build build-web run clean test test-unit test-smoke test-integration test-all docker install install-local release
 
 VERSION ?= dev
 BINARY_NAME = myrai
@@ -52,6 +52,24 @@ clean:
 # Run tests
 test:
 	go test -v ./...
+
+# Run unit tests only
+test-unit:
+	go test -v ./internal/...
+
+# Run smoke tests (build + basic CLI verification)
+test-smoke: build
+	@echo "Running smoke tests..."
+	./scripts/smoke_test.sh
+
+# Run integration tests
+test-integration: build
+	@echo "Running integration tests..."
+	go test -v ./tests/... -tags=integration -timeout 60s
+
+# Run all tests
+test-all: test-unit test-smoke test-integration
+	@echo "All tests completed!"
 
 # Build Docker image
 docker:
