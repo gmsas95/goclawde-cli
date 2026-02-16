@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gmsas95/goclawde-cli/internal/skills"
+	"github.com/gmsas95/myrai-cli/internal/skills"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )

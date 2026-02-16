@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/gmsas95/goclawde-cli/internal/skills"
+	"github.com/gmsas95/myrai-cli/internal/skills"
 )
 
 // WeatherSkill provides weather information

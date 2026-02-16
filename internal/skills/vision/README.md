@@ -1,6 +1,6 @@
 # Vision & Audio Skill
 
-Camera, screenshot, and audio capabilities for GoClawde - bringing Jarvis-like vision and hearing to your AI assistant.
+Camera, screenshot, and audio capabilities for Myrai - bringing Jarvis-like vision and hearing to your AI assistant.
 
 ## Capabilities
 
@@ -37,7 +37,7 @@ Camera, screenshot, and audio capabilities for GoClawde - bringing Jarvis-like v
 ```yaml
 vision:
   vision_model: "gpt-4-vision-preview"  # or "claude-3-opus-20240229"
-  data_dir: "~/.goclawde"
+  data_dir: "~/.myrai"
 ```
 
 ## Platform Notes
@@ -67,7 +67,7 @@ sudo apt install ffmpeg fswebcam
 
 ```go
 // Capture and analyze
-capture, err := vision.NewCapture(llmClient, "~/.goclawde")
+capture, err := vision.NewCapture(llmClient, "~/.myrai")
 result, err := capture.CaptureSnapshot(ctx, vision.CaptureOptions{})
 analysis, err := capture.AnalyzeImage(ctx, result, "What's on my desk?")
 

@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gmsas95/goclawde-cli/internal/config"
-	"github.com/gmsas95/goclawde-cli/internal/store"
+	"github.com/gmsas95/myrai-cli/internal/config"
+	"github.com/gmsas95/myrai-cli/internal/store"
 	"go.uber.org/zap"
 )
 

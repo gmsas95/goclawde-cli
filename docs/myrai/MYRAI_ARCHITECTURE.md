@@ -4,7 +4,7 @@
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│                     GoClawde (Current)                          │
+│                     Myrai (Current)                          │
 │                     "Dev Assistant"                             │
 ├────────────────────────────────────────────────────────────────┤
 │                                                                 │
@@ -62,7 +62,7 @@
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│                     GoClawde (Target)                           │
+│                     Myrai (Target)                           │
 │                  "Personal Life Assistant"                      │
 ├────────────────────────────────────────────────────────────────┤
 │                                                                 │
@@ -279,14 +279,14 @@ AI:   [speaks] You're at Whole Foods. Your shopping list
     ←──────────────────────┼──────────────────────→
     PERSONAL USE           │           WORK USE
                            │
-         Siri/Alexa   ←────┼────→  GoClawde Target
+         Siri/Alexa   ←────┼────→  Myrai Target
          (basic)           │       (comprehensive)
                            │
                            │
                     LOW COMPLEXITY
                            ↓
                            
-    GoClawde Current →-----┼----→  Mid-journey
+    Myrai Current →-----┼----→  Mid-journey
     (dev assistant)        │       (transition)
                            ↓
                     

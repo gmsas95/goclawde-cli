@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/gmsas95/goclawde-cli/internal/skills"
+	"github.com/gmsas95/myrai-cli/internal/skills"
 )
 
 // VoiceSkill provides voice processing capabilities

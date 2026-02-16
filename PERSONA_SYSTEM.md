@@ -1,12 +1,12 @@
-# GoClawde Persona & Memory System
+# Myrai Persona & Memory System
 
-**History:** The markdown-based persona system was originally created by a Malaysian developer as MemoryCore for local private use before being publicized. OpenClaw later brought the concept to wider attention with their implementation. GoClawde builds on both with a Go implementation featuring performance optimizations (caching, SQLite persistence).
+**History:** The markdown-based persona system was originally created by a Malaysian developer as MemoryCore for local private use before being publicized. OpenClaw later brought the concept to wider attention with their implementation. Myrai builds on both with a Go implementation featuring performance optimizations (caching, SQLite persistence).
 
-GoClawde features a powerful persona and memory system using markdown files (IDENTITY.md, USER.md, TOOLS.md, AGENTS.md) adapted for a self-hosted Go application.
+Myrai features a powerful persona and memory system using markdown files (IDENTITY.md, USER.md, TOOLS.md, AGENTS.md) adapted for a self-hosted Go application.
 
 ## 🧠 Overview
 
-The persona system allows Jimmy to:
+The persona system allows Myrai to:
 - Maintain a consistent personality and voice
 - Learn and remember user preferences
 - Track time context for appropriate responses
@@ -15,11 +15,11 @@ The persona system allows Jimmy to:
 
 ## 📁 File Structure
 
-Your Jimmy workspace (`~/.goclawde/` by default) contains:
+Your Myrai workspace (`~/.myrai/` by default) contains:
 
 ```
-~/.goclawde/
-├── goclawde.yaml              # Main configuration
+~/.myrai/
+├── myrai.yaml              # Main configuration
 ├── .env                    # Environment variables
 ├── IDENTITY.md             # AI personality & characteristics
 ├── USER.md                 # Your profile & preferences
@@ -35,15 +35,15 @@ Your Jimmy workspace (`~/.goclawde/` by default) contains:
 
 ## 🎭 IDENTITY.md - AI Personality
 
-Defines Jimmy's personality, voice, values, and expertise:
+Defines Myrai's personality, voice, values, and expertise:
 
 ```markdown
 # Identity
 
-Name: Jimmy
+Name: Myrai
 
 ## Personality
-You are Jimmy, a helpful and capable AI assistant. You are:
+You are Myrai, a helpful and capable AI assistant. You are:
 - Friendly but professional
 - Concise yet thorough in your responses
 - Proactive in suggesting solutions
@@ -67,13 +67,13 @@ You communicate in a clear, approachable manner:
 ### Editing Identity
 
 ```bash
-goclawde persona edit    # Opens in $EDITOR
-goclawde persona show    # Display full file
+myrai persona edit    # Opens in $EDITOR
+myrai persona show    # Display full file
 ```
 
 ## 👤 USER.md - Your Profile
 
-Stores information about you that Jimmy learns:
+Stores information about you that Myrai learns:
 
 ```markdown
 # User Profile
@@ -104,18 +104,18 @@ Updated: 2026-02-15T10:30:00Z
 ### Editing Profile
 
 ```bash
-goclawde user edit       # Opens in $EDITOR
-goclawde user show       # Display full file
+myrai user edit       # Opens in $EDITOR
+myrai user show       # Display full file
 ```
 
 ## 📦 Project Management
 
-Projects allow Jimmy to maintain separate contexts for different work:
+Projects allow Myrai to maintain separate contexts for different work:
 
 ### Creating a Project
 
 ```bash
-goclawde project new "Web API" coding
+myrai project new "Web API" coding
 # Description: Building a REST API for user management
 ```
 
@@ -131,22 +131,22 @@ goclawde project new "Web API" coding
 ### Project Commands
 
 ```bash
-goclawde project list                    # List all projects
-goclawde project switch "Web API"       # Switch active project
-goclawde project archive "Old Project"  # Archive a project
-goclawde project delete "Test Project"  # Delete permanently
+myrai project list                    # List all projects
+myrai project switch "Web API"       # Switch active project
+myrai project archive "Old Project"  # Archive a project
+myrai project delete "Test Project"  # Delete permanently
 ```
 
 ### How Projects Work
 
 - **LRU Management**: Up to 10 active projects; oldest auto-archived
 - **Context Isolation**: Each project maintains its own context
-- **Auto-Switching**: Jimmy knows which project you're working on
+- **Auto-Switching**: Myrai knows which project you're working on
 - **Smart Loading**: Recently used projects load faster
 
 ## ⏰ Time Awareness
 
-Jimmy automatically includes time context in conversations:
+Myrai automatically includes time context in conversations:
 
 ```
 Current time: Saturday, February 15, 2026 8:45 PM
@@ -161,10 +161,10 @@ This enables:
 
 ## 🔧 System Prompt Construction
 
-Jimmy builds the system prompt dynamically:
+Myrai builds the system prompt dynamically:
 
 1. **Time Context** - Current time and appropriate guidance
-2. **Identity** - Who Jimmy is (from IDENTITY.md)
+2. **Identity** - Who Myrai is (from IDENTITY.md)
 3. **User Profile** - Who you are (from USER.md)
 4. **Project Context** - Current project details (if any)
 5. **Tools** - Available tools and capabilities
@@ -175,7 +175,7 @@ Jimmy builds the system prompt dynamically:
 ### First-Time Setup
 
 ```bash
-goclawde onboard
+myrai onboard
 ```
 
 This interactive wizard will:
@@ -190,10 +190,10 @@ If you prefer manual configuration:
 
 ```bash
 # Create workspace
-mkdir -p ~/.goclawde/{projects,diary,memory}
+mkdir -p ~/.myrai/{projects,diary,memory}
 
 # Create config
-cat > ~/.goclawde/goclawde.yaml << 'EOF'
+cat > ~/.myrai/myrai.yaml << 'EOF'
 server:
   address: 0.0.0.0
   port: 8080
@@ -207,17 +207,17 @@ llm:
       base_url: "https://api.moonshot.cn/v1"
 
 storage:
-  data_dir: "~/.goclawde"
+  data_dir: "~/.myrai"
 EOF
 
 # Create default persona files
-goclawde persona edit
-goclawde user edit
+myrai persona edit
+myrai user edit
 ```
 
 ## 💡 Tips
 
-1. **Be Specific**: When editing IDENTITY.md or USER.md, specific details help Jimmy adapt better
+1. **Be Specific**: When editing IDENTITY.md or USER.md, specific details help Myrai adapt better
 
 2. **Update Regularly**: Your USER.md updates automatically, but you can manually add preferences
 
@@ -225,7 +225,7 @@ goclawde user edit
 
 4. **Archive Completed Work**: Archive projects you're not actively working on to keep the list manageable
 
-5. **Review Growth**: Periodically check your USER.md to see what Jimmy has learned about you
+5. **Review Growth**: Periodically check your USER.md to see what Myrai has learned about you
 
 ## 🔄 How Memory Updates
 
@@ -235,7 +235,7 @@ goclawde user edit
 - Conversation history (stored in SQLite)
 
 ### Manual Updates
-- Edit IDENTITY.md to change Jimmy's personality
+- Edit IDENTITY.md to change Myrai's personality
 - Edit USER.md to update your profile
 - Use CLI commands to manage projects
 
@@ -251,27 +251,27 @@ You have complete control over your data.
 ## 📝 Example Workflow
 
 ```bash
-# 1. Start Jimmy
-goclawde
+# 1. Start Myrai
+myrai
 
 # 2. Create a new coding project
-goclawde project new "API Refactor" coding
+myrai project new "API Refactor" coding
 
 # 3. Chat with project context
-goclawde --cli
+myrai --cli
 > Let's refactor the authentication middleware
-# Jimmy knows you're working on the API Refactor project
+# Myrai knows you're working on the API Refactor project
 
 # 4. Switch to writing project
-goclawde project switch "Blog Post"
+myrai project switch "Blog Post"
 
-# 5. Jimmy now has different context
-goclawde --cli  
+# 5. Myrai now has different context
+myrai --cli  
 > Help me outline this article
-# Jimmy knows you're writing a blog post
+# Myrai knows you're writing a blog post
 
 # 6. Archive completed project
-goclawde project archive "API Refactor"
+myrai project archive "API Refactor"
 ```
 
 ## 🎓 Advanced: Custom Templates
@@ -279,7 +279,7 @@ goclawde project archive "API Refactor"
 You can create custom project templates by adding markdown files to your workspace:
 
 ```
-~/.goclawde/templates/
+~/.myrai/templates/
 ├── frontend-dev.md
 ├── backend-api.md
 ├── technical-writing.md
@@ -290,4 +290,4 @@ These will be used when creating new projects of matching types.
 
 ---
 
-**Note**: This system is inspired by [AI MemoryCore](https://github.com/Kiyoraka/Project-AI-MemoryCore) but adapted for the Go-based GoClawde architecture with persistent storage and CLI integration.
+**Note**: This system is inspired by [AI MemoryCore](https://github.com/Kiyoraka/Project-AI-MemoryCore) but adapted for the Go-based Myrai architecture with persistent storage and CLI integration.

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gmsas95/goclawde-cli/internal/persona"
+	"github.com/gmsas95/myrai-cli/internal/persona"
 	"go.uber.org/zap"
 )
 
@@ -97,9 +97,9 @@ func (w *Wizard) setupWorkspace() error {
 	if err != nil {
 		home = "."
 	}
-	defaultWorkspace := filepath.Join(home, ".goclawde")
+	defaultWorkspace := filepath.Join(home, ".myrai")
 
-	fmt.Printf("Where should GoClawde store its data? [default: %s]: ", defaultWorkspace)
+	fmt.Printf("Where should Myrai store its data? [default: %s]: ", defaultWorkspace)
 	workspace, _ := w.reader.ReadString('\n')
 	workspace = strings.TrimSpace(workspace)
 
@@ -145,7 +145,7 @@ func (w *Wizard) setupUserProfile() error {
 
 	// Communication style
 	fmt.Println()
-	fmt.Println("How would you prefer GoClawde to communicate?")
+	fmt.Println("How would you prefer Myrai to communicate?")
 	for i, style := range CommunicationStyles {
 		fmt.Printf("  %d. %s\n", i+1, style)
 	}
@@ -173,7 +173,7 @@ func (w *Wizard) setupUserProfile() error {
 
 	// Goals
 	fmt.Println()
-	fmt.Println("What are your main goals for using GoClawde? (comma-separated)")
+	fmt.Println("What are your main goals for using Myrai? (comma-separated)")
 	fmt.Print("> ")
 	goals, _ := w.reader.ReadString('\n')
 	goals = strings.TrimSpace(goals)
@@ -407,7 +407,7 @@ func (w *Wizard) setupIntegrations() error {
 
 	// Telegram
 	fmt.Println("Would you like to enable Telegram integration?")
-	fmt.Println("This allows you to chat with GoClawde via Telegram.")
+	fmt.Println("This allows you to chat with Myrai via Telegram.")
 	fmt.Print("Enable Telegram? (y/n) [default: n]: ")
 	enableTelegram, _ := w.reader.ReadString('\n')
 	enableTelegram = strings.ToLower(strings.TrimSpace(enableTelegram))
@@ -433,7 +433,7 @@ func (w *Wizard) setupIntegrations() error {
 
 func (w *Wizard) createConfiguration() error {
 	// Create config.yaml
-	configPath := filepath.Join(w.workspace, "goclawde.yaml")
+	configPath := filepath.Join(w.workspace, "myrai.yaml")
 
 	// Build provider configuration based on selected provider
 	var providerConfig string
@@ -468,7 +468,7 @@ func (w *Wizard) createConfiguration() error {
       max_tokens: 4096`, w.config.APIKey, w.config.DefaultModel)
 	}
 
-	configContent := fmt.Sprintf(`# GoClawde Configuration
+	configContent := fmt.Sprintf(`# Myrai Configuration
 # Generated on %s
 
 server:
@@ -512,16 +512,16 @@ security:
 	var apiKeyEnvVar string
 	switch w.config.LLMProvider {
 	case "openai":
-		apiKeyEnvVar = "GOCLAWDE_LLM_PROVIDERS_OPENAI_API_KEY"
+		apiKeyEnvVar = "MYRAI_LLM_PROVIDERS_OPENAI_API_KEY"
 	case "anthropic":
-		apiKeyEnvVar = "GOCLAWDE_LLM_PROVIDERS_ANTHROPIC_API_KEY"
+		apiKeyEnvVar = "MYRAI_LLM_PROVIDERS_ANTHROPIC_API_KEY"
 	case "ollama":
-		apiKeyEnvVar = "GOCLAWDE_LLM_PROVIDERS_OLLAMA_API_KEY"
+		apiKeyEnvVar = "MYRAI_LLM_PROVIDERS_OLLAMA_API_KEY"
 	default: // kimi
-		apiKeyEnvVar = "GOCLAWDE_LLM_PROVIDERS_KIMI_API_KEY"
+		apiKeyEnvVar = "MYRAI_LLM_PROVIDERS_KIMI_API_KEY"
 	}
 
-	envContent := fmt.Sprintf(`# GoClawde Environment Variables
+	envContent := fmt.Sprintf(`# Myrai Environment Variables
 # Generated on %s
 
 %s=%s
@@ -547,7 +547,7 @@ func (w *Wizard) createPersonaFiles() error {
 
 	// Set identity from template
 	identity := &persona.Identity{
-		Name:        "GoClawde",
+		Name:        "Myrai",
 		Personality: "Friendly, professional, and helpful AI assistant",
 		Voice:       "Clear, approachable, and conversational",
 		Values:      []string{"Privacy", "Transparency", "Efficiency"},
@@ -601,7 +601,7 @@ func (w *Wizard) showCompletion() {
 		ConfigPath    string
 	}{
 		WorkspacePath: w.workspace,
-		ConfigPath:    filepath.Join(w.workspace, "goclawde.yaml"),
+		ConfigPath:    filepath.Join(w.workspace, "myrai.yaml"),
 	}
 
 	// Simple template replacement
@@ -648,8 +648,8 @@ func CheckFirstRun() bool {
 		home = "."
 	}
 
-	workspace := filepath.Join(home, ".goclawde")
-	configPath := filepath.Join(workspace, "goclawde.yaml")
+	workspace := filepath.Join(home, ".myrai")
+	configPath := filepath.Join(workspace, "myrai.yaml")
 
 	_, err = os.Stat(configPath)
 	return os.IsNotExist(err)
@@ -661,5 +661,5 @@ func GetWorkspacePath() string {
 	if err != nil {
 		home = "."
 	}
-	return filepath.Join(home, ".goclawde")
+	return filepath.Join(home, ".myrai")
 }

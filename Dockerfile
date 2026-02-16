@@ -14,14 +14,14 @@ RUN mkdir -p bin/web && cp web/index.html bin/web/ 2>/dev/null || mkdir -p bin/w
 
 RUN CGO_ENABLED=1 GOOS=linux go build \
     -ldflags "-X main.version=$(git describe --tags --always 2>/dev/null || echo 'dev') -s -w" \
-    -o myrai ./cmd/goclawde
+    -o myrai ./cmd/myrai
 
 # Production stage
 FROM alpine:latest
 
 LABEL org.opencontainers.image.title="Myrai (未来)"
 LABEL org.opencontainers.image.description="Personal AI Assistant for Everyone"
-LABEL org.opencontainers.image.source="https://github.com/gmsas95/goclawde-cli"
+LABEL org.opencontainers.image.source="https://github.com/gmsas95/myrai-cli"
 
 RUN apk add --no-cache ca-certificates sqlite-libs tzdata
 

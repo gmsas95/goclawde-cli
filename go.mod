@@ -1,4 +1,4 @@
-module github.com/gmsas95/goclawde-cli
+module github.com/gmsas95/myrai-cli
 
 go 1.24.0
 

@@ -265,9 +265,9 @@ func TestPrometheus(t *testing.T) {
 	}
 
 	expectedStrings := []string{
-		"goclawde_requests_total",
-		"goclawde_tokens_used",
-		"goclawde_uptime_seconds",
+		"myrai_requests_total",
+		"myrai_tokens_used",
+		"myrai_uptime_seconds",
 	}
 
 	for _, expected := range expectedStrings {

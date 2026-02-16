@@ -1,6 +1,6 @@
-# Deploying GoClawde on Dokploy
+# Deploying Myrai on Dokploy
 
-[Dokploy](https://dokploy.com) is an open-source deployment platform that makes it easy to deploy Docker applications. This guide shows you how to deploy GoClawde on Dokploy.
+[Dokploy](https://dokploy.com) is an open-source deployment platform that makes it easy to deploy Docker applications. This guide shows you how to deploy Myrai on Dokploy.
 
 ## Quick Deploy
 
@@ -8,14 +8,14 @@
 
 1. Log in to your Dokploy dashboard
 2. Click "Create Project"
-3. Name it "goclawde"
+3. Name it "myrai"
 
 ### 2. Add a Service
 
 1. Click "Add Service" → "Application"
 2. Select "Git" as the source
 3. Configure:
-   - **Repository**: `https://github.com/gmsas95/goclawde-cli`
+   - **Repository**: `https://github.com/gmsas95/myrai-cli`
    - **Branch**: `main`
    - **Build Path**: `/` (root)
    - **Dockerfile**: `Dockerfile`
@@ -64,7 +64,7 @@ GOCLAWDE_CHANNELS_DISCORD_TOKEN=your-discord-bot-token
 
 1. Go to the "Volumes" tab
 2. Add a volume:
-   - **Host Path**: `/var/lib/dokploy/volumes/goclawde/data`
+   - **Host Path**: `/var/lib/dokploy/volumes/myrai/data`
    - **Container Path**: `/app/data`
    - **Type**: Bind Mount
 
@@ -122,7 +122,7 @@ Response:
 
 ## Updating
 
-To update GoClawde:
+To update Myrai:
 
 1. Go to your service in Dokploy
 2. Click "Deploy" again
@@ -166,7 +166,7 @@ Dokploy supports horizontal scaling:
 
 1. Go to "Settings" tab
 2. Increase "Replicas"
-3. Note: GoClawde uses SQLite, so multiple replicas should share the same volume
+3. Note: Myrai uses SQLite, so multiple replicas should share the same volume
 
 ### Backup
 
@@ -174,7 +174,7 @@ Backup your data volume:
 
 ```bash
 # On the Dokploy host
-tar -czf goclawde-backup-$(date +%Y%m%d).tar.gz /var/lib/dokploy/volumes/goclawde/data
+tar -czf myrai-backup-$(date +%Y%m%d).tar.gz /var/lib/dokploy/volumes/myrai/data
 ```
 
 ## Alternative: Docker Compose
@@ -184,9 +184,9 @@ You can also use Dokploy's Docker Compose support:
 ```yaml
 version: '3.8'
 services:
-  goclawde:
+  myrai:
     build:
-      context: https://github.com/gmsas95/goclawde-cli#main
+      context: https://github.com/gmsas95/myrai-cli#main
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
@@ -194,7 +194,7 @@ services:
       - KIMI_API_KEY=${KIMI_API_KEY}
       - GOCLAWDE_LLM_DEFAULT_PROVIDER=kimi
     volumes:
-      - goclawde-data:/app/data
+      - myrai-data:/app/data
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
       interval: 30s
@@ -202,11 +202,11 @@ services:
       retries: 3
 
 volumes:
-  goclawde-data:
+  myrai-data:
 ```
 
 ## Links
 
-- [GoClawde GitHub](https://github.com/gmsas95/goclawde-cli)
+- [Myrai GitHub](https://github.com/gmsas95/myrai-cli)
 - [Dokploy Documentation](https://docs.dokploy.com)
 - [Dokploy GitHub](https://github.com/Dokploy/dokploy)

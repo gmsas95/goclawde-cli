@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gmsas95/goclawde-cli/internal/agent"
-	"github.com/gmsas95/goclawde-cli/internal/security"
+	"github.com/gmsas95/myrai-cli/internal/agent"
+	"github.com/gmsas95/myrai-cli/internal/security"
 	"go.uber.org/zap"
 )
 

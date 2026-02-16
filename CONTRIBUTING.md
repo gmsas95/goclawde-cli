@@ -1,6 +1,6 @@
-# Contributing to Jimmy.ai
+# Contributing to Myrai
 
-Thank you for your interest in contributing to Jimmy.ai! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to Myrai! This document provides guidelines and instructions for contributing.
 
 ## Getting Started
 

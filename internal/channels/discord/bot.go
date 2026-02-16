@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gmsas95/goclawde-cli/internal/agent"
-	"github.com/gmsas95/goclawde-cli/internal/store"
+	"github.com/gmsas95/myrai-cli/internal/agent"
+	"github.com/gmsas95/myrai-cli/internal/store"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 )

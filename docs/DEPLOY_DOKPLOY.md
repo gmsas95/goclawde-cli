@@ -1,13 +1,13 @@
 # Deploying on Dokploy
 
-GoClawde works great on Dokploy! Here's how to deploy it.
+Myrai works great on Dokploy! Here's how to deploy it.
 
 ## Option 1: Docker Compose (Recommended)
 
 1. **Create a new application in Dokploy**
    - Go to your Dokploy dashboard
    - Create a new "Compose" application
-   - Connect your GitHub repository: `https://github.com/gmsas95/goclawde-cli`
+   - Connect your GitHub repository: `https://github.com/gmsas95/myrai-cli`
 
 2. **Set environment variables**
    
@@ -66,7 +66,7 @@ GoClawde works great on Dokploy! Here's how to deploy it.
 
 ## Port Configuration
 
-GoClawde runs on port **8080** by default. In Dokploy:
+Myrai runs on port **8080** by default. In Dokploy:
 - Container port: `8080`
 - The health check endpoint is `/api/health`
 

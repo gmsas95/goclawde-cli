@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gmsas95/goclawde-cli/internal/llm"
+	"github.com/gmsas95/myrai-cli/internal/llm"
 	"go.uber.org/zap"
 )
 

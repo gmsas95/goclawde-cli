@@ -162,11 +162,11 @@ func Load(configPath, dataDir string) (*Config, error) {
 	}
 
 	v.Set("storage.data_dir", dataDir)
-	v.Set("storage.sqlite_path", filepath.Join(dataDir, "goclawde.db"))
+	v.Set("storage.sqlite_path", filepath.Join(dataDir, "myrai.db"))
 	v.Set("storage.badger_path", filepath.Join(dataDir, "badger"))
 
 	if configPath == "" {
-		configPath = filepath.Join(dataDir, "goclawde.yaml")
+		configPath = filepath.Join(dataDir, "myrai.yaml")
 	}
 
 	configPath = expandPath(configPath)
@@ -220,16 +220,16 @@ func loadStandardEnvVars(cfg *Config) {
 	loadProviderFromEnv(cfg, "kimi", "KIMI_API_KEY", "https://api.moonshot.cn/v1", "kimi-k2.5")
 	loadProviderFromEnv(cfg, "deepseek", "DEEPSEEK_API_KEY", "https://api.deepseek.com/v1", "deepseek-chat")
 
-	if token := GetEnvWithFallback("GOCLAWDE_GATEWAY_TOKEN", "GATEWAY_TOKEN"); token != "" {
+	if token := GetEnvWithFallback("MYRAI_GATEWAY_TOKEN", "GATEWAY_TOKEN"); token != "" {
 		cfg.Security.GatewayToken = token
 	}
 
-	if token := ResolveEnvWithAliases("GOCLAWDE_CHANNELS_TELEGRAM_BOT_TOKEN"); token != "" {
+	if token := ResolveEnvWithAliases("MYRAI_CHANNELS_TELEGRAM_BOT_TOKEN"); token != "" {
 		cfg.Channels.Telegram.BotToken = token
 		cfg.Channels.Telegram.Enabled = true
 	}
 
-	if token := ResolveEnvWithAliases("GOCLAWDE_CHANNELS_DISCORD_TOKEN"); token != "" {
+	if token := ResolveEnvWithAliases("MYRAI_CHANNELS_DISCORD_TOKEN"); token != "" {
 		cfg.Channels.Discord.Token = token
 		cfg.Channels.Discord.Enabled = true
 	}
@@ -243,11 +243,11 @@ func loadStandardEnvVars(cfg *Config) {
 		cfg.Channels.Slack.AppToken = token
 	}
 
-	if token := ResolveEnvWithAliases("GOCLAWDE_SKILLS_GITHUB_TOKEN"); token != "" {
+	if token := ResolveEnvWithAliases("MYRAI_SKILLS_GITHUB_TOKEN"); token != "" {
 		cfg.Skills.GitHub.Token = token
 	}
 
-	if key := ResolveEnvWithAliases("GOCLAWDE_SKILLS_BRAVE_API_KEY"); key != "" {
+	if key := ResolveEnvWithAliases("MYRAI_SKILLS_BRAVE_API_KEY"); key != "" {
 		cfg.Skills.Brave.APIKey = key
 	}
 }
@@ -319,7 +319,7 @@ func setDefaults(v *viper.Viper) {
 func getDefaultDataDir() string {
 	// Try XDG_DATA_HOME first
 	if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
-		return filepath.Join(xdg, "goclawde")
+		return filepath.Join(xdg, "myrai")
 	}
 
 	// Fall back to home directory
@@ -328,49 +328,49 @@ func getDefaultDataDir() string {
 		return "./data"
 	}
 
-	return filepath.Join(home, ".local", "share", "goclawde")
+	return filepath.Join(home, ".local", "share", "myrai")
 }
 
 func loadEnvOverrides(cfg *Config) {
-	cfg.LLM.DefaultProvider = GetEnvDefault("GOCLAWDE_LLM_DEFAULT_PROVIDER", cfg.LLM.DefaultProvider)
+	cfg.LLM.DefaultProvider = GetEnvDefault("MYRAI_LLM_DEFAULT_PROVIDER", cfg.LLM.DefaultProvider)
 
 	if cfg.LLM.Providers == nil {
 		cfg.LLM.Providers = make(map[string]Provider)
 	}
 
-	if apiKey := ResolveEnvWithAliases("GOCLAWDE_LLM_PROVIDERS_KIMI_API_KEY"); apiKey != "" {
+	if apiKey := ResolveEnvWithAliases("MYRAI_LLM_PROVIDERS_KIMI_API_KEY"); apiKey != "" {
 		kimi := cfg.LLM.Providers["kimi"]
 		kimi.APIKey = apiKey
-		kimi.BaseURL = GetEnvDefault("GOCLAWDE_LLM_PROVIDERS_KIMI_BASE_URL", kimi.BaseURL)
-		kimi.Model = GetEnvDefault("GOCLAWDE_LLM_PROVIDERS_KIMI_MODEL", kimi.Model)
+		kimi.BaseURL = GetEnvDefault("MYRAI_LLM_PROVIDERS_KIMI_BASE_URL", kimi.BaseURL)
+		kimi.Model = GetEnvDefault("MYRAI_LLM_PROVIDERS_KIMI_MODEL", kimi.Model)
 		cfg.LLM.Providers["kimi"] = kimi
 	}
 
-	if apiKey := ResolveEnvWithAliases("GOCLAWDE_LLM_PROVIDERS_OPENROUTER_API_KEY"); apiKey != "" {
+	if apiKey := ResolveEnvWithAliases("MYRAI_LLM_PROVIDERS_OPENROUTER_API_KEY"); apiKey != "" {
 		or := cfg.LLM.Providers["openrouter"]
 		or.APIKey = apiKey
-		or.BaseURL = GetEnvDefault("GOCLAWDE_LLM_PROVIDERS_OPENROUTER_BASE_URL", or.BaseURL)
-		or.Model = GetEnvDefault("GOCLAWDE_LLM_PROVIDERS_OPENROUTER_MODEL", or.Model)
+		or.BaseURL = GetEnvDefault("MYRAI_LLM_PROVIDERS_OPENROUTER_BASE_URL", or.BaseURL)
+		or.Model = GetEnvDefault("MYRAI_LLM_PROVIDERS_OPENROUTER_MODEL", or.Model)
 		cfg.LLM.Providers["openrouter"] = or
 	}
 
-	cfg.Server.Address = GetEnvDefault("GOCLAWDE_SERVER_ADDRESS", cfg.Server.Address)
-	if port := os.Getenv("GOCLAWDE_SERVER_PORT"); port != "" {
+	cfg.Server.Address = GetEnvDefault("MYRAI_SERVER_ADDRESS", cfg.Server.Address)
+	if port := os.Getenv("MYRAI_SERVER_PORT"); port != "" {
 		if p, err := strconv.Atoi(port); err == nil {
 			cfg.Server.Port = p
 		}
 	}
 
-	cfg.Storage.DataDir = GetEnvDefault("GOCLAWDE_STORAGE_DATA_DIR", cfg.Storage.DataDir)
+	cfg.Storage.DataDir = GetEnvDefault("MYRAI_STORAGE_DATA_DIR", cfg.Storage.DataDir)
 
-	cfg.Security.JWTSecret = ResolveEnvWithAliases("GOCLAWDE_SECURITY_JWT_SECRET")
-	cfg.Security.AdminPassword = ResolveEnvWithAliases("GOCLAWDE_SECURITY_ADMIN_PASSWORD")
+	cfg.Security.JWTSecret = ResolveEnvWithAliases("MYRAI_SECURITY_JWT_SECRET")
+	cfg.Security.AdminPassword = ResolveEnvWithAliases("MYRAI_SECURITY_ADMIN_PASSWORD")
 
-	cfg.Skills.GitHub.Token = ResolveEnvWithAliases("GOCLAWDE_SKILLS_GITHUB_TOKEN")
-	cfg.Skills.Weather.APIKey = ResolveEnvWithAliases("GOCLAWDE_SKILLS_WEATHER_API_KEY")
+	cfg.Skills.GitHub.Token = ResolveEnvWithAliases("MYRAI_SKILLS_GITHUB_TOKEN")
+	cfg.Skills.Weather.APIKey = ResolveEnvWithAliases("MYRAI_SKILLS_WEATHER_API_KEY")
 
-	cfg.Channels.Telegram.BotToken = ResolveEnvWithAliases("GOCLAWDE_CHANNELS_TELEGRAM_BOT_TOKEN")
-	cfg.Channels.Discord.Token = ResolveEnvWithAliases("GOCLAWDE_CHANNELS_DISCORD_TOKEN")
+	cfg.Channels.Telegram.BotToken = ResolveEnvWithAliases("MYRAI_CHANNELS_TELEGRAM_BOT_TOKEN")
+	cfg.Channels.Discord.Token = ResolveEnvWithAliases("MYRAI_CHANNELS_DISCORD_TOKEN")
 }
 
 func validate(cfg *Config) error {
@@ -390,7 +390,7 @@ func validate(cfg *Config) error {
 		}
 
 		if !hasAnyProvider {
-			return fmt.Errorf("no LLM provider configured. Set an API key via environment variable (e.g., OPENAI_API_KEY, ANTHROPIC_API_KEY, KIMI_API_KEY) or in goclawde.yaml")
+			return fmt.Errorf("no LLM provider configured. Set an API key via environment variable (e.g., OPENAI_API_KEY, ANTHROPIC_API_KEY, KIMI_API_KEY) or in myrai.yaml")
 		}
 	}
 

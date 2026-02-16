@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/gmsas95/goclawde-cli/internal/store"
+	"github.com/gmsas95/myrai-cli/internal/store"
 )
 
 // Skill represents a plugin/skill that can be registered

@@ -109,11 +109,11 @@ func TestGetEnvDefault(t *testing.T) {
 }
 
 func TestResolveEnvWithAliases(t *testing.T) {
-	os.Unsetenv("GOCLAWDE_LLM_PROVIDERS_KIMI_API_KEY")
+	os.Unsetenv("MYRAI_LLM_PROVIDERS_KIMI_API_KEY")
 	os.Unsetenv("KIMI_API_KEY")
 	os.Unsetenv("MOONSHOT_API_KEY")
 
-	result := ResolveEnvWithAliases("GOCLAWDE_LLM_PROVIDERS_KIMI_API_KEY")
+	result := ResolveEnvWithAliases("MYRAI_LLM_PROVIDERS_KIMI_API_KEY")
 	if result != "" {
 		t.Error("Expected empty when no keys set")
 	}
@@ -121,7 +121,7 @@ func TestResolveEnvWithAliases(t *testing.T) {
 	os.Setenv("MOONSHOT_API_KEY", "moonshot_value")
 	defer os.Unsetenv("MOONSHOT_API_KEY")
 
-	result = ResolveEnvWithAliases("GOCLAWDE_LLM_PROVIDERS_KIMI_API_KEY")
+	result = ResolveEnvWithAliases("MYRAI_LLM_PROVIDERS_KIMI_API_KEY")
 	if result != "moonshot_value" {
 		t.Errorf("Expected moonshot_value from alias, got %s", result)
 	}
@@ -129,15 +129,15 @@ func TestResolveEnvWithAliases(t *testing.T) {
 	os.Setenv("KIMI_API_KEY", "kimi_value")
 	defer os.Unsetenv("KIMI_API_KEY")
 
-	result = ResolveEnvWithAliases("GOCLAWDE_LLM_PROVIDERS_KIMI_API_KEY")
+	result = ResolveEnvWithAliases("MYRAI_LLM_PROVIDERS_KIMI_API_KEY")
 	if result != "kimi_value" {
 		t.Errorf("Expected kimi_value from first alias, got %s", result)
 	}
 
-	os.Setenv("GOCLAWDE_LLM_PROVIDERS_KIMI_API_KEY", "canonical_value")
-	defer os.Unsetenv("GOCLAWDE_LLM_PROVIDERS_KIMI_API_KEY")
+	os.Setenv("MYRAI_LLM_PROVIDERS_KIMI_API_KEY", "canonical_value")
+	defer os.Unsetenv("MYRAI_LLM_PROVIDERS_KIMI_API_KEY")
 
-	result = ResolveEnvWithAliases("GOCLAWDE_LLM_PROVIDERS_KIMI_API_KEY")
+	result = ResolveEnvWithAliases("MYRAI_LLM_PROVIDERS_KIMI_API_KEY")
 	if result != "canonical_value" {
 		t.Errorf("Expected canonical_value, got %s", result)
 	}
@@ -193,11 +193,11 @@ func TestExpandPath(t *testing.T) {
 
 func TestEnvAliases_Exist(t *testing.T) {
 	requiredAliases := map[string][]string{
-		"GOCLAWDE_LLM_PROVIDERS_KIMI_API_KEY":     {"KIMI_API_KEY"},
-		"GOCLAWDE_LLM_PROVIDERS_OPENAI_API_KEY":   {"OPENAI_API_KEY"},
-		"GOCLAWDE_LLM_PROVIDERS_ANTHROPIC_API_KEY": {"ANTHROPIC_API_KEY"},
-		"GOCLAWDE_CHANNELS_TELEGRAM_BOT_TOKEN":    {"TELEGRAM_BOT_TOKEN"},
-		"GOCLAWDE_SKILLS_GITHUB_TOKEN":            {"GITHUB_TOKEN"},
+		"MYRAI_LLM_PROVIDERS_KIMI_API_KEY":     {"KIMI_API_KEY"},
+		"MYRAI_LLM_PROVIDERS_OPENAI_API_KEY":   {"OPENAI_API_KEY"},
+		"MYRAI_LLM_PROVIDERS_ANTHROPIC_API_KEY": {"ANTHROPIC_API_KEY"},
+		"MYRAI_CHANNELS_TELEGRAM_BOT_TOKEN":    {"TELEGRAM_BOT_TOKEN"},
+		"MYRAI_SKILLS_GITHUB_TOKEN":            {"GITHUB_TOKEN"},
 	}
 
 	for canonical, aliases := range requiredAliases {

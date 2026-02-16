@@ -269,7 +269,7 @@ Here are opportunities to use external libraries/services:
 Build verification:
 ```bash
 cd /home/gmsas95/nanobot-new
-go build ./cmd/goclawde
+go build ./cmd/myrai
 ```
 
 All packages compile successfully.
@@ -311,7 +311,7 @@ All packages compile successfully.
 
 ## 🎯 Feature Comparison (Updated)
 
-| Feature | GoClawde | PicoClaw | nanobot | OpenClaw |
+| Feature | Myrai | PicoClaw | nanobot | OpenClaw |
 |---------|----------|----------|---------|----------|
 | Telegram | ✅ | ✅ | ✅ | ✅ |
 | Discord | ✅ **NEW** | ✅ | ✅ | ✅ |

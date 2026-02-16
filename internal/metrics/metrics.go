@@ -270,71 +270,71 @@ func (m *Metrics) Snapshot() *Snapshot {
 func (m *Metrics) Prometheus() string {
 	var sb strings.Builder
 
-	sb.WriteString("# HELP goclawde_uptime_seconds Time since server start\n")
-	sb.WriteString("# TYPE goclawde_uptime_seconds gauge\n")
-	sb.WriteString("goclawde_uptime_seconds " + strconv.FormatInt(int64(time.Since(m.startTime).Seconds()), 10) + "\n\n")
+	sb.WriteString("# HELP myrai_uptime_seconds Time since server start\n")
+	sb.WriteString("# TYPE myrai_uptime_seconds gauge\n")
+	sb.WriteString("myrai_uptime_seconds " + strconv.FormatInt(int64(time.Since(m.startTime).Seconds()), 10) + "\n\n")
 
-	sb.WriteString("# HELP goclawde_requests_total Total number of requests\n")
-	sb.WriteString("# TYPE goclawde_requests_total counter\n")
-	sb.WriteString("goclawde_requests_total " + strconv.FormatInt(m.requestsTotal.Load(), 10) + "\n\n")
+	sb.WriteString("# HELP myrai_requests_total Total number of requests\n")
+	sb.WriteString("# TYPE myrai_requests_total counter\n")
+	sb.WriteString("myrai_requests_total " + strconv.FormatInt(m.requestsTotal.Load(), 10) + "\n\n")
 
-	sb.WriteString("# HELP goclawde_requests_success Successful requests\n")
-	sb.WriteString("# TYPE goclawde_requests_success counter\n")
-	sb.WriteString("goclawde_requests_success " + strconv.FormatInt(m.requestsSuccess.Load(), 10) + "\n\n")
+	sb.WriteString("# HELP myrai_requests_success Successful requests\n")
+	sb.WriteString("# TYPE myrai_requests_success counter\n")
+	sb.WriteString("myrai_requests_success " + strconv.FormatInt(m.requestsSuccess.Load(), 10) + "\n\n")
 
-	sb.WriteString("# HELP goclawde_requests_failed Failed requests\n")
-	sb.WriteString("# TYPE goclawde_requests_failed counter\n")
-	sb.WriteString("goclawde_requests_failed " + strconv.FormatInt(m.requestsFailed.Load(), 10) + "\n\n")
+	sb.WriteString("# HELP myrai_requests_failed Failed requests\n")
+	sb.WriteString("# TYPE myrai_requests_failed counter\n")
+	sb.WriteString("myrai_requests_failed " + strconv.FormatInt(m.requestsFailed.Load(), 10) + "\n\n")
 
-	sb.WriteString("# HELP goclawde_tokens_used Total tokens used\n")
-	sb.WriteString("# TYPE goclawde_tokens_used counter\n")
-	sb.WriteString("goclawde_tokens_used " + strconv.FormatInt(m.tokensUsed.Load(), 10) + "\n\n")
+	sb.WriteString("# HELP myrai_tokens_used Total tokens used\n")
+	sb.WriteString("# TYPE myrai_tokens_used counter\n")
+	sb.WriteString("myrai_tokens_used " + strconv.FormatInt(m.tokensUsed.Load(), 10) + "\n\n")
 
-	sb.WriteString("# HELP goclawde_tokens_prompt Prompt tokens used\n")
-	sb.WriteString("# TYPE goclawde_tokens_prompt counter\n")
-	sb.WriteString("goclawde_tokens_prompt " + strconv.FormatInt(m.tokensPrompt.Load(), 10) + "\n\n")
+	sb.WriteString("# HELP myrai_tokens_prompt Prompt tokens used\n")
+	sb.WriteString("# TYPE myrai_tokens_prompt counter\n")
+	sb.WriteString("myrai_tokens_prompt " + strconv.FormatInt(m.tokensPrompt.Load(), 10) + "\n\n")
 
-	sb.WriteString("# HELP goclawde_tokens_completion Completion tokens used\n")
-	sb.WriteString("# TYPE goclawde_tokens_completion counter\n")
-	sb.WriteString("goclawde_tokens_completion " + strconv.FormatInt(m.tokensCompletion.Load(), 10) + "\n\n")
+	sb.WriteString("# HELP myrai_tokens_completion Completion tokens used\n")
+	sb.WriteString("# TYPE myrai_tokens_completion counter\n")
+	sb.WriteString("myrai_tokens_completion " + strconv.FormatInt(m.tokensCompletion.Load(), 10) + "\n\n")
 
-	sb.WriteString("# HELP goclawde_tool_calls_total Total tool calls\n")
-	sb.WriteString("# TYPE goclawde_tool_calls_total counter\n")
-	sb.WriteString("goclawde_tool_calls_total " + strconv.FormatInt(m.toolCallsTotal.Load(), 10) + "\n\n")
+	sb.WriteString("# HELP myrai_tool_calls_total Total tool calls\n")
+	sb.WriteString("# TYPE myrai_tool_calls_total counter\n")
+	sb.WriteString("myrai_tool_calls_total " + strconv.FormatInt(m.toolCallsTotal.Load(), 10) + "\n\n")
 
-	sb.WriteString("# HELP goclawde_active_connections Active connections\n")
-	sb.WriteString("# TYPE goclawde_active_connections gauge\n")
-	sb.WriteString("goclawde_active_connections " + strconv.FormatInt(m.activeConnections.Load(), 10) + "\n\n")
+	sb.WriteString("# HELP myrai_active_connections Active connections\n")
+	sb.WriteString("# TYPE myrai_active_connections gauge\n")
+	sb.WriteString("myrai_active_connections " + strconv.FormatInt(m.activeConnections.Load(), 10) + "\n\n")
 
-	sb.WriteString("# HELP goclawde_security_blocks_total Security blocks\n")
-	sb.WriteString("# TYPE goclawde_security_blocks_total counter\n")
-	sb.WriteString("goclawde_security_blocks_total " + strconv.FormatInt(m.securityBlocks.Load(), 10) + "\n\n")
+	sb.WriteString("# HELP myrai_security_blocks_total Security blocks\n")
+	sb.WriteString("# TYPE myrai_security_blocks_total counter\n")
+	sb.WriteString("myrai_security_blocks_total " + strconv.FormatInt(m.securityBlocks.Load(), 10) + "\n\n")
 
-	sb.WriteString("# HELP goclawde_injection_blocked_total Prompt injections blocked\n")
-	sb.WriteString("# TYPE goclawde_injection_blocked_total counter\n")
-	sb.WriteString("goclawde_injection_blocked_total " + strconv.FormatInt(m.injectionBlocked.Load(), 10) + "\n\n")
+	sb.WriteString("# HELP myrai_injection_blocked_total Prompt injections blocked\n")
+	sb.WriteString("# TYPE myrai_injection_blocked_total counter\n")
+	sb.WriteString("myrai_injection_blocked_total " + strconv.FormatInt(m.injectionBlocked.Load(), 10) + "\n\n")
 
-	sb.WriteString("# HELP goclawde_secrets_detected_total Secrets detected\n")
-	sb.WriteString("# TYPE goclawde_secrets_detected_total counter\n")
-	sb.WriteString("goclawde_secrets_detected_total " + strconv.FormatInt(m.secretsDetected.Load(), 10) + "\n\n")
+	sb.WriteString("# HELP myrai_secrets_detected_total Secrets detected\n")
+	sb.WriteString("# TYPE myrai_secrets_detected_total counter\n")
+	sb.WriteString("myrai_secrets_detected_total " + strconv.FormatInt(m.secretsDetected.Load(), 10) + "\n\n")
 
-	sb.WriteString("# HELP goclawde_dangerous_commands_blocked_total Dangerous commands blocked\n")
-	sb.WriteString("# TYPE goclawde_dangerous_commands_blocked_total counter\n")
-	sb.WriteString("goclawde_dangerous_commands_blocked_total " + strconv.FormatInt(m.dangerousCommands.Load(), 10) + "\n\n")
+	sb.WriteString("# HELP myrai_dangerous_commands_blocked_total Dangerous commands blocked\n")
+	sb.WriteString("# TYPE myrai_dangerous_commands_blocked_total counter\n")
+	sb.WriteString("myrai_dangerous_commands_blocked_total " + strconv.FormatInt(m.dangerousCommands.Load(), 10) + "\n\n")
 
 	m.providerLock.Lock()
 	for provider, count := range m.providerRequests {
-		sb.WriteString("# HELP goclawde_provider_requests_total Requests per provider\n")
-		sb.WriteString("# TYPE goclawde_provider_requests_total counter\n")
-		sb.WriteString("goclawde_provider_requests_total{provider=\"" + provider + "\"} " + strconv.FormatInt(count.Load(), 10) + "\n\n")
+		sb.WriteString("# HELP myrai_provider_requests_total Requests per provider\n")
+		sb.WriteString("# TYPE myrai_provider_requests_total counter\n")
+		sb.WriteString("myrai_provider_requests_total{provider=\"" + provider + "\"} " + strconv.FormatInt(count.Load(), 10) + "\n\n")
 	}
 	m.providerLock.Unlock()
 
 	m.skillLock.Lock()
 	for skill, count := range m.skillCalls {
-		sb.WriteString("# HELP goclawde_skill_calls_total Calls per skill\n")
-		sb.WriteString("# TYPE goclawde_skill_calls_total counter\n")
-		sb.WriteString("goclawde_skill_calls_total{skill=\"" + skill + "\"} " + strconv.FormatInt(count.Load(), 10) + "\n\n")
+		sb.WriteString("# HELP myrai_skill_calls_total Calls per skill\n")
+		sb.WriteString("# TYPE myrai_skill_calls_total counter\n")
+		sb.WriteString("myrai_skill_calls_total{skill=\"" + skill + "\"} " + strconv.FormatInt(count.Load(), 10) + "\n\n")
 	}
 	m.skillLock.Unlock()
 

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gmsas95/goclawde-cli/internal/skills"
+	"github.com/gmsas95/myrai-cli/internal/skills"
 )
 
 // DocumentSkill provides document processing capabilities

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gmsas95/goclawde-cli/internal/llm"
-	"github.com/gmsas95/goclawde-cli/internal/skills"
+	"github.com/gmsas95/myrai-cli/internal/llm"
+	"github.com/gmsas95/myrai-cli/internal/skills"
 )
 
 // VisionSkill provides visual and audio understanding capabilities

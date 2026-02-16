@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/gmsas95/goclawde-cli/internal/config"
+	"github.com/gmsas95/myrai-cli/internal/config"
 	"github.com/dgraph-io/badger/v4"
 	_ "github.com/glebarez/go-sqlite" // Pure Go SQLite driver
 	"gorm.io/driver/sqlite"
@@ -28,7 +28,7 @@ func New(cfg *config.Config) (*Store, error) {
 	// Initialize SQLite
 	sqlitePath := cfg.Storage.SQLitePath
 	if sqlitePath == "" {
-		sqlitePath = filepath.Join(cfg.Storage.DataDir, "goclawde.db")
+		sqlitePath = filepath.Join(cfg.Storage.DataDir, "myrai.db")
 	}
 
 	// Open SQLite with optimizations

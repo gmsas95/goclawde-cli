@@ -24,7 +24,7 @@ Minimum requirements:
 ssh root@your-server-ip
 
 # Download and run installer
-curl -fsSL https://raw.githubusercontent.com/gmsas95/goclawde-cli/main/deploy/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/gmsas95/myrai-cli/main/deploy/install.sh | bash
 
 # Edit configuration
 nano /opt/myrai/.env

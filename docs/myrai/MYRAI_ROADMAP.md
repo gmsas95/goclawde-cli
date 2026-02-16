@@ -1,11 +1,11 @@
-# GoClawde Roadmap: From Dev Assistant to Personal Life OS
+# Myrai Roadmap: From Dev Assistant to Personal Life OS
 
 ## The Vision
 
 **A lightweight, local-first personal AI assistant for the 99% - not developers.**
 
 OpenClaude dominates the dev space (160k stars) because it's a **coding assistant**.
-GoClawde will dominate the personal space by being a **life assistant**.
+Myrai will dominate the personal space by being a **life assistant**.
 
 ### The Pitch
 > "Your personal AI that remembers everything, helps with daily tasks, 
@@ -41,7 +41,7 @@ GoClawde will dominate the personal space by being a **life assistant**.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        GoClawde Life OS                          │
+│                        Myrai Life OS                          │
 ├─────────────────────────────────────────────────────────────────┤
 │  INTERFACES                                                     │
 │  ├── Mobile App (Flutter/React Native)                         │
@@ -250,7 +250,7 @@ GoClawde will dominate the personal space by being a **life assistant**.
 ## Key Differentiators
 
 ### vs OpenClaude (Dev-focused)
-| Feature | OpenClaude | GoClawde Life OS |
+| Feature | OpenClaude | Myrai Life OS |
 |---------|-----------|------------------|
 | Target | Developers | Everyone |
 | Interface | VS Code | Mobile + Voice |
@@ -260,7 +260,7 @@ GoClawde will dominate the personal space by being a **life assistant**.
 | Memory | Project context | Personal life context |
 
 ### vs Siri/Alexa/Google
-| Feature | Big Tech | GoClawde |
+| Feature | Big Tech | Myrai |
 |---------|----------|----------|
 | Privacy | Cloud processing | Local-first |
 | Customization | Limited | Fully customizable |
@@ -269,7 +269,7 @@ GoClawde will dominate the personal space by being a **life assistant**.
 | Cost | Subscription/data | Free/open source |
 
 ### vs Other Personal AI Apps
-| Feature | Others | GoClawde |
+| Feature | Others | Myrai |
 |---------|--------|----------|
 | Weight | Cloud dependency | Single binary |
 | Offline | Limited | Full functionality |

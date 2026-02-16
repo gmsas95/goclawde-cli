@@ -58,7 +58,7 @@ Moonshot Pricing (Kimi K2.5):
 
 ```bash
 # Process 10,000 items with optimal settings for Tier 3
-goclawde batch -i prompts.jsonl -o results.json \
+myrai batch -i prompts.jsonl -o results.json \
   -c 200 \        # Max concurrency (your limit)
   -t 30           # 30 second timeout
 ```
@@ -74,7 +74,7 @@ split -l 10000 large_file.txt chunk_
 
 # Process each chunk
 for chunk in chunk_*; do
-  goclawde batch -i "$chunk" -o "${chunk}.out.json" -c 200 -t 30
+  myrai batch -i "$chunk" -o "${chunk}.out.json" -c 200 -t 30
 done
 
 # Merge results
@@ -88,7 +88,7 @@ package main
 
 import (
     "context"
-    "github.com/gmsas95/goclawde-cli/internal/batch"
+    "github.com/gmsas95/myrai-cli/internal/batch"
 )
 
 func main() {
@@ -138,7 +138,7 @@ EOF
 python3 generate_prompts.py > articles.jsonl
 
 # Process (takes ~10-12 hours on Tier 3)
-goclawde batch -i articles.jsonl -o articles.json -c 200 -t 120
+myrai batch -i articles.jsonl -o articles.json -c 200 -t 120
 
 # Cost: ~50,000 × 2,000 tokens × $0.003 = ~$300
 ```
@@ -156,7 +156,7 @@ goclawde batch -i articles.jsonl -o articles.json -c 200 -t 120
 # Process in 10 batches of 100K
 for i in {1..10}; do
   echo "Processing batch $i..."
-  goclawde batch -i "tickets_batch_$i.jsonl" \
+  myrai batch -i "tickets_batch_$i.jsonl" \
     -o "classified_$i.json" \
     -c 200 -t 10
 done
@@ -179,7 +179,7 @@ while read file; do
 done > code_reviews.jsonl
 
 # Process with higher timeout for long code
-goclawde batch -i code_reviews.jsonl -o reviews.json -c 100 -t 60
+myrai batch -i code_reviews.jsonl -o reviews.json -c 100 -t 60
 
 # Time: ~20 minutes
 # Cost: ~100K × 3K tokens × $0.003 = ~$900
@@ -196,7 +196,7 @@ goclawde batch -i code_reviews.jsonl -o reviews.json -c 100 -t 60
 cat products.jsonl | jq -r '. | {id, message: "Translate to Chinese: \(.description)"}' > translate.jsonl
 
 # Process
-goclawde batch -i translate.jsonl -o translated.json -c 200 -t 15
+myrai batch -i translate.jsonl -o translated.json -c 200 -t 15
 
 # Time: ~2 hours
 # Cost: ~500K × 600 tokens × $0.003 = ~$900
@@ -218,7 +218,7 @@ split -l 100000 instructions.jsonl chunk_
 # Process with resume capability (run in screen/tmux)
 for chunk in chunk_*; do
   echo "Processing $chunk at $(date)"
-  goclawde batch -i "$chunk" -o "${chunk}.out" -c 200 -t 20
+  myrai batch -i "$chunk" -o "${chunk}.out" -c 200 -t 20
   sleep 5  # Brief pause between chunks
 done
 
@@ -254,7 +254,7 @@ net.ipv4.tcp_max_syn_backlog = 65535
 # Run with optimized settings
 GOMAXPROCS=4 
 GOMEMLIMIT=3GiB
-go run ./cmd/goclawde
+go run ./cmd/myrai
 ```
 
 ---
@@ -278,10 +278,10 @@ done
 
 ```bash
 # Extract performance stats
-grep "rpm_actual" /var/log/goclawde.log | tail -20
+grep "rpm_actual" /var/log/myrai.log | tail -20
 
 # Plot throughput over time
-grep "Batch progress" /var/log/goclawde.log | \
+grep "Batch progress" /var/log/myrai.log | \
   awk '{print $4, $6}' > progress.csv
 ```
 
@@ -292,7 +292,7 @@ grep "Batch progress" /var/log/goclawde.log | \
 ### 1. **Start Small**
 ```bash
 # Test with 100 items first
-goclawde batch -i test_100.jsonl -o test_out.json -c 50
+myrai batch -i test_100.jsonl -o test_out.json -c 50
 ```
 
 ### 2. **Use Chunking for 100K+ Items**
@@ -311,12 +311,12 @@ watch -n 10 'curl -s http://localhost:8080/api/metrics | jq .total_tokens'
 # Retry failed items only
 jq '.items[] | select(.success == false)' output.json > failed.json
 jq '.items[] | select(.success == false) | {id, message: .input}' failed.json > retry.json
-goclawde batch -i retry.json -o retry_out.json -c 200
+myrai batch -i retry.json -o retry_out.json -c 200
 ```
 
 ### 5. **Time Your Jobs**
 - Run during off-peak hours for better latency
-- Schedule with cron: `0 2 * * * goclawde batch ...`
+- Schedule with cron: `0 2 * * * myrai batch ...`
 
 ---
 

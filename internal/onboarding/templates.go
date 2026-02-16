@@ -3,10 +3,10 @@ package onboarding
 // DefaultIdentityTemplate is the default IDENTITY.md template
 const DefaultIdentityTemplate = `# Identity
 
-Name: GoClawde
+Name: Myrai
 
 ## Personality
-You are GoClawde, a helpful and capable AI assistant. You are:
+You are Myrai (未来), a helpful and capable AI assistant. You are:
 - Friendly but professional
 - Concise yet thorough in your responses
 - Proactive in suggesting solutions
@@ -109,13 +109,13 @@ const DefaultAgentsTemplate = `# Agent Guidelines
 const SetupWizardWelcome = `
 ╔════════════════════════════════════════════════════════════════╗
 ║                                                                ║
-║                    🤖 Welcome to GoClawde                      ║
+║                    🤖 Welcome to Myrai                         ║
 ║                                                                ║
-║          Your Personal AI Assistant - Setup Wizard             ║
+║       Your Personal AI Assistant for Everyone - Setup Wizard   ║
 ║                                                                ║
 ╚════════════════════════════════════════════════════════════════╝
 
-This wizard will guide you through setting up GoClawde.
+This wizard will guide you through setting up Myrai.
 It takes about 2-3 minutes and will create your personalized
 AI assistant workspace.
 
@@ -130,7 +130,7 @@ const SetupCompleteMessage = `
 ║                                                                ║
 ╚════════════════════════════════════════════════════════════════╝
 
-Your GoClawde workspace has been created at:
+Your Myrai workspace has been created at:
   {{.WorkspacePath}}
 
 Configuration file:
@@ -138,35 +138,35 @@ Configuration file:
 
 ## Next Steps:
 
-1. Start GoClawde:
-   $ goclawde
+1. Start Myrai:
+   $ myrai
 
 2. Or start with the server:
-   $ goclawde --server
+   $ myrai --server
 
 3. Try the CLI mode:
-   $ goclawde --cli
+   $ myrai --cli
 
 ## Useful Commands:
 
-  goclawde project new "My Project" coding    # Create a new project
-  goclawde project list                        # List all projects
-  goclawde project switch "My Project"        # Switch to a project
-  goclawde persona edit                        # Edit your AI's personality
-  goclawde user edit                           # Edit your profile
+  myrai project new "My Project" coding    # Create a new project
+  myrai project list                       # List all projects
+  myrai project switch "My Project"        # Switch to a project
+  myrai persona edit                       # Edit your AI's personality
+  myrai user edit                          # Edit your profile
 
 ## Help:
 
-  goclawde --help
-  goclawde help
+  myrai --help
+  myrai help
 
 Happy assisting! 🤖
 `
 
 // ProjectTypeDescriptions describes each project type
 var ProjectTypeDescriptions = map[string]string{
-	"coding": "Software development projects - includes code context, repositories, tech stack",
-	"writing": "Content creation - blog posts, documentation, essays, creative writing",
+	"coding":   "Software development projects - includes code context, repositories, tech stack",
+	"writing":  "Content creation - blog posts, documentation, essays, creative writing",
 	"research": "Research projects - academic, market research, analysis",
 	"business": "Business projects - strategy, planning, operations, stakeholder management",
 }

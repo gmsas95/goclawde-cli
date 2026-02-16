@@ -1,4 +1,4 @@
-# Jimmy.ai Usage Guide
+# Myrai Usage Guide
 
 ## Table of Contents
 - [Quick Start](#quick-start)
@@ -111,7 +111,7 @@ git diff | ./jimmy -m "Review these changes"
 ./jimmy --cli
 
 # Output:
-# 🤖 Jimmy.ai - Interactive Mode
+# 🤖 Myrai - Interactive Mode
 # Type 'exit' or 'quit' to exit, 'help' for commands
 #
 # 👤 You: _
@@ -128,25 +128,25 @@ git diff | ./jimmy -m "Review these changes"
 
 ## Tools
 
-Jimmy.ai comes with built-in tools that the AI can use:
+Myrai comes with built-in tools that the AI can use:
 
 ### File Operations
 
 **read_file** - Read file contents
 ```
-Jimmy: Read the contents of /etc/hosts
+Myrai: Read the contents of /etc/hosts
 → Uses read_file tool
 ```
 
 **write_file** - Write to files
 ```
-Jimmy: Create a file hello.txt with "Hello World"
+Myrai: Create a file hello.txt with "Hello World"
 → Uses write_file tool
 ```
 
 **list_dir** - List directory contents
 ```
-Jimmy: What's in the current directory?
+Myrai: What's in the current directory?
 → Uses list_dir tool
 ```
 
@@ -154,7 +154,7 @@ Jimmy: What's in the current directory?
 
 **exec_command** - Execute shell commands (configurable allowlist)
 ```
-Jimmy: Show me the disk usage
+Myrai: Show me the disk usage
 → Uses exec_command with "df -h"
 ```
 
@@ -162,13 +162,13 @@ Jimmy: Show me the disk usage
 
 **web_search** - Search the web (requires search API config)
 ```
-Jimmy: Search for recent Go programming news
+Myrai: Search for recent Go programming news
 → Uses web_search tool
 ```
 
 **fetch_url** - Fetch and extract webpage content
 ```
-Jimmy: Summarize https://example.com/article
+Myrai: Summarize https://example.com/article
 → Uses fetch_url tool
 ```
 
@@ -176,7 +176,7 @@ Jimmy: Summarize https://example.com/article
 
 **thinking** - Chain-of-thought reasoning
 ```
-Jimmy uses thinking tool to show step-by-step reasoning before responding
+Myrai uses thinking tool to show step-by-step reasoning before responding
 ```
 
 ## API Reference
@@ -350,7 +350,7 @@ chmod +x jimmy
 
 ### Data Location
 
-Jimmy.ai stores data in:
+Myrai stores data in:
 - **Linux/macOS**: `~/.local/share/jimmy/`
 - **Windows**: `%APPDATA%/jimmy/`
 - **Custom**: Set `JIMMY_STORAGE_DATA_DIR`
@@ -366,7 +366,7 @@ export JIMMY_LOG_LEVEL=debug
 ### Reset Everything
 
 ```bash
-# Stop Jimmy.ai
+# Stop Myrai
 rm -rf ~/.local/share/jimmy/
 # Restart and reconfigure
 ```

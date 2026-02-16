@@ -8,9 +8,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gmsas95/goclawde-cli/internal/llm"
-	"github.com/gmsas95/goclawde-cli/internal/store"
-	"github.com/gmsas95/goclawde-cli/internal/vector"
+	"github.com/gmsas95/myrai-cli/internal/llm"
+	"github.com/gmsas95/myrai-cli/internal/store"
+	"github.com/gmsas95/myrai-cli/internal/vector"
 	"go.uber.org/zap"
 )
 

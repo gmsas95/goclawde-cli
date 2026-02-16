@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gmsas95/goclawde-cli/internal/skills"
+	"github.com/gmsas95/myrai-cli/internal/skills"
 )
 
 // NotesSkill provides note-taking functionality
@@ -21,7 +21,7 @@ type NotesSkill struct {
 func NewNotesSkill(notesDir string) *NotesSkill {
 	if notesDir == "" {
 		home, _ := os.UserHomeDir()
-		notesDir = filepath.Join(home, ".goclawde", "notes")
+		notesDir = filepath.Join(home, ".myrai", "notes")
 	}
 
 	// Create notes directory if it doesn't exist

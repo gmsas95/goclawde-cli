@@ -15,32 +15,32 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/gmsas95/goclawde-cli/internal/agent"
-	"github.com/gmsas95/goclawde-cli/internal/api"
-	"github.com/gmsas95/goclawde-cli/internal/batch"
-	"github.com/gmsas95/goclawde-cli/internal/channels/discord"
-	"github.com/gmsas95/goclawde-cli/internal/channels/telegram"
-	"github.com/gmsas95/goclawde-cli/internal/config"
-	"github.com/gmsas95/goclawde-cli/internal/cron"
-	"github.com/gmsas95/goclawde-cli/internal/llm"
-	"github.com/gmsas95/goclawde-cli/internal/mcp"
-	"github.com/gmsas95/goclawde-cli/internal/onboarding"
-	"github.com/gmsas95/goclawde-cli/internal/persona"
-	"github.com/gmsas95/goclawde-cli/internal/skills"
-	"github.com/gmsas95/goclawde-cli/internal/skills/agentic"
-	"github.com/gmsas95/goclawde-cli/internal/skills/browser"
-	"github.com/gmsas95/goclawde-cli/internal/skills/documents"
-	"github.com/gmsas95/goclawde-cli/internal/skills/github"
-	"github.com/gmsas95/goclawde-cli/internal/skills/health"
-	"github.com/gmsas95/goclawde-cli/internal/skills/intelligence"
-	"github.com/gmsas95/goclawde-cli/internal/skills/notes"
-	"github.com/gmsas95/goclawde-cli/internal/skills/shopping"
-	"github.com/gmsas95/goclawde-cli/internal/skills/system"
-	"github.com/gmsas95/goclawde-cli/internal/skills/voice"
-	"github.com/gmsas95/goclawde-cli/internal/skills/weather"
-	"github.com/gmsas95/goclawde-cli/internal/store"
-	"github.com/gmsas95/goclawde-cli/internal/vector"
-	"github.com/gmsas95/goclawde-cli/pkg/tools"
+	"github.com/gmsas95/myrai-cli/internal/agent"
+	"github.com/gmsas95/myrai-cli/internal/api"
+	"github.com/gmsas95/myrai-cli/internal/batch"
+	"github.com/gmsas95/myrai-cli/internal/channels/discord"
+	"github.com/gmsas95/myrai-cli/internal/channels/telegram"
+	"github.com/gmsas95/myrai-cli/internal/config"
+	"github.com/gmsas95/myrai-cli/internal/cron"
+	"github.com/gmsas95/myrai-cli/internal/llm"
+	"github.com/gmsas95/myrai-cli/internal/mcp"
+	"github.com/gmsas95/myrai-cli/internal/onboarding"
+	"github.com/gmsas95/myrai-cli/internal/persona"
+	"github.com/gmsas95/myrai-cli/internal/skills"
+	"github.com/gmsas95/myrai-cli/internal/skills/agentic"
+	"github.com/gmsas95/myrai-cli/internal/skills/browser"
+	"github.com/gmsas95/myrai-cli/internal/skills/documents"
+	"github.com/gmsas95/myrai-cli/internal/skills/github"
+	"github.com/gmsas95/myrai-cli/internal/skills/health"
+	"github.com/gmsas95/myrai-cli/internal/skills/intelligence"
+	"github.com/gmsas95/myrai-cli/internal/skills/notes"
+	"github.com/gmsas95/myrai-cli/internal/skills/shopping"
+	"github.com/gmsas95/myrai-cli/internal/skills/system"
+	"github.com/gmsas95/myrai-cli/internal/skills/voice"
+	"github.com/gmsas95/myrai-cli/internal/skills/weather"
+	"github.com/gmsas95/myrai-cli/internal/store"
+	"github.com/gmsas95/myrai-cli/internal/vector"
+	"github.com/gmsas95/myrai-cli/pkg/tools"
 	"go.uber.org/zap"
 )
 
@@ -107,7 +107,7 @@ func main() {
 			printExtendedHelp()
 			return
 		case "version", "--version", "-v":
-			fmt.Printf("GoClawde version %s\n", version)
+			fmt.Printf("Myrai version %s\n", version)
 			return
 		}
 	}
@@ -116,9 +116,9 @@ func main() {
 
 	// Check if onboarding is needed (only in interactive terminal)
 	if onboarding.CheckFirstRun() && !*onboard && term.IsTerminal(int(os.Stdin.Fd())) {
-		fmt.Println("🤖 Welcome to GoClawde!")
+		fmt.Println("🤖 Welcome to Myrai!")
 		fmt.Println()
-		fmt.Println("It looks like this is your first time running GoClawde.")
+		fmt.Println("It looks like this is your first time running Myrai.")
 		fmt.Println("Let's set up your personal AI assistant.")
 		fmt.Println()
 		fmt.Print("Run onboarding wizard? (Y/n): ")
@@ -146,7 +146,7 @@ func main() {
 	}
 	defer logger.Sync()
 
-	logger.Info("Starting GoClawde",
+	logger.Info("Starting Myrai",
 		zap.String("version", version),
 		zap.String("mode", getMode()),
 	)
@@ -227,7 +227,7 @@ func handleProjectCommand(args []string) {
 	switch args[0] {
 	case "new", "create":
 		if len(args) < 3 {
-			fmt.Println("Usage: goclawde project new <name> <type>")
+			fmt.Println("Usage: myrai project new <name> <type>")
 			fmt.Println("Types: coding, writing, research, business")
 			os.Exit(1)
 		}
@@ -254,7 +254,7 @@ func handleProjectCommand(args []string) {
 		}
 
 		if len(projects) == 0 {
-			fmt.Println("No projects found. Create one with: goclawde project new <name> <type>")
+			fmt.Println("No projects found. Create one with: myrai project new <name> <type>")
 			return
 		}
 
@@ -273,7 +273,7 @@ func handleProjectCommand(args []string) {
 
 	case "switch", "load":
 		if len(args) < 2 {
-			fmt.Println("Usage: goclawde project switch <name>")
+			fmt.Println("Usage: myrai project switch <name>")
 			os.Exit(1)
 		}
 		name := args[1]
@@ -286,7 +286,7 @@ func handleProjectCommand(args []string) {
 
 	case "archive":
 		if len(args) < 2 {
-			fmt.Println("Usage: goclawde project archive <name>")
+			fmt.Println("Usage: myrai project archive <name>")
 			os.Exit(1)
 		}
 		name := args[1]
@@ -312,7 +312,7 @@ func handleProjectCommand(args []string) {
 
 	case "delete":
 		if len(args) < 2 {
-			fmt.Println("Usage: goclawde project delete <name>")
+			fmt.Println("Usage: myrai project delete <name>")
 			os.Exit(1)
 		}
 		name := args[1]
@@ -354,7 +354,7 @@ func handlePersonaCommand(args []string) {
 		fmt.Printf("Values: %v\n", identity.Values)
 		fmt.Printf("Expertise: %v\n", identity.Expertise)
 		fmt.Println()
-		fmt.Println("To edit: goclawde persona edit")
+		fmt.Println("To edit: myrai persona edit")
 		return
 	}
 
@@ -381,7 +381,7 @@ func handlePersonaCommand(args []string) {
 		fmt.Println(string(data))
 
 	default:
-		fmt.Println("Usage: goclawde persona [edit|show]")
+		fmt.Println("Usage: myrai persona [edit|show]")
 	}
 }
 
@@ -400,7 +400,7 @@ func handleUserCommand(args []string) {
 		fmt.Printf("Expertise: %v\n", user.Expertise)
 		fmt.Printf("Goals: %v\n", user.Goals)
 		fmt.Println()
-		fmt.Println("To edit: goclawde user edit")
+		fmt.Println("To edit: myrai user edit")
 		return
 	}
 
@@ -426,7 +426,7 @@ func handleUserCommand(args []string) {
 		fmt.Println(string(data))
 
 	default:
-		fmt.Println("Usage: goclawde user [edit|show]")
+		fmt.Println("Usage: myrai user [edit|show]")
 	}
 }
 
@@ -477,7 +477,7 @@ func handleBatchCommand(args []string) {
 
 	if inputFile == "" {
 		fmt.Println("Error: Input file is required")
-		fmt.Println("Usage: goclawde batch -i <input_file> [-o <output_file>]")
+		fmt.Println("Usage: myrai batch -i <input_file> [-o <output_file>]")
 		os.Exit(1)
 	}
 
@@ -591,7 +591,7 @@ func handleBatchCommand(args []string) {
 func printBatchHelp() {
 	fmt.Println("Batch Processing Commands:")
 	fmt.Println()
-	fmt.Println("  goclawde batch -i <input> [-o <output>] [options]")
+	fmt.Println("  myrai batch -i <input> [-o <output>] [options]")
 	fmt.Println()
 	fmt.Println("Options:")
 	fmt.Println("  -i, --input <file>       Input file (txt or jsonl)")
@@ -606,10 +606,10 @@ func printBatchHelp() {
 	fmt.Println("  JSONL file: {\"id\": \"...\", \"message\": \"...\"}")
 	fmt.Println()
 	fmt.Println("Examples:")
-	fmt.Println("  goclawde batch -i prompts.txt")
-	fmt.Println("  goclawde batch -i prompts.jsonl -o results.json")
-	fmt.Println("  goclawde batch -i prompts.txt -c 5 -t 120")
-	fmt.Println("  goclawde batch -i big_file.jsonl --tier 3 -o results.json")
+	fmt.Println("  myrai batch -i prompts.txt")
+	fmt.Println("  myrai batch -i prompts.jsonl -o results.json")
+	fmt.Println("  myrai batch -i prompts.txt -c 5 -t 120")
+	fmt.Println("  myrai batch -i big_file.jsonl --tier 3 -o results.json")
 	fmt.Println()
 	fmt.Println("Moonshot Tier Limits:")
 	fmt.Println("  Tier 3: 200 concurrent, 5000 RPM, 3M TPM")
@@ -630,8 +630,8 @@ func handleConfigCommand(args []string) {
 	switch args[0] {
 	case "get":
 		if len(args) < 2 {
-			fmt.Println("Usage: goclawde config get <key>")
-			fmt.Println("Example: goclawde config get llm.default_provider")
+			fmt.Println("Usage: myrai config get <key>")
+			fmt.Println("Example: myrai config get llm.default_provider")
 			os.Exit(1)
 		}
 		cfg, err := config.Load("", "")
@@ -644,8 +644,8 @@ func handleConfigCommand(args []string) {
 
 	case "set":
 		if len(args) < 3 {
-			fmt.Println("Usage: goclawde config set <key> <value>")
-			fmt.Println("Example: goclawde config set llm.default_provider openai")
+			fmt.Println("Usage: myrai config set <key> <value>")
+			fmt.Println("Example: myrai config set llm.default_provider openai")
 			os.Exit(1)
 		}
 		key := args[1]
@@ -681,11 +681,11 @@ func handleConfigCommand(args []string) {
 func printConfigHelp() {
 	fmt.Println("Config Commands:")
 	fmt.Println()
-	fmt.Println("  goclawde config get <key>        Get configuration value")
-	fmt.Println("  goclawde config set <key> <val>  Set configuration value")
-	fmt.Println("  goclawde config edit             Open config in editor")
-	fmt.Println("  goclawde config path             Show config file path")
-	fmt.Println("  goclawde config show             Display full config")
+	fmt.Println("  myrai config get <key>        Get configuration value")
+	fmt.Println("  myrai config set <key> <val>  Set configuration value")
+	fmt.Println("  myrai config edit             Open config in editor")
+	fmt.Println("  myrai config path             Show config file path")
+	fmt.Println("  myrai config show             Display full config")
 	fmt.Println()
 }
 
@@ -759,7 +759,7 @@ func handleSkillsCommand(args []string) {
 	switch args[0] {
 	case "info":
 		if len(args) < 2 {
-			fmt.Println("Usage: goclawde skills info <skill-name>")
+			fmt.Println("Usage: myrai skills info <skill-name>")
 			os.Exit(1)
 		}
 		skillName := args[1]
@@ -777,7 +777,7 @@ func handleSkillsCommand(args []string) {
 		}
 
 	default:
-		fmt.Println("Usage: goclawde skills [list|info <skill>]")
+		fmt.Println("Usage: myrai skills [list|info <skill>]")
 	}
 }
 
@@ -810,19 +810,19 @@ func handleChannelsCommand(args []string) {
 
 	case "enable":
 		if len(args) < 2 {
-			fmt.Println("Usage: goclawde channels enable <telegram|discord>")
+			fmt.Println("Usage: myrai channels enable <telegram|discord>")
 			os.Exit(1)
 		}
 		fmt.Printf("To enable %s, edit config.yaml and restart the server:\n", args[1])
-		fmt.Printf("  goclawde config edit\n")
+		fmt.Printf("  myrai config edit\n")
 
 	case "disable":
 		if len(args) < 2 {
-			fmt.Println("Usage: goclawde channels disable <telegram|discord>")
+			fmt.Println("Usage: myrai channels disable <telegram|discord>")
 			os.Exit(1)
 		}
 		fmt.Printf("To disable %s, edit config.yaml and restart the server:\n", args[1])
-		fmt.Printf("  goclawde config edit\n")
+		fmt.Printf("  myrai config edit\n")
 
 	default:
 		printChannelsHelp()
@@ -832,9 +832,9 @@ func handleChannelsCommand(args []string) {
 func printChannelsHelp() {
 	fmt.Println("Channel Commands:")
 	fmt.Println()
-	fmt.Println("  goclawde channels status           Show channel status")
-	fmt.Println("  goclawde channels enable <name>    Enable a channel")
-	fmt.Println("  goclawde channels disable <name>   Disable a channel")
+	fmt.Println("  myrai channels status           Show channel status")
+	fmt.Println("  myrai channels enable <name>    Enable a channel")
+	fmt.Println("  myrai channels disable <name>   Disable a channel")
 	fmt.Println()
 	fmt.Println("Available channels: telegram, discord")
 }
@@ -868,14 +868,14 @@ func handleGatewayCommand(args []string) {
 
 	switch args[0] {
 	case "run", "start":
-		fmt.Println("Starting GoClawde server...")
+		fmt.Println("Starting Myrai server...")
 		fmt.Printf("URL: http://localhost:%d\n", cfg.Server.Port)
 		// Re-run main in server mode
 		*serverMode = true
 		// Need to reinitialize everything
 		logger, _ := zap.NewDevelopment()
 		defer logger.Sync()
-		logger.Info("Starting GoClawde server", zap.String("version", version))
+		logger.Info("Starting Myrai server", zap.String("version", version))
 		
 		st, _ := store.New(cfg)
 		defer st.Close()
@@ -897,7 +897,7 @@ func handleGatewayCommand(args []string) {
 
 	case "stop":
 		fmt.Println("To stop the server, press Ctrl+C in the terminal where it's running")
-		fmt.Println("Or use: pkill -f goclawde")
+		fmt.Println("Or use: pkill -f myrai")
 
 	case "status":
 		fmt.Println("Gateway Status:")
@@ -908,7 +908,7 @@ func handleGatewayCommand(args []string) {
 
 	case "logs":
 		fmt.Println("Logs are written to stdout/stderr")
-		fmt.Println("To save logs to a file: goclawde gateway run > goclawde.log 2>&1")
+		fmt.Println("To save logs to a file: myrai gateway run > myrai.log 2>&1")
 
 	default:
 		printGatewayHelp()
@@ -918,10 +918,10 @@ func handleGatewayCommand(args []string) {
 func printGatewayHelp() {
 	fmt.Println("Gateway Commands:")
 	fmt.Println()
-	fmt.Println("  goclawde gateway run      Start the server (foreground)")
-	fmt.Println("  goclawde gateway status   Show gateway configuration")
-	fmt.Println("  goclawde gateway stop     Show how to stop the server")
-	fmt.Println("  goclawde gateway logs     Show logging information")
+	fmt.Println("  myrai gateway run      Start the server (foreground)")
+	fmt.Println("  myrai gateway status   Show gateway configuration")
+	fmt.Println("  myrai gateway stop     Show how to stop the server")
+	fmt.Println("  myrai gateway logs     Show logging information")
 	fmt.Println()
 	fmt.Println("Aliases: start = run")
 }
@@ -934,7 +934,7 @@ func handleStatusCommand() {
 		os.Exit(1)
 	}
 
-	fmt.Println("GoClawde Status")
+	fmt.Println("Myrai Status")
 	fmt.Println("===============")
 	fmt.Println()
 	fmt.Printf("Version: %s\n", version)
@@ -952,12 +952,12 @@ func handleStatusCommand() {
 	fmt.Println("LLM Provider:")
 	fmt.Printf("  Default: %s\n", cfg.LLM.DefaultProvider)
 	fmt.Println()
-	fmt.Println("Run 'goclawde doctor' for diagnostics")
+	fmt.Println("Run 'myrai doctor' for diagnostics")
 }
 
 // handleDoctorCommand runs diagnostics
 func handleDoctorCommand() {
-	fmt.Println("GoClawde Diagnostics")
+	fmt.Println("Myrai Diagnostics")
 	fmt.Println("====================")
 	fmt.Println()
 
@@ -984,7 +984,7 @@ func handleDoctorCommand() {
 	// Check LLM provider
 	if cfg.LLM.DefaultProvider == "" {
 		fmt.Println("⚠️  LLM Provider: Not configured")
-		fmt.Println("   Run: goclawde onboard")
+		fmt.Println("   Run: myrai onboard")
 		issues++
 	} else {
 		fmt.Printf("✅ LLM Provider: %s\n", cfg.LLM.DefaultProvider)
@@ -1016,7 +1016,7 @@ func handleDoctorCommand() {
 	if issues == 0 {
 		fmt.Println("✅ All checks passed!")
 	} else {
-		fmt.Printf("⚠️  Found %d issue(s). Run 'goclawde onboard' to fix configuration.\n", issues)
+		fmt.Printf("⚠️  Found %d issue(s). Run 'myrai onboard' to fix configuration.\n", issues)
 	}
 }
 
@@ -1288,7 +1288,7 @@ func (app *App) runCLI() {
 }
 
 func runOneShot(agentInstance *agent.Agent, msg string) {
-	fmt.Println("🤖 GoClawde is thinking...")
+	fmt.Println("🤖 Myrai is thinking...")
 	fmt.Println()
 
 	ctx := context.Background()
@@ -1307,7 +1307,7 @@ func runOneShot(agentInstance *agent.Agent, msg string) {
 }
 
 func runInteractive(agentInstance *agent.Agent) {
-	fmt.Println("🤖 GoClawde - Interactive Mode")
+	fmt.Println("🤖 Myrai - Interactive Mode")
 	fmt.Println("Type 'exit' or 'quit' to exit, 'help' for commands")
 	fmt.Println()
 
@@ -1347,7 +1347,7 @@ func runInteractive(agentInstance *agent.Agent) {
 
 		// Send message
 		fmt.Println()
-		fmt.Print("🤖 GoClawde: ")
+		fmt.Print("🤖 Myrai: ")
 
 		var fullResponse strings.Builder
 		start := time.Now()
@@ -1384,55 +1384,55 @@ func printHelp() {
 }
 
 func printExtendedHelp() {
-	fmt.Println("GoClawde - Your Personal AI Assistant")
+	fmt.Println("Myrai - Your Personal AI Assistant")
 	fmt.Println()
 	fmt.Println("Usage:")
-	fmt.Println("  goclawde                          Run in server mode (default)")
-	fmt.Println("  goclawde --server                 Run in server mode")
-	fmt.Println("  goclawde --cli                    Run interactive CLI mode")
-	fmt.Println("  goclawde -m 'message'             Send one-shot message")
+	fmt.Println("  myrai                          Run in server mode (default)")
+	fmt.Println("  myrai --server                 Run in server mode")
+	fmt.Println("  myrai --cli                    Run interactive CLI mode")
+	fmt.Println("  myrai -m 'message'             Send one-shot message")
 	fmt.Println()
 	fmt.Println("Setup & Configuration:")
-	fmt.Println("  goclawde onboard                  Run setup wizard")
-	fmt.Println("  goclawde config get <key>         Get configuration value")
-	fmt.Println("  goclawde config set <key> <val>   Set configuration value")
-	fmt.Println("  goclawde config edit              Edit config in $EDITOR")
-	fmt.Println("  goclawde config path              Show config file path")
+	fmt.Println("  myrai onboard                  Run setup wizard")
+	fmt.Println("  myrai config get <key>         Get configuration value")
+	fmt.Println("  myrai config set <key> <val>   Set configuration value")
+	fmt.Println("  myrai config edit              Edit config in $EDITOR")
+	fmt.Println("  myrai config path              Show config file path")
 	fmt.Println()
 	fmt.Println("Server Management:")
-	fmt.Println("  goclawde gateway run              Start server (foreground)")
-	fmt.Println("  goclawde gateway status           Show gateway configuration")
-	fmt.Println("  goclawde channels status          Show channel status")
+	fmt.Println("  myrai gateway run              Start server (foreground)")
+	fmt.Println("  myrai gateway status           Show gateway configuration")
+	fmt.Println("  myrai channels status          Show channel status")
 	fmt.Println()
 	fmt.Println("System & Diagnostics:")
-	fmt.Println("  goclawde status                   Show current status")
-	fmt.Println("  goclawde doctor                   Run diagnostics")
-	fmt.Println("  goclawde version                  Show version")
+	fmt.Println("  myrai status                   Show current status")
+	fmt.Println("  myrai doctor                   Run diagnostics")
+	fmt.Println("  myrai version                  Show version")
 	fmt.Println()
 	fmt.Println("Skills:")
-	fmt.Println("  goclawde skills                   List available skills")
-	fmt.Println("  goclawde skills info <skill>      Show skill details")
+	fmt.Println("  myrai skills                   List available skills")
+	fmt.Println("  myrai skills info <skill>      Show skill details")
 	fmt.Println()
 	fmt.Println("Project Management:")
-	fmt.Println("  goclawde project new <name> <type>   Create new project")
-	fmt.Println("  goclawde project list                List all projects")
-	fmt.Println("  goclawde project switch <name>       Switch to project")
-	fmt.Println("  goclawde project archive <name>      Archive a project")
-	fmt.Println("  goclawde project delete <name>       Delete a project")
+	fmt.Println("  myrai project new <name> <type>   Create new project")
+	fmt.Println("  myrai project list                List all projects")
+	fmt.Println("  myrai project switch <name>       Switch to project")
+	fmt.Println("  myrai project archive <name>      Archive a project")
+	fmt.Println("  myrai project delete <name>       Delete a project")
 	fmt.Println()
 	fmt.Println("Batch Processing:")
-	fmt.Println("  goclawde batch -i <file>             Process prompts from file")
-	fmt.Println("  goclawde batch -i in.txt -o out.json Process and save results")
+	fmt.Println("  myrai batch -i <file>             Process prompts from file")
+	fmt.Println("  myrai batch -i in.txt -o out.json Process and save results")
 	fmt.Println()
 	fmt.Println("Persona Commands:")
-	fmt.Println("  goclawde persona            Show current AI identity")
-	fmt.Println("  goclawde persona edit       Edit AI identity")
-	fmt.Println("  goclawde persona show       Show full identity file")
+	fmt.Println("  myrai persona            Show current AI identity")
+	fmt.Println("  myrai persona edit       Edit AI identity")
+	fmt.Println("  myrai persona show       Show full identity file")
 	fmt.Println()
 	fmt.Println("User Commands:")
-	fmt.Println("  goclawde user               Show your profile")
-	fmt.Println("  goclawde user edit          Edit your profile")
-	fmt.Println("  goclawde user show          Show full profile file")
+	fmt.Println("  myrai user               Show your profile")
+	fmt.Println("  myrai user edit          Edit your profile")
+	fmt.Println("  myrai user show          Show full profile file")
 	fmt.Println()
 	fmt.Println("Flags:")
 	fmt.Println("  --config <path>          Path to config file")
@@ -1441,20 +1441,20 @@ func printExtendedHelp() {
 	fmt.Println("  --version, -v            Show version")
 	fmt.Println()
 	fmt.Println("Examples:")
-	fmt.Println("  goclawde gateway run &                          # Start server in background")
-	fmt.Println("  goclawde -m \"What's the weather in KL?\"       # One-shot query")
-	fmt.Println("  goclawde doctor                                 # Check setup")
+	fmt.Println("  myrai gateway run &                          # Start server in background")
+	fmt.Println("  myrai -m \"What's the weather in KL?\"       # One-shot query")
+	fmt.Println("  myrai doctor                                 # Check setup")
 	fmt.Println()
 }
 
 func printProjectHelp() {
 	fmt.Println("Project Management Commands:")
 	fmt.Println()
-	fmt.Println("  goclawde project new <name> <type>    Create new project")
-	fmt.Println("  goclawde project list                 List all projects")
-	fmt.Println("  goclawde project switch <name>        Switch to project")
-	fmt.Println("  goclawde project archive <name>       Archive a project")
-	fmt.Println("  goclawde project delete <name>        Delete a project")
+	fmt.Println("  myrai project new <name> <type>    Create new project")
+	fmt.Println("  myrai project list                 List all projects")
+	fmt.Println("  myrai project switch <name>        Switch to project")
+	fmt.Println("  myrai project archive <name>       Archive a project")
+	fmt.Println("  myrai project delete <name>        Delete a project")
 	fmt.Println()
 	fmt.Println("Project Types:")
 	fmt.Println("  coding     - Software development")

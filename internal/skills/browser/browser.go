@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/chromedp/chromedp"
-	"github.com/gmsas95/goclawde-cli/internal/skills"
+	"github.com/gmsas95/myrai-cli/internal/skills"
 )
 
 // BrowserSkill provides browser automation capabilities

@@ -206,7 +206,7 @@ flutter_app/
 └──────────────────┬──────────────────────┘
                    │ HTTP/WebSocket
 ┌──────────────────▼──────────────────────┐
-│         GoClawde Backend (Go)           │
+│         Myrai Backend (Go)           │
 │  ┌─────────┐ ┌─────────┐ ┌──────────┐  │
 │  │  Agent  │ │  Skills │ │  Memory  │  │
 │  │  Loop   │ │  System │ │  Graph   │  │
@@ -340,7 +340,7 @@ package voice
 ## The Pitch (Revised)
 
 **Before (Dev-focused)**:
-> "GoClawde is a lightweight AI coding assistant"
+> "Myrai is a lightweight AI coding assistant"
 
 **After (Life-focused)**:
 > "Your personal AI assistant that remembers everything, 

@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gmsas95/goclawde-cli/internal/llm"
-	"github.com/gmsas95/goclawde-cli/internal/persona"
-	"github.com/gmsas95/goclawde-cli/internal/skills"
-	"github.com/gmsas95/goclawde-cli/internal/store"
-	"github.com/gmsas95/goclawde-cli/pkg/tools"
+	"github.com/gmsas95/myrai-cli/internal/llm"
+	"github.com/gmsas95/myrai-cli/internal/persona"
+	"github.com/gmsas95/myrai-cli/internal/skills"
+	"github.com/gmsas95/myrai-cli/internal/store"
+	"github.com/gmsas95/myrai-cli/pkg/tools"
 	"go.uber.org/zap"
 )
 
