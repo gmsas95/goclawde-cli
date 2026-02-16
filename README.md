@@ -190,35 +190,37 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ### Areas We Need Help
 
-- 🎙️ Voice processing (whisper.cpp integration)
-- 👁️ Vision models (Moondream/LLaVA)
-- 📱 Mobile app (Flutter)
-- 🧠 Knowledge graph (Neo4j or custom)
-- 🔌 Connectors (Calendar, Email, Smart Home)
+- 📱 Mobile app (Flutter) - In progress
+- 💰 Expense tracking with receipt OCR
+- 🛒 Shopping lists with location reminders
+- 📧 Email integration (Gmail, Outlook)
+- 🏠 Smart home connectors (Home Assistant)
 
 ---
 
 ## 🗺️ Roadmap
 
-### Phase 1: Foundation (Now)
-- [ ] Voice interface (STT/TTS)
-- [ ] Document processing (PDF/OCR)
-- [ ] Basic task system
-- [ ] Mobile app MVP
+### Phase 1: Foundation ✅ (Complete)
+- [x] Voice interface (STT/TTS) - whisper.cpp + piper
+- [x] Document processing (PDF/OCR) - with vision AI
+- [x] Task & reminder system
+- [x] Agent loop with tool calling
+- [ ] Mobile app MVP - In progress
 
-### Phase 2: Memory (Q2)
-- [ ] Personal knowledge graph
-- [ ] Entity extraction
-- [ ] Long-term memory
-- [ ] Semantic search
+### Phase 2: Memory ✅ (Complete)
+- [x] Personal knowledge graph
+- [x] Entity extraction from conversations
+- [x] Long-term memory with compression
+- [x] Semantic search & Q&A
 
-### Phase 3: Life Tools (Q3)
-- [ ] Calendar integration
-- [ ] Expense tracking
-- [ ] Shopping lists
+### Phase 3: Life Tools 🚧 (In Progress)
+- [x] Calendar integration (Google Calendar)
+- [x] Natural language event parsing
+- [ ] Expense tracking with receipt OCR
+- [ ] Shopping lists with smart reminders
 - [ ] Health tracking
 
-### Phase 4: Intelligence (Q4)
+### Phase 4: Intelligence (Planned)
 - [ ] Proactive suggestions
 - [ ] Pattern recognition
 - [ ] Automated workflows
