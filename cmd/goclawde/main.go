@@ -31,7 +31,10 @@ import (
 	"github.com/gmsas95/goclawde-cli/internal/skills/browser"
 	"github.com/gmsas95/goclawde-cli/internal/skills/documents"
 	"github.com/gmsas95/goclawde-cli/internal/skills/github"
+	"github.com/gmsas95/goclawde-cli/internal/skills/health"
+	"github.com/gmsas95/goclawde-cli/internal/skills/intelligence"
 	"github.com/gmsas95/goclawde-cli/internal/skills/notes"
+	"github.com/gmsas95/goclawde-cli/internal/skills/shopping"
 	"github.com/gmsas95/goclawde-cli/internal/skills/system"
 	"github.com/gmsas95/goclawde-cli/internal/skills/voice"
 	"github.com/gmsas95/goclawde-cli/internal/skills/weather"
@@ -173,7 +176,7 @@ func main() {
 	skillsRegistry := skills.NewRegistry(st)
 
 	// Register built-in skills
-	registerSkills(cfg, skillsRegistry)
+	registerSkills(cfg, st, skillsRegistry, logger)
 
 	// Create app
 	app := &App{
@@ -513,7 +516,7 @@ func handleBatchCommand(args []string) {
 	llmClient := llm.NewClient(provider)
 
 	skillsRegistry := skills.NewRegistry(st)
-	registerSkills(cfg, skillsRegistry)
+	registerSkills(cfg, st, skillsRegistry, logger)
 
 	agentInstance := agent.New(llmClient, nil, st, logger, pm)
 	agentInstance.SetSkillsRegistry(skillsRegistry)
@@ -734,7 +737,7 @@ func handleSkillsCommand(args []string) {
 	defer st.Close()
 
 	registry := skills.NewRegistry(st)
-	registerSkills(cfg, registry)
+	registerSkills(cfg, st, registry, logger)
 
 	if len(args) == 0 || args[0] == "list" {
 		skillsList := registry.ListSkills()
@@ -881,7 +884,7 @@ func handleGatewayCommand(args []string) {
 		pm, _ := persona.NewPersonaManager(workspacePath, logger)
 		
 		skillsRegistry := skills.NewRegistry(st)
-		registerSkills(cfg, skillsRegistry)
+		registerSkills(cfg, st, skillsRegistry, logger)
 		
 		app := &App{
 			config:         cfg,
@@ -1024,7 +1027,7 @@ func getMode() string {
 	return "server"
 }
 
-func registerSkills(cfg *config.Config, registry *skills.Registry) {
+func registerSkills(cfg *config.Config, st *store.Store, registry *skills.Registry, logger *zap.Logger) {
 	// System skill
 	systemSkill := system.NewSystemSkill(cfg.Tools.AllowedCmds)
 	registry.Register(systemSkill)
@@ -1065,6 +1068,30 @@ func registerSkills(cfg *config.Config, registry *skills.Registry) {
 	}
 	docsSkill := documents.NewDocumentSkill(docsConfig)
 	registry.Register(docsSkill)
+
+	// Shopping skill - Shopping list management
+	shoppingSkill, err := shopping.NewShoppingSkill(st.DB(), logger)
+	if err != nil {
+		logger.Error("Failed to create shopping skill", zap.Error(err))
+	} else {
+		registry.Register(shoppingSkill)
+	}
+
+	// Health skill - Health tracking with medication reminders
+	healthSkill, err := health.NewHealthSkill(st.DB(), logger)
+	if err != nil {
+		logger.Error("Failed to create health skill", zap.Error(err))
+	} else {
+		registry.Register(healthSkill)
+	}
+
+	// Intelligence skill - AI-powered insights and automation
+	intelSkill, err := intelligence.NewIntelligenceSkill(st.DB(), logger)
+	if err != nil {
+		logger.Error("Failed to create intelligence skill", zap.Error(err))
+	} else {
+		registry.Register(intelSkill)
+	}
 }
 
 func (app *App) runServer() {
