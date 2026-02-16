@@ -1,4 +1,4 @@
-.PHONY: build build-web run clean test test-unit test-smoke test-integration test-all docker install install-local release
+.PHONY: build build-web run clean test test-unit test-smoke test-integration test-all docker install install-local release release-gh publish-npm
 
 VERSION ?= dev
 BINARY_NAME = myrai
@@ -88,7 +88,26 @@ release: clean
 	GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.version=$(VERSION) -s -w" -o $(BUILD_DIR)/release/$(BINARY_NAME)-darwin-arm64 ./cmd/myrai
 	# Windows AMD64
 	GOOS=windows GOARCH=amd64 go build -ldflags "-X main.version=$(VERSION) -s -w" -o $(BUILD_DIR)/release/$(BINARY_NAME)-windows-amd64.exe ./cmd/myrai
+	# Windows ARM64
+	GOOS=windows GOARCH=arm64 go build -ldflags "-X main.version=$(VERSION) -s -w" -o $(BUILD_DIR)/release/$(BINARY_NAME)-windows-arm64.exe ./cmd/myrai
 	@echo "Release binaries built in $(BUILD_DIR)/release/"
+	@ls -la $(BUILD_DIR)/release/
+
+# Create GitHub release with binaries
+release-gh: release
+	@if command -v gh >/dev/null 2>&1; then \
+		echo "Creating GitHub release v$(VERSION)..."; \
+		gh release create v$(VERSION) $(BUILD_DIR)/release/* --title "v$(VERSION)" --notes "Release v$(VERSION)"; \
+	else \
+		echo "gh CLI not found. Install from: https://cli.github.com/"; \
+		exit 1; \
+	fi
+
+# Publish npm package
+publish-npm:
+	@echo "Publishing to npm..."
+	cd npm && npm publish --access public
+	@echo "Published to npm!"
 
 # Install locally to user's bin directory (no sudo needed)
 install-local: build

@@ -1,0 +1,52 @@
+{
+  "name": "myrai",
+  "version": "0.1.0",
+  "description": "Myrai - Your Personal AI Assistant",
+  "main": "index.js",
+  "bin": {
+    "myrai": "./bin/myrai.js"
+  },
+  "scripts": {
+    "postinstall": "node ./scripts/install.js",
+    "preuninstall": "node ./scripts/uninstall.js"
+  },
+  "files": [
+    "bin/",
+    "scripts/",
+    "index.js",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gmsas95/goclawde-cli.git"
+  },
+  "keywords": [
+    "ai",
+    "assistant",
+    "llm",
+    "chatbot",
+    "openai",
+    "anthropic",
+    "claude",
+    "gpt",
+    "cli"
+  ],
+  "author": "Myrai",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/gmsas95/goclawde-cli/issues"
+  },
+  "homepage": "https://github.com/gmsas95/goclawde-cli#readme",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
+}

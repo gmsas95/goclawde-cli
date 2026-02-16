@@ -68,16 +68,44 @@ Myrai: "You met Sarah at Blue Bottle on Tuesday."
 
 ### Installation
 
+**curl (Recommended)**
 ```bash
-# Download binary (macOS/Linux)
-curl -L https://myr.ai/download/latest -o myrai
-chmod +x myrai
+# One-line install
+curl -fsSL https://raw.githubusercontent.com/gmsas95/goclawde-cli/main/install.sh | bash
 
-# Or install via Homebrew
-brew install myrai
+# Or with options
+curl -fsSL https://raw.githubusercontent.com/gmsas95/goclawde-cli/main/install.sh | bash -s -- --version 0.1.0
+```
 
-# Run
-./myrai server
+**npm**
+```bash
+# Global install
+npm install -g myrai
+
+# Or use with npx (no install)
+npx myrai --help
+```
+
+**Manual**
+```bash
+# Download from GitHub releases
+# https://github.com/gmsas95/goclawde-cli/releases
+
+# Or build from source
+git clone https://github.com/gmsas95/goclawde-cli.git
+cd goclawde-cli
+make build
+sudo make install
+```
+
+### First Run
+
+```bash
+# Run the setup wizard
+myrai onboard
+
+# Start the server
+myrai server
 ```
 
 ### Docker
