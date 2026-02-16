@@ -22,6 +22,7 @@ All in a **single 50MB binary** with **zero dependencies**.
 | **Binary Size** | ~50MB | ~10MB | ~2GB (Node) |
 | **Memory** | ~25MB | <10MB | >1GB |
 | **Startup** | 50ms | 1s | Minutes |
+| **Multi-LLM Support** | ✅ Kimi, OpenAI, Anthropic, Ollama | ❌ | ⚠️ Limited |
 | **Persona System** | ✅ Markdown-based + Caching | ❌ | ✅ SOUL.md, IDENTITY.md |
 | **Time Awareness** | ✅ Built-in | ❌ | ❌ |
 | **Project Context** | ✅ LRU Management | ❌ | ⚠️ Sessions |
@@ -31,6 +32,7 @@ All in a **single 50MB binary** with **zero dependencies**.
 | **Cron Jobs** | ✅ Scheduled automation | ❌ | ❌ |
 | **MCP Server** | ✅ SSE streaming | ❌ | ❌ |
 | **Batch Processing** | ✅ Tier 3 optimized (200 concurrent) | ❌ | ❌ |
+| **CLI Commands** | ✅ OpenClaw-style (status, doctor, skills) | ❌ | ✅ |
 
 ---
 
@@ -58,11 +60,11 @@ cd goclawde-cli
 # Build
 make build
 
-# Or with Go directly
-go build -o bin/goclawde ./cmd/goclawde
+# Install locally (~/.local/bin, no sudo needed)
+make install-local
 
-# Install
-sudo cp bin/goclawde /usr/local/bin/
+# Or install system-wide (requires sudo)
+sudo make install
 ```
 
 ### Option 3: Docker
@@ -92,13 +94,34 @@ Let's set up your personal AI assistant.
 Run onboarding wizard? (Y/n): Y
 ```
 
-The wizard will:
-1. Create your workspace (`~/.goclawde/`)
-2. Configure API keys
-3. Set up your AI persona
-4. Create your user profile
+The wizard will guide you through:
+1. **Workspace setup** - Create your data directory (`~/.goclawde/`)
+2. **User profile** - Your preferences and communication style
+3. **LLM Provider selection** - Choose from Kimi, OpenAI, Anthropic, or Ollama
+4. **API configuration** - Enter your API key for the selected provider
+5. **Integrations** - Optional Telegram/Discord setup
+6. **Persona setup** - AI personality and behavior
 
-### 2. Interactive CLI Mode
+#### Supported LLM Providers
+
+| Provider | Setup | Models |
+|----------|-------|--------|
+| **Kimi (Moonshot)** | API key from [platform.moonshot.cn](https://platform.moonshot.cn) | kimi-k2.5, kimi-k2.5-long |
+| **OpenAI** | API key from [platform.openai.com](https://platform.openai.com) | gpt-4o, gpt-4o-mini, gpt-4-turbo |
+| **Anthropic** | API key from [console.anthropic.com](https://console.anthropic.com) | claude-3-5-sonnet, claude-3-opus, claude-3-haiku |
+| **Ollama** | Local installation, no API key needed | llama3.2, llama3.1, mistral, codellama |
+
+### 2. Check Status & Diagnostics
+
+```bash
+# Quick status overview
+goclawde status
+
+# Run diagnostics
+goclawde doctor
+```
+
+### 3. Interactive CLI Mode
 
 ```bash
 $ goclawde --cli
@@ -110,7 +133,7 @@ Type 'exit' or 'quit' to exit, 'help' for commands
 🤖 GoClawde: Good evening! How can I help you today?
 ```
 
-### 3. One-shot Mode
+### 4. One-shot Mode
 
 ```bash
 $ goclawde -m "Explain Go channels in simple terms"
@@ -121,12 +144,75 @@ Go channels are like pipes that let goroutines (lightweight threads)
 communicate and synchronize with each other...
 ```
 
-### 4. Web Interface
+### 5. Start Server
 
 ```bash
-$ goclawde --server
+# Start server in foreground
+goclawde gateway run
 
-🌐 Server started at http://localhost:8080
+# Or run in background
+goclawde gateway run &
+
+# Access web UI at http://localhost:8080
+```
+
+---
+
+## 🛠️ CLI Commands
+
+GoClawde provides an OpenClaw-style command interface:
+
+### Setup & Configuration
+```bash
+goclawde onboard                  # Run setup wizard
+goclawde config get <key>         # Get config value (e.g., llm.default_provider)
+goclawde config set <key> <val>   # Set configuration value
+goclawde config edit              # Open config in $EDITOR
+goclawde config path              # Show config file location
+goclawde config show              # Display full config
+```
+
+### Server Management
+```bash
+goclawde gateway run              # Start server (foreground)
+goclawde gateway status           # Show gateway configuration
+goclawde channels status          # Show Telegram/Discord status
+```
+
+### System & Diagnostics
+```bash
+goclawde status                   # Show current status
+goclawde doctor                   # Run diagnostics
+goclawde version                  # Show version
+```
+
+### Skills
+```bash
+goclawde skills                   # List available skills
+goclawde skills info <skill>      # Show skill details (e.g., goclawde skills info weather)
+```
+
+### Project Management
+```bash
+goclawde project new <name> <type>   # Create new project (coding, writing, research, business)
+goclawde project list                # List all projects
+goclawde project switch <name>       # Switch to project
+goclawde project archive <name>      # Archive a project
+goclawde project delete <name>       # Delete a project
+```
+
+### Batch Processing
+```bash
+goclawde batch -i <file>             # Process prompts from file
+goclawde batch -i in.txt -o out.json # Process and save results
+```
+
+### Persona & User
+```bash
+goclawde persona            # Show current AI identity
+goclawde persona edit       # Edit AI identity
+goclawde user               # Show your profile
+goclawde user edit          # Edit your profile
 ```
 
 ---
@@ -141,6 +227,8 @@ Your workspace (`~/.goclawde/`) contains:
 
 ```
 ~/.goclawde/
+├── goclawde.yaml        # Main configuration
+├── .env                 # Environment variables
 ├── IDENTITY.md          # AI personality, voice, values
 ├── USER.md              # Your preferences and profile
 ├── TOOLS.md             # Tool descriptions
@@ -323,11 +411,37 @@ storage:
   data_dir: "~/.goclawde"
 ```
 
+### Multi-Provider Configuration
+
+```yaml
+llm:
+  default_provider: openai
+  providers:
+    openai:
+      api_key: "sk-..."
+      model: "gpt-4o"
+      base_url: "https://api.openai.com/v1"
+    anthropic:
+      api_key: "sk-ant-..."
+      model: "claude-3-5-sonnet-20241022"
+      base_url: "https://api.anthropic.com/v1"
+    ollama:
+      api_key: "ollama"
+      model: "llama3.2"
+      base_url: "http://localhost:11434/v1"
+```
+
 ### Environment Variables
 
 ```bash
+# Provider-specific API keys
 export GOCLAWDE_LLM_PROVIDERS_KIMI_API_KEY="sk-..."
+export GOCLAWDE_LLM_PROVIDERS_OPENAI_API_KEY="sk-..."
+export GOCLAWDE_LLM_PROVIDERS_ANTHROPIC_API_KEY="sk-ant-..."
+
+# Channel tokens
 export TELEGRAM_BOT_TOKEN="..."
+export DISCORD_BOT_TOKEN="..."
 ```
 
 ### Full Configuration
@@ -343,10 +457,22 @@ Built-in skills:
 | Skill | Description | Example |
 |-------|-------------|---------|
 | `github` | Repository operations | "Search for Go web frameworks" |
-| `weather` | Weather forecasts | "What's the weather in Tokyo?" |
+| `weather` | Weather forecasts (wttr.in + Open-Meteo) | "What's the weather in Tokyo?" |
 | `notes` | Note management | "Take a note: call mom tomorrow" |
 | `vision` | Image analysis | "Describe this image" |
 | `system` | File operations, shell commands | Built-in |
+| `browser` | Web automation (requires Chrome) | "Navigate to example.com" |
+
+### Weather Skill
+
+The weather skill uses multiple sources for reliability:
+- **Primary**: wttr.in (simple text format)
+- **Fallback**: Open-Meteo API (JSON, no API key needed)
+
+```bash
+# Check weather
+goclawde -m "What's the weather in Kuala Lumpur?"
+```
 
 ---
 
@@ -375,7 +501,7 @@ Optimized for speed:
 
 ## 🗺️ Roadmap
 
-- ✅ **v0.3** - Discord bot, MCP server, cron jobs, vector search, batch processing
+- ✅ **v0.3** - Discord bot, MCP server, cron jobs, vector search, batch processing, multi-LLM support
 - 🔄 **v0.4** - Slack integration, web browsing skill, memory visualization
 - 🔄 **v0.5** - Multi-LLM routing, skill marketplace, agent workflows
 - 🔄 **v1.0** - Mobile apps, team collaboration, enterprise features
@@ -397,13 +523,15 @@ GoClawde (~50MB single binary)
 ├── Tool System (file, shell, web)
 ├── Skills Registry (extensible)
 │   ├── GitHub
-│   ├── Weather
+│   ├── Weather (multi-source)
 │   ├── Notes
+│   ├── Browser (ChromeDP)
 │   └── Vision (image analysis)
 ├── Cron Runner (scheduled jobs)
 ├── Vector Search (semantic memory)
 ├── Batch Processor (high-throughput)
-└── Multi-Channel (Discord, Telegram, Web)
+├── Multi-Channel (Discord, Telegram, Web)
+└── Multi-LLM (Kimi, OpenAI, Anthropic, Ollama)
 ```
 
 ---
@@ -424,7 +552,7 @@ make build
 make test
 
 # Run
-./bin/goclawde --help
+goclawde --help
 ```
 
 ---
