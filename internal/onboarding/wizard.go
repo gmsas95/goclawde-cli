@@ -26,6 +26,7 @@ type WizardConfig struct {
 	CommunicationStyle string
 	Expertise          []string
 	Goals              []string
+	LLMProvider        string
 	APIKey             string
 	DefaultModel       string
 	EnableTelegram     bool
@@ -193,8 +194,58 @@ func (w *Wizard) setupAIConfiguration() error {
 	fmt.Println("╚════════════════════════════════════════════════════════════════╝")
 	fmt.Println()
 
-	// API Key
-	fmt.Println("GoClawde uses the Kimi API by default.")
+	// Provider selection
+	fmt.Println("Select your LLM provider:")
+	fmt.Println()
+	fmt.Println("  1. Kimi (Moonshot) - Recommended, good for coding")
+	fmt.Println("     URL: https://platform.moonshot.cn")
+	fmt.Println()
+	fmt.Println("  2. OpenAI - GPT-4, GPT-3.5")
+	fmt.Println("     URL: https://platform.openai.com")
+	fmt.Println()
+	fmt.Println("  3. Anthropic - Claude models")
+	fmt.Println("     URL: https://console.anthropic.com")
+	fmt.Println()
+	fmt.Println("  4. Ollama - Local models (no API key needed)")
+	fmt.Println("     URL: https://ollama.com")
+	fmt.Println()
+	fmt.Print("Select (1-4) [default: 1]: ")
+	providerChoice, _ := w.reader.ReadString('\n')
+	providerChoice = strings.TrimSpace(providerChoice)
+
+	// Set provider and configure accordingly
+	switch providerChoice {
+	case "2":
+		w.config.LLMProvider = "openai"
+		if err := w.configureOpenAI(); err != nil {
+			return err
+		}
+	case "3":
+		w.config.LLMProvider = "anthropic"
+		if err := w.configureAnthropic(); err != nil {
+			return err
+		}
+	case "4":
+		w.config.LLMProvider = "ollama"
+		if err := w.configureOllama(); err != nil {
+			return err
+		}
+	default:
+		w.config.LLMProvider = "kimi"
+		if err := w.configureKimi(); err != nil {
+			return err
+		}
+	}
+
+	fmt.Println("\n✓ AI configured")
+	time.Sleep(500 * time.Millisecond)
+
+	return nil
+}
+
+func (w *Wizard) configureKimi() error {
+	fmt.Println()
+	fmt.Println("Kimi (Moonshot) Configuration")
 	fmt.Println("Get your API key from: https://platform.moonshot.cn")
 	fmt.Println()
 	fmt.Print("Enter your Kimi API Key (starts with 'sk-'): ")
@@ -224,8 +275,125 @@ func (w *Wizard) setupAIConfiguration() error {
 		w.config.DefaultModel = "kimi-k2.5"
 	}
 
-	fmt.Println("\n✓ AI configured")
-	time.Sleep(500 * time.Millisecond)
+	return nil
+}
+
+func (w *Wizard) configureOpenAI() error {
+	fmt.Println()
+	fmt.Println("OpenAI Configuration")
+	fmt.Println("Get your API key from: https://platform.openai.com")
+	fmt.Println()
+	fmt.Print("Enter your OpenAI API Key (starts with 'sk-'): ")
+	apiKey, _ := w.reader.ReadString('\n')
+	w.config.APIKey = strings.TrimSpace(apiKey)
+
+	for w.config.APIKey == "" || !strings.HasPrefix(w.config.APIKey, "sk-") {
+		fmt.Println("❌ Invalid API key. Please enter a valid OpenAI API key.")
+		fmt.Print("Enter your OpenAI API Key: ")
+		apiKey, _ := w.reader.ReadString('\n')
+		w.config.APIKey = strings.TrimSpace(apiKey)
+	}
+
+	// Model selection
+	fmt.Println()
+	fmt.Println("Select your preferred model:")
+	fmt.Println("  1. gpt-4o (default, best for most tasks)")
+	fmt.Println("  2. gpt-4o-mini (faster, cheaper)")
+	fmt.Println("  3. gpt-4-turbo (legacy, powerful)")
+	fmt.Print("\nSelect (1-3) [default: 1]: ")
+	modelChoice, _ := w.reader.ReadString('\n')
+	modelChoice = strings.TrimSpace(modelChoice)
+
+	switch modelChoice {
+	case "2":
+		w.config.DefaultModel = "gpt-4o-mini"
+	case "3":
+		w.config.DefaultModel = "gpt-4-turbo"
+	default:
+		w.config.DefaultModel = "gpt-4o"
+	}
+
+	return nil
+}
+
+func (w *Wizard) configureAnthropic() error {
+	fmt.Println()
+	fmt.Println("Anthropic Configuration")
+	fmt.Println("Get your API key from: https://console.anthropic.com")
+	fmt.Println()
+	fmt.Print("Enter your Anthropic API Key (starts with 'sk-ant-'): ")
+	apiKey, _ := w.reader.ReadString('\n')
+	w.config.APIKey = strings.TrimSpace(apiKey)
+
+	for w.config.APIKey == "" || !strings.HasPrefix(w.config.APIKey, "sk-ant-") {
+		fmt.Println("❌ Invalid API key. Please enter a valid Anthropic API key.")
+		fmt.Print("Enter your Anthropic API Key: ")
+		apiKey, _ := w.reader.ReadString('\n')
+		w.config.APIKey = strings.TrimSpace(apiKey)
+	}
+
+	// Model selection
+	fmt.Println()
+	fmt.Println("Select your preferred model:")
+	fmt.Println("  1. claude-3-5-sonnet-20241022 (default, best balance)")
+	fmt.Println("  2. claude-3-opus-20240229 (most powerful)")
+	fmt.Println("  3. claude-3-haiku-20240307 (fastest)")
+	fmt.Print("\nSelect (1-3) [default: 1]: ")
+	modelChoice, _ := w.reader.ReadString('\n')
+	modelChoice = strings.TrimSpace(modelChoice)
+
+	switch modelChoice {
+	case "2":
+		w.config.DefaultModel = "claude-3-opus-20240229"
+	case "3":
+		w.config.DefaultModel = "claude-3-haiku-20240307"
+	default:
+		w.config.DefaultModel = "claude-3-5-sonnet-20241022"
+	}
+
+	return nil
+}
+
+func (w *Wizard) configureOllama() error {
+	fmt.Println()
+	fmt.Println("Ollama Configuration")
+	fmt.Println("Make sure Ollama is running locally (http://localhost:11434)")
+	fmt.Println()
+
+	// No API key needed for Ollama
+	w.config.APIKey = "ollama"
+
+	// Model selection
+	fmt.Println("Select your preferred local model:")
+	fmt.Println("  1. llama3.2 (default, good balance)")
+	fmt.Println("  2. llama3.1 (larger, more capable)")
+	fmt.Println("  3. mistral (fast, efficient)")
+	fmt.Println("  4. codellama (optimized for code)")
+	fmt.Println("  5. Other (specify)")
+	fmt.Print("\nSelect (1-5) [default: 1]: ")
+	modelChoice, _ := w.reader.ReadString('\n')
+	modelChoice = strings.TrimSpace(modelChoice)
+
+	switch modelChoice {
+	case "2":
+		w.config.DefaultModel = "llama3.1"
+	case "3":
+		w.config.DefaultModel = "mistral"
+	case "4":
+		w.config.DefaultModel = "codellama"
+	case "5":
+		fmt.Print("Enter model name: ")
+		customModel, _ := w.reader.ReadString('\n')
+		w.config.DefaultModel = strings.TrimSpace(customModel)
+		if w.config.DefaultModel == "" {
+			w.config.DefaultModel = "llama3.2"
+		}
+	default:
+		w.config.DefaultModel = "llama3.2"
+	}
+
+	fmt.Println()
+	fmt.Printf("Make sure to run: ollama pull %s\n", w.config.DefaultModel)
 
 	return nil
 }
@@ -267,6 +435,39 @@ func (w *Wizard) createConfiguration() error {
 	// Create config.yaml
 	configPath := filepath.Join(w.workspace, "goclawde.yaml")
 
+	// Build provider configuration based on selected provider
+	var providerConfig string
+	switch w.config.LLMProvider {
+	case "openai":
+		providerConfig = fmt.Sprintf(`    openai:
+      api_key: "%s"
+      model: "%s"
+      base_url: "https://api.openai.com/v1"
+      timeout: 60
+      max_tokens: 4096`, w.config.APIKey, w.config.DefaultModel)
+	case "anthropic":
+		providerConfig = fmt.Sprintf(`    anthropic:
+      api_key: "%s"
+      model: "%s"
+      base_url: "https://api.anthropic.com/v1"
+      timeout: 60
+      max_tokens: 4096`, w.config.APIKey, w.config.DefaultModel)
+	case "ollama":
+		providerConfig = fmt.Sprintf(`    ollama:
+      api_key: "ollama"
+      model: "%s"
+      base_url: "http://localhost:11434/v1"
+      timeout: 120
+      max_tokens: 4096`, w.config.DefaultModel)
+	default: // kimi
+		providerConfig = fmt.Sprintf(`    kimi:
+      api_key: "%s"
+      model: "%s"
+      base_url: "https://api.moonshot.cn/v1"
+      timeout: 60
+      max_tokens: 4096`, w.config.APIKey, w.config.DefaultModel)
+	}
+
 	configContent := fmt.Sprintf(`# GoClawde Configuration
 # Generated on %s
 
@@ -275,14 +476,9 @@ server:
   port: 8080
 
 llm:
-  default_provider: kimi
+  default_provider: %s
   providers:
-    kimi:
-      api_key: "%s"
-      model: "%s"
-      base_url: "https://api.moonshot.cn/v1"
-      timeout: 60
-      max_tokens: 4096
+%s
 
 storage:
   data_dir: "%s"
@@ -305,19 +501,31 @@ tools:
 security:
   allow_origins:
     - "*"
-`, time.Now().Format("2006-01-02"), w.config.APIKey, w.config.DefaultModel, w.workspace, w.config.EnableTelegram, w.config.TelegramToken)
+`, time.Now().Format("2006-01-02"), w.config.LLMProvider, providerConfig, w.workspace, w.config.EnableTelegram, w.config.TelegramToken)
 
 	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
 	}
 
-	// Create .env file
+	// Create .env file with the correct provider environment variable
 	envPath := filepath.Join(w.workspace, ".env")
+	var apiKeyEnvVar string
+	switch w.config.LLMProvider {
+	case "openai":
+		apiKeyEnvVar = "GOCLAWDE_LLM_PROVIDERS_OPENAI_API_KEY"
+	case "anthropic":
+		apiKeyEnvVar = "GOCLAWDE_LLM_PROVIDERS_ANTHROPIC_API_KEY"
+	case "ollama":
+		apiKeyEnvVar = "GOCLAWDE_LLM_PROVIDERS_OLLAMA_API_KEY"
+	default: // kimi
+		apiKeyEnvVar = "GOCLAWDE_LLM_PROVIDERS_KIMI_API_KEY"
+	}
+
 	envContent := fmt.Sprintf(`# GoClawde Environment Variables
 # Generated on %s
 
-GOCLAWDE_LLM_PROVIDERS_KIMI_API_KEY=%s
-`, time.Now().Format("2006-01-02"), w.config.APIKey)
+%s=%s
+`, time.Now().Format("2006-01-02"), apiKeyEnvVar, w.config.APIKey)
 
 	if w.config.EnableTelegram && w.config.TelegramToken != "" {
 		envContent += fmt.Sprintf("TELEGRAM_BOT_TOKEN=%s\n", w.config.TelegramToken)
