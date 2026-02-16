@@ -25,6 +25,9 @@ type Bot struct {
 	wg        sync.WaitGroup
 	enabled   bool
 	allowList map[int64]bool // Allowed user IDs
+	// Track conversations per chat
+	conversations map[int64]string // chatID -> conversationID
+	convMu        sync.RWMutex
 }
 
 // Config holds Telegram bot configuration
@@ -57,14 +60,15 @@ func NewBot(cfg Config, agent *agent.Agent, store *store.Store, logger *zap.Logg
 	}
 
 	return &Bot{
-		api:       api,
-		agent:     agent,
-		store:     store,
-		logger:    logger,
-		ctx:       ctx,
-		cancel:    cancel,
-		enabled:   true,
-		allowList: allowList,
+		api:           api,
+		agent:         agent,
+		store:         store,
+		logger:        logger,
+		ctx:           ctx,
+		cancel:        cancel,
+		enabled:       true,
+		allowList:     allowList,
+		conversations: make(map[int64]string),
 	}, nil
 }
 
@@ -178,9 +182,11 @@ Just chat naturally or ask me to:
 		return err
 
 	case "new":
-		// Clear conversation context for this user
-		// In a real implementation, you'd track conversation IDs per user
-		_, err := b.sendMessage(chatID, "🆕 Starting new conversation!")
+		// Clear conversation context for this chat
+		b.convMu.Lock()
+		delete(b.conversations, chatID)
+		b.convMu.Unlock()
+		_, err := b.sendMessage(chatID, "🆕 Starting new conversation! Context cleared.")
 		return err
 
 	case "status":
@@ -197,6 +203,11 @@ func (b *Bot) handleMessage(msg *tgbotapi.Message) error {
 	chatID := msg.Chat.ID
 	text := msg.Text
 
+	// Get or create conversation for this chat
+	b.convMu.RLock()
+	convID := b.conversations[chatID]
+	b.convMu.RUnlock()
+
 	// Show typing indicator
 	typing := tgbotapi.NewChatAction(chatID, tgbotapi.ChatTyping)
 	b.api.Send(typing)
@@ -208,14 +219,22 @@ func (b *Bot) handleMessage(msg *tgbotapi.Message) error {
 	var responseText strings.Builder
 
 	resp, err := b.agent.Chat(ctx, agent.ChatRequest{
-		Message: text,
-		Stream:  false, // Non-streaming for Telegram
+		ConversationID: convID,
+		Message:        text,
+		Stream:         false, // Non-streaming for Telegram
 	})
 
 	if err != nil {
 		b.logger.Error("Agent error", zap.Error(err))
 		_, sendErr := b.sendMessage(chatID, fmt.Sprintf("❌ Error: %v", err))
 		return sendErr
+	}
+
+	// Save conversation ID for future messages in this chat
+	if resp.ConversationID != "" {
+		b.convMu.Lock()
+		b.conversations[chatID] = resp.ConversationID
+		b.convMu.Unlock()
 	}
 
 	responseText.WriteString(resp.Content)

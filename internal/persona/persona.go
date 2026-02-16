@@ -145,21 +145,23 @@ func (pm *PersonaManager) Save() error {
 
 // GetSystemPrompt builds the complete system prompt with all context
 func (pm *PersonaManager) GetSystemPrompt() string {
-	// Check cache first
-	pm.cacheMu.RLock()
-	if pm.cacheValid && pm.systemPromptCache != "" {
-		cached := pm.systemPromptCache
-		pm.cacheMu.RUnlock()
-		return cached
-	}
-	pm.cacheMu.RUnlock()
-
 	// Build new prompt
 	pm.mu.RLock()
 	var parts []string
 
-	// Time awareness context (this changes, so don't cache it)
+	// Time awareness context (ALWAYS fresh, never cached)
 	parts = append(parts, pm.timeAwareness.GetContext())
+
+	// Check cache for the rest
+	pm.cacheMu.RLock()
+	if pm.cacheValid && pm.systemPromptCache != "" {
+		cached := pm.systemPromptCache
+		pm.cacheMu.RUnlock()
+		pm.mu.RUnlock()
+		// Prepend fresh time context to cached content
+		return parts[0] + "\n\n" + cached
+	}
+	pm.cacheMu.RUnlock()
 
 	// Identity context
 	parts = append(parts, pm.getIdentityContext())
@@ -183,15 +185,17 @@ func (pm *PersonaManager) GetSystemPrompt() string {
 	}
 	pm.mu.RUnlock()
 
-	result := strings.Join(parts, "\n\n")
+	// Join all parts except time (which is parts[0])
+	cachedParts := strings.Join(parts[1:], "\n\n")
 	
-	// Cache the result (except time-sensitive parts will be handled by caller)
+	// Cache only the non-time-sensitive parts
 	pm.cacheMu.Lock()
-	pm.systemPromptCache = result
+	pm.systemPromptCache = cachedParts
 	pm.cacheValid = true
 	pm.cacheMu.Unlock()
 
-	return result
+	// Return full prompt with fresh time context
+	return parts[0] + "\n\n" + cachedParts
 }
 
 // InvalidateCache invalidates the system prompt cache
@@ -305,6 +309,7 @@ func (pm *PersonaManager) getIdentityContext() string {
 	var parts []string
 	parts = append(parts, "## Your Identity")
 	parts = append(parts, fmt.Sprintf("You are %s.", pm.identity.Name))
+	parts = append(parts, "IMPORTANT: Always identify yourself as "+pm.identity.Name+" when asked. Do not claim to be Claude, GPT, or any other AI assistant.")
 
 	if pm.identity.Personality != "" {
 		parts = append(parts, fmt.Sprintf("Personality: %s", pm.identity.Personality))

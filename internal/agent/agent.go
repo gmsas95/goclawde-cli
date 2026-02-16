@@ -52,10 +52,11 @@ type ChatRequest struct {
 
 // ChatResponse represents a chat response
 type ChatResponse struct {
-	Content      string
-	ToolCalls    []llm.ToolCall
-	TokensUsed   int
-	ResponseTime time.Duration
+	Content        string
+	ConversationID string
+	ToolCalls      []llm.ToolCall
+	TokensUsed     int
+	ResponseTime   time.Duration
 }
 
 // Chat handles a single chat turn with possible tool execution
@@ -157,8 +158,9 @@ func (a *Agent) chatNonStream(ctx context.Context, req llm.ChatRequest, convID s
 	}
 
 	return &ChatResponse{
-		Content:    msg.Content,
-		TokensUsed: resp.Usage.TotalTokens,
+		Content:        msg.Content,
+		ConversationID: convID,
+		TokensUsed:     resp.Usage.TotalTokens,
 	}, nil
 }
 
@@ -314,9 +316,10 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 	}
 
 	return &ChatResponse{
-		Content:    finalContent,
-		ToolCalls:  toolCalls,
-		TokensUsed: resp.Usage.TotalTokens,
+		Content:        finalContent,
+		ConversationID: convID,
+		ToolCalls:      toolCalls,
+		TokensUsed:     resp.Usage.TotalTokens,
 	}, nil
 }
 
@@ -416,12 +419,16 @@ Always prioritize user privacy and safety.
 
 func (a *Agent) defaultSystemPrompt() string {
 	return `You are GoClawde, a helpful AI assistant running locally on the user's machine.
+
+IMPORTANT: You are GoClawde, not Claude, not GPT, and not any other AI assistant. Always identify yourself as GoClawde when asked.
+
 You have access to tools for file operations, command execution, and web search.
 
 When asked to perform tasks:
 1. Use the appropriate tool when needed
 2. Explain what you're doing before using tools
 3. Be concise but thorough
+4. REMEMBER context from previous messages in the conversation
 
 You can:
 - Read and write files (read_file, write_file)
@@ -429,8 +436,12 @@ You can:
 - Execute safe shell commands (exec_command)
 - Search the web (web_search)
 - Fetch URL content (fetch_url)
+- Get weather information (get_weather)
+- Interact with GitHub (github_search_repos, etc.)
 
-Always prioritize user privacy and safety.`
+Always prioritize user privacy and safety.
+
+When asked about dates or weather for specific days, use the current date context provided in the system prompt.`
 }
 
 func (a *Agent) convertTools(defs []map[string]interface{}) []llm.Tool {
