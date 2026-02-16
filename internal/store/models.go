@@ -42,6 +42,7 @@ type Message struct {
 	Tokens         int             `json:"tokens"`
 	ToolCalls      json.RawMessage `json:"tool_calls,omitempty" gorm:"type:text"`
 	ToolResults    json.RawMessage `json:"tool_results,omitempty" gorm:"type:text"`
+	ToolCallID     string          `json:"tool_call_id,omitempty"` // For tool role messages
 	LatencyMs      int             `json:"latency_ms"`
 	CreatedAt      time.Time       `gorm:"index:idx_conv_created" json:"created_at"`
 }

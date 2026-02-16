@@ -16,6 +16,7 @@ import (
 	"github.com/gmsas95/goclawde-cli/internal/persona"
 	"github.com/gmsas95/goclawde-cli/internal/skills"
 	"github.com/gmsas95/goclawde-cli/internal/store"
+	"github.com/gmsas95/goclawde-cli/internal/vector"
 	"github.com/gmsas95/goclawde-cli/pkg/tools"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -37,6 +38,7 @@ type Server struct {
 	skillsRegistry *skills.Registry
 	logger         *zap.Logger
 	personaManager *persona.PersonaManager
+	contextManager *agent.ContextManager
 }
 
 // New creates a new API server
@@ -60,6 +62,24 @@ func New(cfg *config.Config, store *store.Store, logger *zap.Logger) *Server {
 
 	// Create agent
 	agentInstance := agent.New(llmClient, toolRegistry, store, logger, personaManager)
+
+	// Create context manager for smart conversation handling
+	var contextManager *agent.ContextManager
+	if cfg.Vector.Enabled {
+		vectorSearcher, err := vector.NewSearcher(&cfg.Vector, store, logger)
+		if err != nil {
+			logger.Warn("Failed to create vector searcher", zap.Error(err))
+		} else {
+			contextManager = agent.NewContextManager(store, vectorSearcher, llmClient, logger)
+			agentInstance.SetContextManager(contextManager)
+			logger.Info("Context manager initialized with vector search")
+		}
+	} else {
+		// Create context manager without vector search
+		contextManager = agent.NewContextManager(store, nil, llmClient, logger)
+		agentInstance.SetContextManager(contextManager)
+		logger.Info("Context manager initialized (without vector search)")
+	}
 
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  30 * time.Second,

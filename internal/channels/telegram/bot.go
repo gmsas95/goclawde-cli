@@ -142,6 +142,11 @@ func (b *Bot) handleUpdate(update tgbotapi.Update) error {
 		return b.handleMessage(msg)
 	}
 
+	// Handle voice messages
+	if msg.Voice != nil {
+		return b.handleVoiceMessage(msg)
+	}
+
 	return nil
 }
 
@@ -247,6 +252,19 @@ func (b *Bot) handleMessage(msg *tgbotapi.Message) error {
 
 	// Send response
 	_, err = b.sendMessage(chatID, response)
+	return err
+}
+
+func (b *Bot) handleVoiceMessage(msg *tgbotapi.Message) error {
+	chatID := msg.Chat.ID
+
+	// Show typing indicator
+	typing := tgbotapi.NewChatAction(chatID, tgbotapi.ChatTyping)
+	b.api.Send(typing)
+
+	// For now, just acknowledge voice message
+	// Full voice processing will be implemented in next iteration
+	_, err := b.sendMessage(chatID, "🎙️ Voice message received! Voice processing coming soon to Myrai (未来).")
 	return err
 }
 

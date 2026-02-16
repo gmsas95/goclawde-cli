@@ -23,6 +23,8 @@ type Agent struct {
 	store          *store.Store
 	logger         *zap.Logger
 	personaManager *persona.PersonaManager
+	contextManager *ContextManager
+	agentLoop      *AgentLoop
 }
 
 // New creates a new Agent
@@ -34,6 +36,25 @@ func New(llmClient *llm.Client, toolRegistry *tools.Registry, store *store.Store
 		logger:         logger,
 		personaManager: personaManager,
 	}
+}
+
+// SetContextManager sets the context manager for smart context handling
+func (a *Agent) SetContextManager(cm *ContextManager) {
+	a.contextManager = cm
+}
+
+// SetAgentLoop sets the agent loop for autonomous task execution
+func (a *Agent) SetAgentLoop(al *AgentLoop) {
+	a.agentLoop = al
+}
+
+// ExecuteAutonomous executes a task autonomously using the agent loop
+func (a *Agent) ExecuteAutonomous(ctx context.Context, task AutonomousTask) (*TaskResult, error) {
+	if a.agentLoop == nil {
+		// Create agent loop on demand if not set
+		a.agentLoop = NewAgentLoop(a, a.logger)
+	}
+	return a.agentLoop.ExecuteAutonomous(ctx, task)
 }
 
 // SetSkillsRegistry sets the skills registry
@@ -80,10 +101,21 @@ func (a *Agent) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error
 		return nil, fmt.Errorf("failed to save user message: %w", err)
 	}
 
-	// Build message history
-	messages, err := a.buildContext(ctx, conv.ID, req.SystemPrompt)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build context: %w", err)
+	// Build message history using context manager if available
+	var messages []llm.Message
+	if a.contextManager != nil {
+		convCtx, err := a.contextManager.BuildContext(ctx, conv.ID, req.SystemPrompt, req.Message)
+		if err != nil {
+			a.logger.Warn("Context manager failed, falling back to default", zap.Error(err))
+			messages, _ = a.buildContext(ctx, conv.ID, req.SystemPrompt)
+		} else {
+			messages = convCtx.Messages
+		}
+	} else {
+		messages, err = a.buildContext(ctx, conv.ID, req.SystemPrompt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build context: %w", err)
+		}
 	}
 
 	// Build tool definitions from both tools and skills registries
@@ -145,7 +177,7 @@ func (a *Agent) chatNonStream(ctx context.Context, req llm.ChatRequest, convID s
 
 	// Handle tool calls
 	if len(msg.ToolCalls) > 0 {
-		return a.handleToolCalls(ctx, req, convID, msg.ToolCalls)
+		return a.handleToolCalls(ctx, req, convID, msg)
 	}
 
 	// Save assistant message
@@ -157,6 +189,25 @@ func (a *Agent) chatNonStream(ctx context.Context, req llm.ChatRequest, convID s
 	}
 	if err := a.store.CreateMessage(assistantMsg); err != nil {
 		a.logger.Warn("Failed to save assistant message", zap.Error(err))
+	}
+
+	// Extract memories from this conversation turn (async)
+	if a.contextManager != nil {
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			
+			// Get the user message from the conversation
+			userMsgs, _ := a.store.GetMessages(convID, 1, 0)
+			var userContent string
+			if len(userMsgs) > 0 && userMsgs[0].Role == "user" {
+				userContent = userMsgs[0].Content
+			}
+			
+			if err := a.contextManager.ExtractAndStoreMemories(ctx, convID, userContent, msg.Content); err != nil {
+				a.logger.Debug("Failed to extract memories", zap.Error(err))
+			}
+		}()
 	}
 
 	return &ChatResponse{
@@ -216,7 +267,8 @@ func (a *Agent) chatStream(ctx context.Context, req llm.ChatRequest, convID stri
 	}, nil
 }
 
-func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID string, toolCalls []llm.ToolCall) (*ChatResponse, error) {
+func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID string, msg llm.Message) (*ChatResponse, error) {
+	toolCalls := msg.ToolCalls
 	// Execute tools
 	toolResults := make([]map[string]interface{}, 0, len(toolCalls))
 
@@ -264,6 +316,7 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 			Content:        resultObj["content"].(string),
 			ToolCalls:      store.ToJSON(tc),
 			ToolResults:    store.ToJSON(result),
+			ToolCallID:     tc.ID, // Save the tool_call_id
 		}
 		if err := a.store.CreateMessage(toolMsg); err != nil {
 			a.logger.Warn("Failed to save tool message", zap.Error(err))
@@ -272,9 +325,11 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 
 	// Build follow-up request with tool results
 	// Note: Content must be omitted (not empty string) when ToolCalls are present
+	// Include reasoning_content if present (required by some LLM APIs with thinking enabled)
 	followUpMessages := append(req.Messages, llm.Message{
-		Role:      "assistant",
-		ToolCalls: toolCalls,
+		Role:             "assistant",
+		ToolCalls:        toolCalls,
+		ReasoningContent: msg.ReasoningContent, // Preserve reasoning content
 	})
 
 	for _, tr := range toolResults {
@@ -373,8 +428,9 @@ func (a *Agent) buildContext(ctx context.Context, convID string, systemPrompt st
 
 	for _, msg := range storeMsgs {
 		lmMsg := llm.Message{
-			Role:    msg.Role,
-			Content: msg.Content,
+			Role:       msg.Role,
+			Content:    msg.Content,
+			ToolCallID: msg.ToolCallID, // Restore tool_call_id from history
 		}
 
 		// Handle tool calls from history

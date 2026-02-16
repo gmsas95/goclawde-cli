@@ -27,12 +27,16 @@ import (
 	"github.com/gmsas95/goclawde-cli/internal/onboarding"
 	"github.com/gmsas95/goclawde-cli/internal/persona"
 	"github.com/gmsas95/goclawde-cli/internal/skills"
+	"github.com/gmsas95/goclawde-cli/internal/skills/agentic"
 	"github.com/gmsas95/goclawde-cli/internal/skills/browser"
+	"github.com/gmsas95/goclawde-cli/internal/skills/documents"
 	"github.com/gmsas95/goclawde-cli/internal/skills/github"
 	"github.com/gmsas95/goclawde-cli/internal/skills/notes"
 	"github.com/gmsas95/goclawde-cli/internal/skills/system"
+	"github.com/gmsas95/goclawde-cli/internal/skills/voice"
 	"github.com/gmsas95/goclawde-cli/internal/skills/weather"
 	"github.com/gmsas95/goclawde-cli/internal/store"
+	"github.com/gmsas95/goclawde-cli/internal/vector"
 	"github.com/gmsas95/goclawde-cli/pkg/tools"
 	"go.uber.org/zap"
 )
@@ -1043,6 +1047,24 @@ func registerSkills(cfg *config.Config, registry *skills.Registry) {
 		Headless: cfg.Skills.Browser.Headless,
 	})
 	registry.Register(browserSkill)
+
+	// Agentic skill - advanced system introspection and code analysis
+	agenticSkill := agentic.NewAgenticSkill(cfg.Storage.DataDir)
+	registry.Register(agenticSkill)
+
+	// Voice skill - STT and TTS for natural voice interaction
+	voiceConfig := voice.DefaultConfig()
+	voiceSkill := voice.NewVoiceSkill(voiceConfig)
+	registry.Register(voiceSkill)
+
+	// Documents skill - PDF processing, OCR, and image analysis
+	docsConfig := documents.DefaultConfig()
+	// Use Gemini API key if available for vision
+	if googleProvider, ok := cfg.LLM.Providers["google"]; ok {
+		docsConfig.APIKey = googleProvider.APIKey
+	}
+	docsSkill := documents.NewDocumentSkill(docsConfig)
+	registry.Register(docsSkill)
 }
 
 func (app *App) runServer() {
@@ -1056,6 +1078,28 @@ func (app *App) runServer() {
 	// Create agent with skills and persona
 	agentInstance := agent.New(llmClient, nil, app.store, app.logger, app.personaManager)
 	agentInstance.SetSkillsRegistry(app.skillsRegistry)
+
+	// Create agent loop for autonomous operation
+	agentLoop := agent.NewAgentLoop(agentInstance, app.logger)
+	agentInstance.SetAgentLoop(agentLoop)
+
+	// Create context manager for smart conversation handling
+	var contextManager *agent.ContextManager
+	if app.config.Vector.Enabled {
+		vectorSearcher, err := vector.NewSearcher(&app.config.Vector, app.store, app.logger)
+		if err != nil {
+			app.logger.Warn("Failed to create vector searcher", zap.Error(err))
+		} else {
+			contextManager = agent.NewContextManager(app.store, vectorSearcher, llmClient, app.logger)
+			agentInstance.SetContextManager(contextManager)
+			app.logger.Info("Context manager initialized with vector search")
+		}
+	} else {
+		// Create context manager without vector search
+		contextManager = agent.NewContextManager(app.store, nil, llmClient, app.logger)
+		agentInstance.SetContextManager(contextManager)
+		app.logger.Info("Context manager initialized (without vector search)")
+	}
 
 	// Initialize Telegram bot if enabled (with timeout)
 	if app.config.Channels.Telegram.Enabled {
