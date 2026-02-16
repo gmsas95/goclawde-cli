@@ -1,0 +1,57 @@
+# Myrai Caddy Configuration
+# Place this in your deployment directory
+
+{$MYRAI_DOMAIN:localhost} {
+    # Enable compression
+    encode gzip
+
+    # Rate limiting (optional)
+    # rate_limit {
+    #     zone static_example {
+    #         key static
+    #         events 100
+    #         window 1m
+    #     }
+    # }
+
+    # Security headers
+    header {
+        # Enable HSTS
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        # Disable content type sniffing
+        X-Content-Type-Options "nosniff"
+        # Clickjacking protection
+        X-Frame-Options "DENY"
+        # XSS protection
+        X-XSS-Protection "1; mode=block"
+        # Referrer policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # API and WebSocket routes
+    handle /api/* {
+        reverse_proxy myrai:8080
+    }
+
+    handle /ws/* {
+        reverse_proxy myrai:8080
+    }
+
+    # Health check
+    handle /health {
+        reverse_proxy myrai:8080
+    }
+
+    # Static files
+    handle {
+        reverse_proxy myrai:8080
+    }
+
+    # Logging
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 10MB
+            roll_keep 5
+        }
+    }
+}
