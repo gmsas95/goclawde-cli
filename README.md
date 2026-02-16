@@ -1,66 +1,45 @@
-# Myrai (未来) 
+# Myrai (未来)
 
 > **Myrai** (未来) means "future" in Japanese.  
 > **Myrai** (My + AI) means "my personal AI".  
 > **Myrai** is the future of personal assistance.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Go Version](https://img.shields.io/badge/go-%3E%3D1.23-blue)](https://golang.org)
-[![Discord](https://img.shields.io/discord/YOUR_DISCORD_ID?color=7289da&label=discord)](https://discord.gg/myrai)
+[![Go Version](https://img.shields.io/badge/go-%3E%3D1.21-blue)](https://golang.org)
+[![GitHub release](https://img.shields.io/github/v/release/gmsas95/goclawde-cli?include_prereleases)](https://github.com/gmsas95/goclawde-cli/releases)
 
-**Myrai** is a lightweight, local-first personal AI assistant for the 99%.
+**Myrai** is a lightweight, local-first personal AI assistant for everyone.
 
-Not a coding assistant. Not a terminal tool. **A life assistant.**
-
----
-
-## ✨ What Makes Myrai Different?
-
-| Feature | Myrai | Siri/Alexa | OpenClaude |
-|---------|-------|------------|------------|
-| **Target** | Everyone | Consumers | Developers |
-| **Privacy** | ✅ Local-first | Cloud | Cloud/Complex |
-| **Memory** | ✅ Personal knowledge graph | Session-only | Project-only |
-| **Voice** | ✅ Natural conversation | Commands | None |
-| **Vision** | ✅ Camera-enabled | Limited | None |
-| **Documents** | ✅ OCR + storage | No | Code only |
-| **Setup** | ✅ One binary | Easy | Technical |
-| **Size** | ✅ ~50MB | N/A | ~2GB |
+Not just a coding assistant. Not just a terminal tool. **A life assistant.**
 
 ---
 
-## 🎯 For the 99%
+## ✨ Features
 
-**Talk naturally. No commands to learn.**
+| Feature | Description |
+|---------|-------------|
+| 🤖 **20+ LLM Providers** | OpenAI, Anthropic, Google, Groq, DeepSeek, Ollama, and more |
+| 💬 **Multi-Channel** | CLI, Web UI, Telegram, Discord |
+| 🧠 **15+ Skills** | Tasks, Calendar, Notes, Health, Shopping, Documents, Weather, GitHub |
+| 🔒 **Privacy First** | Local-first, your data stays on your device |
+| 🚀 **Easy Setup** | One-command installation via curl or npm |
+| 🐳 **Docker Ready** | Deploy with a single command |
+| 📦 **Single Binary** | ~50MB, no dependencies |
 
-```
-🎙️ "Remind me to call mom Sunday at 3pm"
-🎙️ "I spent $45 at Whole Foods"
-🎙️ "What's on my schedule today?"
-🎙️ "I'm at the store, what's on my list?"
-```
+---
 
-**Show, don't type.**
+## 🆚 Comparison
 
-```
-📸 [Photo of receipt]
-Myrai: "I see $45.50 from Whole Foods. Added to groceries."
-
-📸 [Photo of document]
-Myrai: "This is your car insurance renewal. Due March 15th."
-
-👁️ "What am I looking at?"
-Myrai: "That's a Fiddle Leaf Fig. Water it weekly."
-```
-
-**Myrai remembers.**
-
-```
-You: "I met Sarah at the coffee shop on Tuesday"
-
-Later: "Who did I meet last week?"
-Myrai: "You met Sarah at Blue Bottle on Tuesday."
-```
+| Feature | Myrai | Siri/Alexa | ChatGPT |
+|---------|-------|------------|---------|
+| **Target** | Everyone | Consumers | Everyone |
+| **Privacy** | ✅ Local-first | Cloud | Cloud |
+| **Memory** | ✅ Knowledge graph | Session-only | Session-only |
+| **Multi-LLM** | ✅ 20+ providers | Locked | Locked |
+| **Self-host** | ✅ Easy | No | No |
+| **Open Source** | ✅ MIT | No | No |
+| **Setup** | ✅ 2 minutes | Easy | Easy |
+| **Size** | ✅ ~50MB | N/A | N/A |
 
 ---
 
@@ -70,28 +49,28 @@ Myrai: "You met Sarah at Blue Bottle on Tuesday."
 
 **curl (Recommended)**
 ```bash
-# One-line install
 curl -fsSL https://raw.githubusercontent.com/gmsas95/goclawde-cli/main/install.sh | bash
-
-# Or with options
-curl -fsSL https://raw.githubusercontent.com/gmsas95/goclawde-cli/main/install.sh | bash -s -- --version 0.1.0
 ```
 
 **npm**
 ```bash
-# Global install
 npm install -g myrai
-
-# Or use with npx (no install)
+# or use without installing
 npx myrai --help
 ```
 
-**Manual**
+**Docker**
 ```bash
-# Download from GitHub releases
-# https://github.com/gmsas95/goclawde-cli/releases
+docker run -d \
+  --name myrai \
+  -p 8080:8080 \
+  -v ~/.myrai:/app/data \
+  -e OPENAI_API_KEY=your-key \
+  ghcr.io/gmsas95/myrai:latest
+```
 
-# Or build from source
+**Build from Source**
+```bash
 git clone https://github.com/gmsas95/goclawde-cli.git
 cd goclawde-cli
 make build
@@ -101,216 +80,280 @@ sudo make install
 ### First Run
 
 ```bash
-# Run the setup wizard
+# Interactive setup wizard
 myrai onboard
 
 # Start the server
 myrai server
+
+# Or use CLI mode
+myrai --cli
 ```
 
-### Docker
+---
+
+## 🤖 Supported LLM Providers
+
+### Cloud (Recommended)
+| Provider | Models | API Key Env |
+|----------|--------|-------------|
+| OpenAI | GPT-4o, GPT-4-turbo, o1 | `OPENAI_API_KEY` |
+| Anthropic | Claude 3.5 Sonnet, Claude 3 Opus | `ANTHROPIC_API_KEY` |
+| Google | Gemini 2.0 Flash, Gemini Pro | `GOOGLE_API_KEY` |
+| Kimi/Moonshot | kimi-k2.5 | `KIMI_API_KEY` |
+
+### Fast & Affordable
+| Provider | Models | Notes |
+|----------|--------|-------|
+| Groq | Llama 3.3 70B | Ultra-fast inference |
+| DeepSeek | DeepSeek Chat, Reasoner | Great for coding |
+| Together AI | Llama, Mistral, Qwen | Many open models |
+| Cerebras | Llama 3.1 | Fastest inference |
+
+### Model Aggregators
+| Provider | Models | Notes |
+|----------|--------|-------|
+| OpenRouter | 100+ models | One API for all |
+| Fireworks | Llama, Qwen | Serverless inference |
+
+### Chinese Providers
+| Provider | Models | Notes |
+|----------|--------|-------|
+| Zhipu (智谱) | GLM-4 Plus | Chinese support |
+| SiliconFlow | Qwen, DeepSeek | Affordable |
+| Novita | Llama, Mistral | Budget-friendly |
+
+### Local/Self-Hosted
+| Provider | Models | Notes |
+|----------|--------|-------|
+| Ollama | Llama, Mistral, Qwen | No API key needed |
+| LocalAI | Any GGUF model | OpenAI-compatible |
+| vLLM | Any HF model | High performance |
+
+---
+
+## 💬 Channels
+
+### CLI Mode
+```bash
+# Interactive chat
+myrai --cli
+
+# One-shot message
+myrai -m "What's the weather in Tokyo?"
+```
+
+### Web UI
+```bash
+# Start server with web interface
+myrai server
+# Open http://localhost:8080
+```
+
+### Telegram
+```bash
+# Set bot token
+export TELEGRAM_BOT_TOKEN=your-token
+
+# Start server (Telegram auto-enabled)
+myrai server
+```
+
+### Discord
+```bash
+# Set bot token
+export DISCORD_BOT_TOKEN=your-token
+
+# Start server
+myrai server
+```
+
+---
+
+## 🧠 Skills (15+ Built-in)
+
+| Skill | Description |
+|-------|-------------|
+| **Tasks** | Task management with priorities and due dates |
+| **Calendar** | Google Calendar integration |
+| **Notes** | Personal notes with search |
+| **Documents** | PDF/DOCX processing with OCR |
+| **Health** | Health tracking and reminders |
+| **Shopping** | Shopping lists with categories |
+| **Expenses** | Expense tracking and analysis |
+| **Weather** | Weather forecasts and alerts |
+| **GitHub** | Repository management |
+| **Browser** | Web browsing and scraping |
+| **Intelligence** | AI-powered analysis |
+| **Knowledge** | Knowledge base management |
+| **Voice** | Speech-to-text and text-to-speech |
+| **Vision** | Image analysis and OCR |
+| **Agentic** | Code analysis, Git operations |
+
+---
+
+## 📖 CLI Commands
 
 ```bash
-docker run -d \
-  --name myrai \
-  -p 8080:8080 \
-  -v ~/.myrai:/app/data \
-  myrai/myrai:latest
+# Setup & Configuration
+myrai onboard              # Run setup wizard
+myrai config get <key>     # Get config value
+myrai config set <key> <val>  # Set config value
+myrai config edit          # Edit config file
+
+# Project Management
+myrai project new <name> <type>  # Create project
+myrai project list               # List projects
+myrai project switch <name>      # Switch project
+
+# Server
+myrai server               # Start server
+myrai gateway status       # Show gateway status
+
+# Persona & User
+myrai persona              # Show AI identity
+myrai persona edit         # Edit AI personality
+myrai user                 # Show your profile
+myrai user edit            # Edit your profile
+
+# System
+myrai doctor               # Run diagnostics
+myrai status               # Show system status
+myrai version              # Show version
 ```
-
-### Mobile App
-
-Coming soon! Join the waitlist at [myr.ai](https://myr.ai)
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        MYRAI (未来)                          │
-├─────────────────────────────────────────────────────────────┤
-│  INTERFACES                                                  │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
-│  │  Mobile  │  │  Voice   │  │  Vision  │  │   Web    │    │
-│  │   App    │  │ (Speak)  │  │ (Camera) │  │Dashboard │    │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
-├─────────────────────────────────────────────────────────────┤
-│  MULTI-MODAL PROCESSING                                      │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐          │
-│  │    STT      │  │    TTS      │  │   Vision    │          │
-│  │  whisper    │  │   piper     │  │  Moondream  │          │
-│  │  (local)    │  │  (local)    │  │  (local)    │          │
-│  └─────────────┘  └─────────────┘  └─────────────┘          │
-├─────────────────────────────────────────────────────────────┤
-│  MYRAI CORE (Go Binary ~50MB)                               │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │  Personal Knowledge Graph                           │    │
-│  │  • Entities: People, Places, Events, Documents     │    │
-│  │  • Relations: "met at", "works at", "paid for"     │    │
-│  │  • Temporal: "happened on", "due by"               │    │
-│  └─────────────────────────────────────────────────────┘    │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │  Life Skills (50+)                                  │    │
-│  │  • Tasks & Reminders  • Calendar & Scheduling      │    │
-│  │  • Documents & OCR    • Expense Tracking           │    │
-│  │  • Shopping Lists     • Health Tracking            │    │
-│  └─────────────────────────────────────────────────────┘    │
-├─────────────────────────────────────────────────────────────┤
-│  STORAGE (Local-First, Private)                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │   SQLite     │  │  Vector DB   │  │  Filesystem  │      │
-│  │ (structured) │  │ (embeddings) │  │ (documents)  │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-└─────────────────────────────────────────────────────────────┘
+myrai-cli/
+├── cmd/myrai/           # Entry point (~170 lines)
+├── internal/
+│   ├── app/             # App lifecycle, server, CLI
+│   ├── api/             # HTTP API + WebSocket
+│   ├── agent/           # AI agent with tool calling
+│   ├── llm/             # LLM client (20+ providers)
+│   ├── skills/          # 15+ skill implementations
+│   ├── channels/        # Telegram, Discord, etc.
+│   ├── store/           # SQLite + BadgerDB
+│   ├── vector/          # Vector search
+│   ├── config/          # Configuration management
+│   ├── onboarding/      # Setup wizard
+│   ├── cli/             # CLI command handlers
+│   ├── interfaces/      # Public interfaces
+│   └── errors/          # Error types
+├── web/                 # Web UI (HTML/CSS/JS)
+├── npm/                 # npm package wrapper
+└── scripts/             # Install scripts
 ```
-
----
-
-## 📖 Documentation
-
-- [Vision](docs/myrai/MYRAI_VISION.md) - The Myrai manifesto
-- [Roadmap](docs/myrai/MYRAI_ROADMAP.md) - 1-year development plan
-- [Action Plan](docs/myrai/MYRAI_ACTION_PLAN.md) - Week-by-week tasks
-- [Architecture](docs/myrai/MYRAI_ARCHITECTURE.md) - System design
 
 ---
 
 ## 🛠️ Development
 
-### Build from Source
+### Prerequisites
+- Go 1.21+
+- Node.js 14+ (for npm package)
+- Docker (optional)
+
+### Build & Test
 
 ```bash
-# Prerequisites: Go 1.23+
-git clone https://github.com/myrai/myrai.git
-cd myrai
+# Install dependencies
+make deps
 
 # Build
 make build
 
-# Run
-./bin/myrai server
+# Run tests
+make test-all
 
-# Or install locally
-make install-local
+# Run in development
+make dev
 ```
 
-### Development Mode
+### Run Tests
 
 ```bash
-# Hot reload
-make dev
-
-# Run tests
-make test
-
-# Format code
-make fmt
+make test-unit         # Unit tests
+make test-smoke        # Smoke tests
+make test-integration  # Integration tests
+make test-all          # All tests
 ```
+
+---
+
+## 📦 Release
+
+```bash
+# Build release binaries
+make release VERSION=0.1.0
+
+# Create GitHub release
+make release-gh VERSION=0.1.0
+
+# Publish to npm
+make publish-npm
+```
+
+See [RELEASE.md](RELEASE.md) for details.
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributors who share our vision of personal AI for everyone.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ### Areas We Need Help
-
-- 📱 Mobile app (Flutter) - In progress
-- 💰 Expense tracking with receipt OCR
-- 🛒 Shopping lists with location reminders
-- 📧 Email integration (Gmail, Outlook)
-- 🏠 Smart home connectors (Home Assistant)
+- 📱 Mobile app (Flutter)
+- 🌐 Better Web UI
+- 📧 Email integration
+- 🏠 Smart home connectors
+- 🌍 Internationalization
 
 ---
 
 ## 🗺️ Roadmap
 
-### Phase 1: Foundation ✅ (Complete)
-- [x] Voice interface (STT/TTS) - whisper.cpp + piper
-- [x] Document processing (PDF/OCR) - with vision AI
-- [x] Task & reminder system
-- [x] Agent loop with tool calling
-- [ ] Mobile app MVP - In progress
+### Phase 1: Foundation ✅
+- [x] Multi-provider LLM support (20+ providers)
+- [x] CLI and server modes
+- [x] Telegram and Discord channels
+- [x] 15+ skills
+- [x] Setup wizard
 
-### Phase 2: Memory ✅ (Complete)
-- [x] Personal knowledge graph
-- [x] Entity extraction from conversations
-- [x] Long-term memory with compression
-- [x] Semantic search & Q&A
+### Phase 2: Memory ✅
+- [x] SQLite storage
+- [x] Vector search
+- [x] Knowledge graph
 
-### Phase 3: Life Tools 🚧 (In Progress)
-- [x] Calendar integration (Google Calendar)
-- [x] Natural language event parsing
-- [ ] Expense tracking with receipt OCR
-- [ ] Shopping lists with smart reminders
-- [ ] Health tracking
-
-### Phase 4: Intelligence (Planned)
+### Phase 3: Intelligence 🚧
 - [ ] Proactive suggestions
 - [ ] Pattern recognition
 - [ ] Automated workflows
-- [ ] Life dashboard
 
-See [MYRAI_ROADMAP.md](docs/myrai/MYRAI_ROADMAP.md) for details.
-
----
-
-## 💡 Use Cases
-
-### Busy Parent
-- "Remind me to pick up milk when I'm near the store"
-- "What time is soccer practice?"
-- "Track my spending this month"
-
-### Remote Worker
-- "Summarize this PDF contract"
-- "Add this receipt to expenses"
-- "What's my schedule today?"
-
-### Student
-- "Track my assignment deadlines"
-- "Explain this research paper simply"
-- "How much did I spend this week?"
-
-### Retiree
-- "Remind me to take medication at 8am"
-- "Find photos from last Christmas"
-- "Call my daughter"
+### Phase 4: Mobile 📱
+- [ ] Flutter mobile app
+- [ ] iOS and Android
 
 ---
 
-## 🔒 Privacy First
+## 🔒 Privacy
 
 - ✅ **Local-First**: Data stays on your device
-- ✅ **No Cloud**: No sending your life to big tech
-- ✅ **Open Source**: You can audit the code
-- ✅ **Encrypted**: Your data is encrypted at rest
-- ✅ **Exportable**: You own your data, always
-
----
-
-## 🌟 Why Myrai?
-
-**The 99% deserves AI too.**
-
-OpenClaude dominates the developer space (160k stars) because it's a **coding assistant**.
-
-Myrai will dominate the personal space by being a **life assistant**.
-
-> "The future is not more complex dev tools.  
-> The future is simple AI that helps with daily life."
+- ✅ **No Cloud Required**: Works offline with Ollama
+- ✅ **Open Source**: Audit the code yourself
+- ✅ **Encrypted Storage**: Your data is encrypted
+- ✅ **Export Anytime**: You own your data
 
 ---
 
 ## 📞 Connect
 
-- **Website**: [myr.ai](https://myr.ai)
-- **GitHub**: [github.com/myrai/myrai](https://github.com/myrai/myrai)
-- **Discord**: [discord.gg/myrai](https://discord.gg/myrai)
-- **Twitter**: [@MyraiAI](https://twitter.com/MyraiAI)
+- **GitHub**: [github.com/gmsas95/goclawde-cli](https://github.com/gmsas95/goclawde-cli)
+- **Issues**: [Report a bug](https://github.com/gmsas95/goclawde-cli/issues)
+- **Discussions**: [Join the conversation](https://github.com/gmsas95/goclawde-cli/discussions)
 
 ---
 
@@ -323,18 +366,14 @@ MIT License - See [LICENSE](LICENSE) for details.
 ## 🙏 Acknowledgments
 
 Inspired by:
-- [OpenClaude](https://github.com/openclaw/openclaw) - For agentic patterns
-- [VisionClaw](https://github.com/sseanliu/VisionClaw) - For wearable AI vision
-- [PicoClaw](https://github.com/gmsas95/picoclaw) - For lightweight philosophy
-- [MemoryCore](https://github.com/Kiyoraka/Project-AI-MemoryCore) - For memory systems
+- [OpenClaude](https://github.com/openclaw/openclaw) - Agentic patterns
+- [PicoClaw](https://github.com/gmsas95/picoclaw) - Lightweight philosophy
+- [Anthropic](https://www.anthropic.com) - Claude AI
+- [OpenAI](https://openai.com) - GPT models
 
 ---
 
 > *"未来はここにある"*  
 > *"The future is here"*
 
-**Let's build the future together.** 🚀
-
----
-
-Built with ❤️ for the 99%.
+**Built with ❤️ for everyone.** 🚀
