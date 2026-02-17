@@ -1244,11 +1244,11 @@ func (w *Wizard) createConfiguration() error {
 	}
 
 	providerConfig := fmt.Sprintf(`    %s:
-      api_key: "%s"
+      api_key: ""  # Loaded from environment variable (see .env file)
       model: "%s"
       base_url: "%s"
       timeout: %d
-      max_tokens: 4096`, w.config.LLMProvider, w.config.APIKey, w.config.DefaultModel, baseURL, cfg.timeout)
+      max_tokens: 4096`, w.config.LLMProvider, w.config.DefaultModel, baseURL, cfg.timeout)
 
 	configContent := fmt.Sprintf(`# Myrai Configuration
 # Generated on %s
@@ -1268,13 +1268,13 @@ storage:
 channels:
   telegram:
     enabled: %v
-    bot_token: "%s"
+    bot_token: ""  # Loaded from environment variable TELEGRAM_BOT_TOKEN (see .env file)
     allow_list: []
 
 search:
   enabled: %v
   provider: "%s"
-  api_key: "%s"
+  api_key: ""  # Loaded from environment variable MYRAI_SEARCH_API_KEY (see .env file)
   max_results: 5
   timeout_seconds: 30
 
@@ -1294,7 +1294,7 @@ tools:
 security:
   allow_origins:
     - "*"
-`, time.Now().Format("2006-01-02"), w.config.LLMProvider, providerConfig, w.workspace, w.config.EnableTelegram, w.config.TelegramToken, w.config.SearchProvider != "", w.config.SearchProvider, w.config.SearchAPIKey, w.config.EnableVision, w.config.VisionModel)
+`, time.Now().Format("2006-01-02"), w.config.LLMProvider, providerConfig, w.workspace, w.config.EnableTelegram, w.config.SearchProvider != "", w.config.SearchProvider, w.config.EnableVision, w.config.VisionModel)
 
 	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)

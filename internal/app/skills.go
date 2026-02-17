@@ -82,12 +82,22 @@ func RegisterSkills(cfg *config.Config, st *store.Store, registry *skills.Regist
 		MaxResults:  cfg.Skills.Search.MaxResults,
 		TimeoutSecs: cfg.Skills.Search.TimeoutSecs,
 	})
+	logger.Info("Checking search skill",
+		zap.Bool("search_enabled", cfg.Skills.Search.Enabled),
+		zap.String("provider", cfg.Skills.Search.Provider),
+		zap.Bool("has_api_key", cfg.Skills.Search.APIKey != ""))
 	if searchSkill.IsEnabled() {
 		registry.Register(searchSkill)
 		logger.Info("Search skill registered", zap.String("provider", cfg.Skills.Search.Provider))
+	} else {
+		logger.Warn("Search skill NOT registered - missing API key or disabled")
 	}
 
 	// Register Vision skill if enabled and LLM client supports vision
+	logger.Info("Checking vision skill registration",
+		zap.Bool("vision_enabled", cfg.Skills.Vision.Enabled),
+		zap.Bool("llm_client_nil", llmClient == nil))
+
 	if cfg.Skills.Vision.Enabled && llmClient != nil {
 		visionConfig := vision.VisionSkillConfig{
 			VisionModel: cfg.Skills.Vision.VisionModel,
@@ -96,5 +106,9 @@ func RegisterSkills(cfg *config.Config, st *store.Store, registry *skills.Regist
 		visionSkill := vision.NewVisionSkill(llmClient, visionConfig)
 		registry.Register(visionSkill)
 		logger.Info("Vision skill registered", zap.String("vision_model", cfg.Skills.Vision.VisionModel))
+	} else {
+		logger.Warn("Vision skill NOT registered",
+			zap.Bool("enabled", cfg.Skills.Vision.Enabled),
+			zap.Bool("has_llm_client", llmClient != nil))
 	}
 }
