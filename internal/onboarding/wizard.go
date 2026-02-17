@@ -1232,16 +1232,27 @@ func (w *Wizard) setupIntegrations() error {
 	}
 
 	fmt.Println("\n✓ Integrations configured")
-	time.Sleep(500 * time.Millisecond)
+	fmt.Println("  - Telegram:", w.config.EnableTelegram)
+	fmt.Println("  - Search:", w.config.SearchProvider != "")
+	fmt.Println("  - Vision:", w.config.EnableVision)
+	if w.config.EnableVision {
+		fmt.Println("    Vision model:", w.config.VisionModel)
+	}
+	fmt.Println()
+	os.Stdout.Sync() // Force flush
 
 	return nil
 }
 
 func (w *Wizard) createConfiguration() error {
+	fmt.Println("DEBUG: Starting createConfiguration...")
+	fmt.Println("DEBUG: Config directory:", w.configDir)
+
 	// Create config directory
 	if err := os.MkdirAll(w.configDir, 0755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
+	fmt.Println("DEBUG: Config directory created")
 
 	configPath := filepath.Join(w.configDir, "myrai.yaml")
 
