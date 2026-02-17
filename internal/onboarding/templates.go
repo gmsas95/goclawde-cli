@@ -136,6 +136,9 @@ Your Myrai workspace has been created at:
 Configuration file:
   {{.ConfigPath}}
 
+Secrets file (.env):
+  {{.ConfigDir}}/.env
+
 ## Next Steps:
 
 1. Start Myrai:

@@ -17,6 +17,7 @@ type Wizard struct {
 	reader    *bufio.Reader
 	logger    *zap.Logger
 	workspace string
+	configDir string
 	config    *WizardConfig
 }
 
@@ -51,6 +52,14 @@ func NewWizard(logger *zap.Logger) *Wizard {
 func (w *Wizard) Run() error {
 	// Clear screen and show welcome
 	w.clearScreen()
+
+	// Show detected user info
+	homeDir, _ := os.UserHomeDir()
+	fmt.Printf("ℹ️  Detected user: %s\n", os.Getenv("USER"))
+	fmt.Printf("ℹ️  Home directory: %s\n", homeDir)
+	fmt.Printf("ℹ️  Data will be stored in: %s\n", GetWorkspacePath())
+	fmt.Println()
+
 	fmt.Print(SetupWizardWelcome)
 	w.waitForEnter()
 
@@ -75,14 +84,19 @@ func (w *Wizard) Run() error {
 	}
 
 	// Step 5: Create configuration
+	fmt.Println()
+	fmt.Println("Creating configuration files...")
 	if err := w.createConfiguration(); err != nil {
 		return fmt.Errorf("configuration creation failed: %w", err)
 	}
+	fmt.Println("✓ Configuration files created")
 
 	// Step 6: Create persona files
+	fmt.Println("Creating persona files...")
 	if err := w.createPersonaFiles(); err != nil {
 		return fmt.Errorf("persona creation failed: %w", err)
 	}
+	fmt.Println("✓ Persona files created")
 
 	// Show completion message
 	w.showCompletion()
@@ -97,12 +111,33 @@ func (w *Wizard) setupWorkspace() error {
 	fmt.Println("╚════════════════════════════════════════════════════════════════╝")
 	fmt.Println()
 
-	// Get default workspace path
-	home, err := os.UserHomeDir()
-	if err != nil {
-		home = "."
+	// Get default workspace path (data directory)
+	// Try XDG_DATA_HOME first, then fall back to ~/.local/share/myrai
+	defaultWorkspace := os.Getenv("XDG_DATA_HOME")
+	if defaultWorkspace == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			home = "."
+		}
+		defaultWorkspace = filepath.Join(home, ".local", "share", "myrai")
+	} else {
+		defaultWorkspace = filepath.Join(defaultWorkspace, "myrai")
 	}
-	defaultWorkspace := filepath.Join(home, ".myrai")
+
+	// Get config directory for storing config and .env files
+	configDir := os.Getenv("XDG_CONFIG_HOME")
+	if configDir == "" {
+		home, _ := os.UserHomeDir()
+		if home == "" {
+			home = "."
+		}
+		configDir = filepath.Join(home, ".config", "myrai")
+	} else {
+		configDir = filepath.Join(configDir, "myrai")
+	}
+
+	// Store configDir in wizard for later use
+	w.configDir = configDir
 
 	fmt.Printf("Where should Myrai store its data? [default: %s]: ", defaultWorkspace)
 	workspace, _ := w.reader.ReadString('\n')
@@ -1203,7 +1238,12 @@ func (w *Wizard) setupIntegrations() error {
 }
 
 func (w *Wizard) createConfiguration() error {
-	configPath := filepath.Join(w.workspace, "myrai.yaml")
+	// Create config directory
+	if err := os.MkdirAll(w.configDir, 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	configPath := filepath.Join(w.configDir, "myrai.yaml")
 
 	// Provider configurations
 	providerConfigs := map[string]struct {
@@ -1300,8 +1340,8 @@ security:
 		return fmt.Errorf("failed to write config: %w", err)
 	}
 
-	// Create .env file
-	envPath := filepath.Join(w.workspace, ".env")
+	// Create .env file in config directory
+	envPath := filepath.Join(w.configDir, ".env")
 
 	envKeyMap := map[string]string{
 		"openai":      "OPENAI_API_KEY",
@@ -1411,15 +1451,20 @@ func (w *Wizard) createPersonaFiles() error {
 }
 
 func (w *Wizard) showCompletion() {
-	w.clearScreen()
+	// Don't clear screen - just add some spacing
+	fmt.Println()
+	fmt.Println("─────────────────────────────────────────────────────────────")
+	fmt.Println()
 
 	// Prepare template data
 	data := struct {
 		WorkspacePath string
 		ConfigPath    string
+		ConfigDir     string
 	}{
 		WorkspacePath: w.workspace,
-		ConfigPath:    filepath.Join(w.workspace, "myrai.yaml"),
+		ConfigPath:    filepath.Join(w.configDir, "myrai.yaml"),
+		ConfigDir:     w.configDir,
 	}
 
 	// Simple template replacement
@@ -1428,6 +1473,11 @@ func (w *Wizard) showCompletion() {
 	message = strings.ReplaceAll(message, "{{.ConfigPath}}", data.ConfigPath)
 
 	fmt.Print(message)
+	fmt.Println()
+	fmt.Println()
+	fmt.Println("═════════════════════════════════════════════════════════════")
+	fmt.Println("✅ SETUP COMPLETE! Your AI assistant is ready to use.")
+	fmt.Println("═════════════════════════════════════════════════════════════")
 	fmt.Println()
 	fmt.Print("Press Enter to exit...")
 	w.reader.ReadString('\n')
@@ -1461,23 +1511,40 @@ func splitAndTrim(s, sep string) []string {
 
 // CheckFirstRun checks if this is the first run (no config exists)
 func CheckFirstRun() bool {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		home = "."
-	}
+	configPath := GetConfigPath()
 
-	workspace := filepath.Join(home, ".myrai")
-	configPath := filepath.Join(workspace, "myrai.yaml")
-
-	_, err = os.Stat(configPath)
+	_, err := os.Stat(configPath)
 	return os.IsNotExist(err)
 }
 
-// GetWorkspacePath returns the default workspace path
+// GetWorkspacePath returns the default workspace (data) path
 func GetWorkspacePath() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		home = "."
+	// Try XDG_DATA_HOME first, then fall back to ~/.local/share/myrai
+	workspace := os.Getenv("XDG_DATA_HOME")
+	if workspace == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			home = "."
+		}
+		workspace = filepath.Join(home, ".local", "share", "myrai")
+	} else {
+		workspace = filepath.Join(workspace, "myrai")
 	}
-	return filepath.Join(home, ".myrai")
+	return workspace
+}
+
+// GetConfigPath returns the default config path
+func GetConfigPath() string {
+	// Try XDG_CONFIG_HOME first, then fall back to ~/.config/myrai
+	configDir := os.Getenv("XDG_CONFIG_HOME")
+	if configDir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			home = "."
+		}
+		configDir = filepath.Join(home, ".config", "myrai")
+	} else {
+		configDir = filepath.Join(configDir, "myrai")
+	}
+	return filepath.Join(configDir, "myrai.yaml")
 }

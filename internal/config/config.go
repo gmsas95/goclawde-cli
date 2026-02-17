@@ -180,8 +180,13 @@ func Load(configPath, dataDir string) (*Config, error) {
 	v.Set("storage.sqlite_path", filepath.Join(dataDir, "myrai.db"))
 	v.Set("storage.badger_path", filepath.Join(dataDir, "badger"))
 
+	// Config file should be in config directory, not data directory
 	if configPath == "" {
-		configPath = filepath.Join(dataDir, "myrai.yaml")
+		configDir := getDefaultConfigDir()
+		if err := os.MkdirAll(configDir, 0755); err != nil {
+			return nil, fmt.Errorf("failed to create config directory: %w", err)
+		}
+		configPath = filepath.Join(configDir, "myrai.yaml")
 	}
 
 	configPath = expandPath(configPath)
@@ -395,6 +400,22 @@ func getDefaultDataDir() string {
 	}
 
 	return filepath.Join(home, ".local", "share", "myrai")
+}
+
+// getDefaultConfigDir returns the default config directory following XDG spec
+func getDefaultConfigDir() string {
+	// Try XDG_CONFIG_HOME first
+	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
+		return filepath.Join(xdg, "myrai")
+	}
+
+	// Fall back to home directory
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "./config"
+	}
+
+	return filepath.Join(home, ".config", "myrai")
 }
 
 func loadEnvOverrides(cfg *Config) {
