@@ -127,7 +127,11 @@ func (pm *PersonaManager) Load() error {
 func (pm *PersonaManager) Save() error {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
+	return pm.saveInternal()
+}
 
+// saveInternal saves files without locking (caller must hold lock)
+func (pm *PersonaManager) saveInternal() error {
 	// Save IDENTITY.md
 	identityPath := filepath.Join(pm.workspacePath, "IDENTITY.md")
 	if err := os.WriteFile(identityPath, []byte(pm.identity.String()), 0644); err != nil {
@@ -219,7 +223,7 @@ func (pm *PersonaManager) SetIdentity(identity *Identity) error {
 	defer pm.mu.Unlock()
 	pm.identity = identity
 	pm.InvalidateCache()
-	return pm.Save()
+	return pm.saveInternal() // Use internal save since we already hold the lock
 }
 
 // GetUserProfile returns the user profile
@@ -236,7 +240,7 @@ func (pm *PersonaManager) UpdateUserPreference(key, value string) error {
 	pm.user.Preferences[key] = value
 	pm.user.UpdatedAt = time.Now()
 	pm.InvalidateCache()
-	return pm.Save()
+	return pm.saveInternal() // Use internal save since we already hold the lock
 }
 
 // GetCurrentProject returns the current active project

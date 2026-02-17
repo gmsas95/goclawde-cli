@@ -19,6 +19,7 @@ type Wizard struct {
 	workspace string
 	configDir string
 	config    *WizardConfig
+	spinner   chan bool
 }
 
 // WizardConfig holds the configuration collected during setup
@@ -52,14 +53,6 @@ func NewWizard(logger *zap.Logger) *Wizard {
 func (w *Wizard) Run() error {
 	// Clear screen and show welcome
 	w.clearScreen()
-
-	// Show detected user info
-	homeDir, _ := os.UserHomeDir()
-	fmt.Printf("ℹ️  Detected user: %s\n", os.Getenv("USER"))
-	fmt.Printf("ℹ️  Home directory: %s\n", homeDir)
-	fmt.Printf("ℹ️  Data will be stored in: %s\n", GetWorkspacePath())
-	fmt.Println()
-
 	fmt.Print(SetupWizardWelcome)
 	w.waitForEnter()
 
@@ -84,22 +77,20 @@ func (w *Wizard) Run() error {
 	}
 
 	// Step 5: Create configuration
-	fmt.Println()
-	fmt.Println("Creating configuration files...")
+	spinner := w.startSpinner("⚙️  Creating configuration files...")
 	if err := w.createConfiguration(); err != nil {
+		w.stopSpinner(spinner)
 		return fmt.Errorf("configuration creation failed: %w", err)
 	}
-	fmt.Println("✓ Configuration files created")
+	w.stopSpinner(spinner)
 
 	// Step 6: Create persona files
-	fmt.Println()
-	fmt.Println("=== Step 6: Creating persona files ===")
-	fmt.Println("DEBUG: About to call createPersonaFiles")
-	fmt.Println("DEBUG: w.workspace =", w.workspace)
+	spinner = w.startSpinner("📝 Creating persona files...")
 	if err := w.createPersonaFiles(); err != nil {
+		w.stopSpinner(spinner)
 		return fmt.Errorf("persona creation failed: %w", err)
 	}
-	fmt.Println("✓ Persona files created")
+	w.stopSpinner(spinner)
 
 	// Show completion message
 	w.showCompletion()
@@ -1235,27 +1226,16 @@ func (w *Wizard) setupIntegrations() error {
 	}
 
 	fmt.Println("\n✓ Integrations configured")
-	fmt.Println("  - Telegram:", w.config.EnableTelegram)
-	fmt.Println("  - Search:", w.config.SearchProvider != "")
-	fmt.Println("  - Vision:", w.config.EnableVision)
-	if w.config.EnableVision {
-		fmt.Println("    Vision model:", w.config.VisionModel)
-	}
-	fmt.Println()
-	os.Stdout.Sync() // Force flush
+	time.Sleep(300 * time.Millisecond)
 
 	return nil
 }
 
 func (w *Wizard) createConfiguration() error {
-	fmt.Println("DEBUG: Starting createConfiguration...")
-	fmt.Println("DEBUG: Config directory:", w.configDir)
-
 	// Create config directory
 	if err := os.MkdirAll(w.configDir, 0755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
-	fmt.Println("DEBUG: Config directory created")
 
 	configPath := filepath.Join(w.configDir, "myrai.yaml")
 
@@ -1411,27 +1391,18 @@ security:
 }
 
 func (w *Wizard) createPersonaFiles() error {
-	fmt.Println(">>> createPersonaFiles: START")
-
 	// Ensure workspace directory exists
-	fmt.Println(">>> Ensuring workspace exists:", w.workspace)
 	if err := os.MkdirAll(w.workspace, 0755); err != nil {
-		fmt.Println(">>> ERROR: Failed to create workspace:", err)
 		return fmt.Errorf("failed to create workspace: %w", err)
 	}
-	fmt.Println(">>> Workspace exists")
 
 	// Create persona manager
-	fmt.Println(">>> Creating persona manager...")
 	pm, err := persona.NewPersonaManager(w.workspace, w.logger)
 	if err != nil {
-		fmt.Println(">>> ERROR creating persona manager:", err)
 		return err
 	}
-	fmt.Println(">>> Persona manager created successfully")
 
 	// Set identity from template
-	fmt.Println(">>> Setting identity...")
 	identity := &persona.Identity{
 		Name:        "Myrai",
 		Personality: "Friendly, professional, and helpful AI assistant",
@@ -1439,11 +1410,11 @@ func (w *Wizard) createPersonaFiles() error {
 		Values:      []string{"Privacy", "Transparency", "Efficiency"},
 		Expertise:   []string{"Software development", "Writing", "Analysis"},
 	}
-	pm.SetIdentity(identity)
-	fmt.Println(">>> Identity set")
+	if err := pm.SetIdentity(identity); err != nil {
+		return err
+	}
 
 	// Set user profile
-	fmt.Println(">>> Setting user profile...")
 	user := &persona.UserProfile{
 		Name:               w.config.UserName,
 		CommunicationStyle: w.config.CommunicationStyle,
@@ -1456,34 +1427,21 @@ func (w *Wizard) createPersonaFiles() error {
 
 	// Save user profile manually since it's not exposed directly
 	userPath := filepath.Join(w.workspace, "USER.md")
-	fmt.Println(">>> Writing USER.md to:", userPath)
 	if err := os.WriteFile(userPath, []byte(user.String()), 0644); err != nil {
-		fmt.Println(">>> ERROR writing USER.md:", err)
 		return err
 	}
-	fmt.Println(">>> USER.md written")
 
 	// Create TOOLS.md
 	toolsPath := filepath.Join(w.workspace, "TOOLS.md")
-	fmt.Println(">>> Writing TOOLS.md...")
 	if err := os.WriteFile(toolsPath, []byte(DefaultToolsTemplate), 0644); err != nil {
 		return err
 	}
 
 	// Create AGENTS.md
 	agentsPath := filepath.Join(w.workspace, "AGENTS.md")
-	fmt.Println(">>> Writing AGENTS.md...")
 	if err := os.WriteFile(agentsPath, []byte(DefaultAgentsTemplate), 0644); err != nil {
 		return err
 	}
-
-	// Save IDENTITY.md
-	fmt.Println(">>> Saving IDENTITY.md...")
-	if err := pm.Save(); err != nil {
-		return err
-	}
-
-	fmt.Println(">>> createPersonaFiles: COMPLETE")
 
 	return nil
 }
@@ -1533,6 +1491,35 @@ func parseInt(s string) (int, error) {
 	var result int
 	_, err := fmt.Sscanf(s, "%d", &result)
 	return result, err
+}
+
+// startSpinner starts an animated spinner
+func (w *Wizard) startSpinner(message string) *chan bool {
+	stop := make(chan bool)
+	go func() {
+		spinner := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+		i := 0
+		for {
+			select {
+			case <-stop:
+				fmt.Printf("\r%s Done!          \n", message)
+				return
+			default:
+				fmt.Printf("\r%s %s", message, spinner[i%len(spinner)])
+				time.Sleep(100 * time.Millisecond)
+				i++
+			}
+		}
+	}()
+	return &stop
+}
+
+// stopSpinner stops the spinner
+func (w *Wizard) stopSpinner(stopChan *chan bool) {
+	if stopChan != nil {
+		close(*stopChan)
+		time.Sleep(50 * time.Millisecond) // Brief pause for clean output
+	}
 }
 
 func splitAndTrim(s, sep string) []string {
