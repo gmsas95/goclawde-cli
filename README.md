@@ -408,10 +408,8 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 Built with inspiration from:
 - [OpenClaw](https://github.com/openclaw/openclaw) - Agentic patterns and tool use
-- [Nanoclaw](https://github.com/gmsas95/nanoclaw) - Lightweight agent architecture
-- [PicoClaw](https://github.com/gmsas95/picoclaw) - Minimalist AI assistant philosophy
-- [ZeptoClaw](https://github.com/gmsas95/zeptoclaw) - Ultra-lightweight design principles
-- **MemoryCore** - Knowledge retention and memory systems
+- **MemoryCore** by [Kiyoraka](https://github.com/Kiyoraka/Project-AI-MemoryCore) - Knowledge retention and memory systems
+- **PicoClaw/Nanoclaw/ZeptoClaw** - Lightweight AI assistant architectures
 
 ---
 
