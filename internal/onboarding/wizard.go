@@ -202,9 +202,9 @@ func (w *Wizard) setupAIConfiguration() error {
 	fmt.Println("Select your LLM provider:")
 	fmt.Println()
 	fmt.Println("  === Cloud Providers (Recommended) ===")
-	fmt.Println("  1. OpenAI        - GPT-4o, GPT-4-turbo, o1")
-	fmt.Println("  2. Anthropic     - Claude 3.5 Sonnet, Claude 3 Opus")
-	fmt.Println("  3. Google        - Gemini 2.0 Flash, Gemini Pro")
+	fmt.Println("  1. OpenAI        - GPT-5.2, GPT-5.2 Codex, GPT-5.1")
+	fmt.Println("  2. Anthropic     - Claude Opus 4.6, Claude Sonnet 4.5")
+	fmt.Println("  3. Google        - Gemini 3 Pro, Gemini 2.5 Pro")
 	fmt.Println("  4. Kimi/Moonshot - Recommended for coding, Chinese support")
 	fmt.Println()
 	fmt.Println("  === Fast & Affordable ===")
@@ -365,20 +365,23 @@ func (w *Wizard) configureOpenAI() error {
 	// Model selection
 	fmt.Println()
 	fmt.Println("Select your preferred model:")
-	fmt.Println("  1. gpt-4o (default, best for most tasks)")
-	fmt.Println("  2. gpt-4o-mini (faster, cheaper)")
-	fmt.Println("  3. gpt-4-turbo (legacy, powerful)")
-	fmt.Print("\nSelect (1-3) [default: 1]: ")
+	fmt.Println("  1. gpt-5.2 (latest, best overall)")
+	fmt.Println("  2. gpt-5.2-codex (best for coding)")
+	fmt.Println("  3. gpt-5.1 (previous generation)")
+	fmt.Println("  4. gpt-5.1-codex-max (agentic coding)")
+	fmt.Print("\nSelect (1-4) [default: 1]: ")
 	modelChoice, _ := w.reader.ReadString('\n')
 	modelChoice = strings.TrimSpace(modelChoice)
 
 	switch modelChoice {
 	case "2":
-		w.config.DefaultModel = "gpt-4o-mini"
+		w.config.DefaultModel = "gpt-5.2-codex"
 	case "3":
-		w.config.DefaultModel = "gpt-4-turbo"
+		w.config.DefaultModel = "gpt-5.1"
+	case "4":
+		w.config.DefaultModel = "gpt-5.1-codex-max"
 	default:
-		w.config.DefaultModel = "gpt-4o"
+		w.config.DefaultModel = "gpt-5.2"
 	}
 
 	return nil
@@ -403,20 +406,23 @@ func (w *Wizard) configureAnthropic() error {
 	// Model selection
 	fmt.Println()
 	fmt.Println("Select your preferred model:")
-	fmt.Println("  1. claude-3-5-sonnet-20241022 (default, best balance)")
-	fmt.Println("  2. claude-3-opus-20240229 (most powerful)")
-	fmt.Println("  3. claude-3-haiku-20240307 (fastest)")
-	fmt.Print("\nSelect (1-3) [default: 1]: ")
+	fmt.Println("  1. claude-opus-4.6 (latest, best overall)")
+	fmt.Println("  2. claude-opus-4.5 (powerful)")
+	fmt.Println("  3. claude-sonnet-4.5 (balanced)")
+	fmt.Println("  4. claude-sonnet-4 (fast)")
+	fmt.Print("\nSelect (1-4) [default: 1]: ")
 	modelChoice, _ := w.reader.ReadString('\n')
 	modelChoice = strings.TrimSpace(modelChoice)
 
 	switch modelChoice {
 	case "2":
-		w.config.DefaultModel = "claude-3-opus-20240229"
+		w.config.DefaultModel = "claude-opus-4.5"
 	case "3":
-		w.config.DefaultModel = "claude-3-haiku-20240307"
+		w.config.DefaultModel = "claude-sonnet-4.5"
+	case "4":
+		w.config.DefaultModel = "claude-sonnet-4"
 	default:
-		w.config.DefaultModel = "claude-3-5-sonnet-20241022"
+		w.config.DefaultModel = "claude-opus-4.6"
 	}
 
 	return nil
@@ -431,34 +437,40 @@ func (w *Wizard) configureOllama() error {
 	w.config.APIKey = "ollama"
 
 	fmt.Println("Select your preferred local model:")
-	fmt.Println("  1. llama3.2 (default, good balance)")
-	fmt.Println("  2. llama3.1 (larger, more capable)")
-	fmt.Println("  3. mistral (fast, efficient)")
-	fmt.Println("  4. codellama (optimized for code)")
-	fmt.Println("  5. qwen2.5 (great for coding)")
-	fmt.Println("  6. Other (specify)")
-	fmt.Print("\nSelect (1-6) [default: 1]: ")
+	fmt.Println("  1. llama3.3 (default, latest, 70B SOTA)")
+	fmt.Println("  2. deepseek-r1 (reasoning model)")
+	fmt.Println("  3. gemma3 (vision-capable)")
+	fmt.Println("  4. qwen3 (latest Qwen)")
+	fmt.Println("  5. qwen2.5-coder (best for coding)")
+	fmt.Println("  6. llama3.2 (efficient)")
+	fmt.Println("  7. phi4 (Microsoft 14B)")
+	fmt.Println("  8. Other (specify)")
+	fmt.Print("\nSelect (1-8) [default: 1]: ")
 	modelChoice, _ := w.reader.ReadString('\n')
 	modelChoice = strings.TrimSpace(modelChoice)
 
 	switch modelChoice {
 	case "2":
-		w.config.DefaultModel = "llama3.1"
+		w.config.DefaultModel = "deepseek-r1"
 	case "3":
-		w.config.DefaultModel = "mistral"
+		w.config.DefaultModel = "gemma3:27b"
 	case "4":
-		w.config.DefaultModel = "codellama"
+		w.config.DefaultModel = "qwen3:30b"
 	case "5":
-		w.config.DefaultModel = "qwen2.5"
+		w.config.DefaultModel = "qwen2.5-coder:32b"
 	case "6":
+		w.config.DefaultModel = "llama3.2"
+	case "7":
+		w.config.DefaultModel = "phi4"
+	case "8":
 		fmt.Print("Enter model name: ")
 		customModel, _ := w.reader.ReadString('\n')
 		w.config.DefaultModel = strings.TrimSpace(customModel)
 		if w.config.DefaultModel == "" {
-			w.config.DefaultModel = "llama3.2"
+			w.config.DefaultModel = "llama3.3"
 		}
 	default:
-		w.config.DefaultModel = "llama3.2"
+		w.config.DefaultModel = "llama3.3"
 	}
 
 	fmt.Println()
@@ -485,20 +497,23 @@ func (w *Wizard) configureGoogle() error {
 
 	fmt.Println()
 	fmt.Println("Select your preferred model:")
-	fmt.Println("  1. gemini-2.0-flash (default, fast and capable)")
-	fmt.Println("  2. gemini-1.5-pro (more powerful)")
-	fmt.Println("  3. gemini-1.5-flash (fast, efficient)")
-	fmt.Print("\nSelect (1-3) [default: 1]: ")
+	fmt.Println("  1. gemini-3-pro-preview (latest, frontier)")
+	fmt.Println("  2. gemini-3-flash-preview (fast)")
+	fmt.Println("  3. gemini-2.5-pro (workhorse)")
+	fmt.Println("  4. gemini-2.5-flash (efficient)")
+	fmt.Print("\nSelect (1-4) [default: 1]: ")
 	modelChoice, _ := w.reader.ReadString('\n')
 	modelChoice = strings.TrimSpace(modelChoice)
 
 	switch modelChoice {
 	case "2":
-		w.config.DefaultModel = "gemini-1.5-pro"
+		w.config.DefaultModel = "gemini-3-flash-preview"
 	case "3":
-		w.config.DefaultModel = "gemini-1.5-flash"
+		w.config.DefaultModel = "gemini-2.5-pro"
+	case "4":
+		w.config.DefaultModel = "gemini-2.5-flash"
 	default:
-		w.config.DefaultModel = "gemini-2.0-flash"
+		w.config.DefaultModel = "gemini-3-pro-preview"
 	}
 
 	return nil
