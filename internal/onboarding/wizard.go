@@ -92,7 +92,10 @@ func (w *Wizard) Run() error {
 	fmt.Println("✓ Configuration files created")
 
 	// Step 6: Create persona files
-	fmt.Println("Creating persona files...")
+	fmt.Println()
+	fmt.Println("=== Step 6: Creating persona files ===")
+	fmt.Println("DEBUG: About to call createPersonaFiles")
+	fmt.Println("DEBUG: w.workspace =", w.workspace)
 	if err := w.createPersonaFiles(); err != nil {
 		return fmt.Errorf("persona creation failed: %w", err)
 	}
@@ -1408,13 +1411,27 @@ security:
 }
 
 func (w *Wizard) createPersonaFiles() error {
+	fmt.Println(">>> createPersonaFiles: START")
+
+	// Ensure workspace directory exists
+	fmt.Println(">>> Ensuring workspace exists:", w.workspace)
+	if err := os.MkdirAll(w.workspace, 0755); err != nil {
+		fmt.Println(">>> ERROR: Failed to create workspace:", err)
+		return fmt.Errorf("failed to create workspace: %w", err)
+	}
+	fmt.Println(">>> Workspace exists")
+
 	// Create persona manager
+	fmt.Println(">>> Creating persona manager...")
 	pm, err := persona.NewPersonaManager(w.workspace, w.logger)
 	if err != nil {
+		fmt.Println(">>> ERROR creating persona manager:", err)
 		return err
 	}
+	fmt.Println(">>> Persona manager created successfully")
 
 	// Set identity from template
+	fmt.Println(">>> Setting identity...")
 	identity := &persona.Identity{
 		Name:        "Myrai",
 		Personality: "Friendly, professional, and helpful AI assistant",
@@ -1423,8 +1440,10 @@ func (w *Wizard) createPersonaFiles() error {
 		Expertise:   []string{"Software development", "Writing", "Analysis"},
 	}
 	pm.SetIdentity(identity)
+	fmt.Println(">>> Identity set")
 
 	// Set user profile
+	fmt.Println(">>> Setting user profile...")
 	user := &persona.UserProfile{
 		Name:               w.config.UserName,
 		CommunicationStyle: w.config.CommunicationStyle,
@@ -1437,26 +1456,34 @@ func (w *Wizard) createPersonaFiles() error {
 
 	// Save user profile manually since it's not exposed directly
 	userPath := filepath.Join(w.workspace, "USER.md")
+	fmt.Println(">>> Writing USER.md to:", userPath)
 	if err := os.WriteFile(userPath, []byte(user.String()), 0644); err != nil {
+		fmt.Println(">>> ERROR writing USER.md:", err)
 		return err
 	}
+	fmt.Println(">>> USER.md written")
 
 	// Create TOOLS.md
 	toolsPath := filepath.Join(w.workspace, "TOOLS.md")
+	fmt.Println(">>> Writing TOOLS.md...")
 	if err := os.WriteFile(toolsPath, []byte(DefaultToolsTemplate), 0644); err != nil {
 		return err
 	}
 
 	// Create AGENTS.md
 	agentsPath := filepath.Join(w.workspace, "AGENTS.md")
+	fmt.Println(">>> Writing AGENTS.md...")
 	if err := os.WriteFile(agentsPath, []byte(DefaultAgentsTemplate), 0644); err != nil {
 		return err
 	}
 
 	// Save IDENTITY.md
+	fmt.Println(">>> Saving IDENTITY.md...")
 	if err := pm.Save(); err != nil {
 		return err
 	}
+
+	fmt.Println(">>> createPersonaFiles: COMPLETE")
 
 	return nil
 }
