@@ -10,6 +10,7 @@ import (
 	"github.com/gmsas95/myrai-cli/internal/skills/health"
 	"github.com/gmsas95/myrai-cli/internal/skills/intelligence"
 	"github.com/gmsas95/myrai-cli/internal/skills/notes"
+	"github.com/gmsas95/myrai-cli/internal/skills/search"
 	"github.com/gmsas95/myrai-cli/internal/skills/shopping"
 	"github.com/gmsas95/myrai-cli/internal/skills/system"
 	"github.com/gmsas95/myrai-cli/internal/skills/voice"
@@ -70,5 +71,17 @@ func RegisterSkills(cfg *config.Config, st *store.Store, registry *skills.Regist
 		logger.Error("Failed to create intelligence skill", zap.Error(err))
 	} else {
 		registry.Register(intelSkill)
+	}
+
+	searchSkill := search.NewSearchSkill(search.Config{
+		Enabled:     cfg.Skills.Search.Enabled,
+		Provider:    cfg.Skills.Search.Provider,
+		APIKey:      cfg.Skills.Search.APIKey,
+		MaxResults:  cfg.Skills.Search.MaxResults,
+		TimeoutSecs: cfg.Skills.Search.TimeoutSecs,
+	})
+	if searchSkill.IsEnabled() {
+		registry.Register(searchSkill)
+		logger.Info("Search skill registered", zap.String("provider", cfg.Skills.Search.Provider))
 	}
 }

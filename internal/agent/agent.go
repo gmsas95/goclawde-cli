@@ -196,14 +196,14 @@ func (a *Agent) chatNonStream(ctx context.Context, req llm.ChatRequest, convID s
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			
+
 			// Get the user message from the conversation
 			userMsgs, _ := a.store.GetMessages(convID, 1, 0)
 			var userContent string
 			if len(userMsgs) > 0 && userMsgs[0].Role == "user" {
 				userContent = userMsgs[0].Content
 			}
-			
+
 			if err := a.contextManager.ExtractAndStoreMemories(ctx, convID, userContent, msg.Content); err != nil {
 				a.logger.Debug("Failed to extract memories", zap.Error(err))
 			}
@@ -281,7 +281,7 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 		// Try skills registry first
 		var result interface{}
 		var err error
-		
+
 		if a.skillsRegistry != nil {
 			result, err = a.skillsRegistry.ExecuteTool(ctx, tc.Function.Name, []byte(tc.Function.Arguments))
 		} else if a.tools != nil {
@@ -289,7 +289,7 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 		} else {
 			err = fmt.Errorf("no tool registry available")
 		}
-		
+
 		resultObj := map[string]interface{}{
 			"tool_call_id": tc.ID,
 			"role":         "tool",
@@ -412,7 +412,7 @@ func (a *Agent) buildContext(ctx context.Context, convID string, systemPrompt st
 	if systemPrompt == "" {
 		systemPrompt = a.buildSystemPrompt()
 	}
-	
+
 	// Preallocate message slice with capacity for efficiency
 	messages = make([]llm.Message, 0, 25)
 	messages = append(messages, llm.Message{
@@ -456,21 +456,29 @@ func (a *Agent) buildSystemPrompt() string {
 }
 
 func (a *Agent) defaultSystemPrompt() string {
-	return `You are GoClawde, a helpful AI assistant running locally on the user's machine.
+	return `You are Myrai, a helpful AI assistant running locally on the user's machine with access to real-time information.
 
-You have access to tools for file operations, command execution, and web search. Use them when needed to help the user.
+IMPORTANT - WHEN TO USE WEB SEARCH:
+You MUST use the web_search tool when:
+- The user asks about current events, news, or recent developments
+- You need up-to-date information (your training data has a cutoff date)
+- The user asks about time-sensitive topics (weather, stock prices, sports scores, etc.)
+- You need to verify facts that may have changed recently
+- The user asks "What's the latest...", "Current...", "Recent...", "Today...", "News..."
 
 Guidelines:
 - Be concise but thorough
 - Explain what you're doing before using tools
 - Confirm destructive operations before proceeding
 - Prioritize user privacy and safety
+- Use web_search proactively for real-time information needs
+- After searching, summarize findings clearly and cite sources
 
 Available tools:
 - read_file, write_file - File operations
 - list_dir - List directory contents  
 - exec_command - Execute safe shell commands
-- web_search - Search the web
+- web_search - Search the web for current information (USE THIS for real-time data!)
 - fetch_url - Fetch URL content
 - get_weather - Weather information
 - github_search_repos, github_get_file, etc. - GitHub operations`
@@ -482,7 +490,7 @@ func (a *Agent) convertTools(defs []map[string]interface{}) []llm.Tool {
 		tool := llm.Tool{
 			Type: "function",
 		}
-		
+
 		if fn, ok := def["function"].(map[string]interface{}); ok {
 			tool.Function.Name = getString(fn, "name")
 			tool.Function.Description = getString(fn, "description")
@@ -490,7 +498,7 @@ func (a *Agent) convertTools(defs []map[string]interface{}) []llm.Tool {
 				tool.Function.Parameters = params
 			}
 		}
-		
+
 		tools = append(tools, tool)
 	}
 	return tools
@@ -506,18 +514,18 @@ func getString(m map[string]interface{}, key string) string {
 // GenerateTitle generates a title for a conversation
 func (a *Agent) GenerateTitle(ctx context.Context, firstMessage string) (string, error) {
 	prompt := fmt.Sprintf("Generate a short, concise title (3-5 words) for a conversation that starts with this message: \"%s\". Respond with ONLY the title, no quotes.", firstMessage)
-	
+
 	title, err := a.llmClient.SimpleChat(ctx, "You are a helpful assistant.", prompt)
 	if err != nil {
 		return "New Conversation", nil
 	}
-	
+
 	title = strings.TrimSpace(title)
 	title = strings.Trim(title, `"'`)
-	
+
 	if len(title) > 50 {
 		title = title[:50] + "..."
 	}
-	
+
 	return title, nil
 }

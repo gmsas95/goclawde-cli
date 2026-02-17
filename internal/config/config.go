@@ -96,6 +96,7 @@ type SkillsConfig struct {
 	Weather WeatherSkillConfig `mapstructure:"weather"`
 	Browser BrowserSkillConfig `mapstructure:"browser"`
 	Brave   BraveSkillConfig   `mapstructure:"brave"`
+	Search  SearchSkillConfig  `mapstructure:"search"`
 }
 
 type GitHubSkillConfig struct {
@@ -114,6 +115,14 @@ type BrowserSkillConfig struct {
 
 type BraveSkillConfig struct {
 	APIKey string `mapstructure:"api_key"`
+}
+
+type SearchSkillConfig struct {
+	Enabled     bool   `mapstructure:"enabled"`
+	Provider    string `mapstructure:"provider"` // brave, serper, google, duckduckgo
+	APIKey      string `mapstructure:"api_key"`
+	MaxResults  int    `mapstructure:"max_results"`
+	TimeoutSecs int    `mapstructure:"timeout_seconds"`
 }
 
 // MCPConfig holds MCP server configuration
@@ -281,6 +290,15 @@ func loadStandardEnvVars(cfg *Config) {
 
 	if key := ResolveEnvWithAliases("MYRAI_SKILLS_BRAVE_API_KEY"); key != "" {
 		cfg.Skills.Brave.APIKey = key
+		cfg.Skills.Search.APIKey = key
+	}
+
+	if key := ResolveEnvWithAliases("MYRAI_SKILLS_SEARCH_API_KEY"); key != "" {
+		cfg.Skills.Search.APIKey = key
+	}
+
+	if provider := ResolveEnvWithAliases("MYRAI_SKILLS_SEARCH_PROVIDER"); provider != "" {
+		cfg.Skills.Search.Provider = provider
 	}
 }
 
@@ -346,6 +364,12 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("vector.embedding_model", "all-MiniLM-L6-v2")
 	v.SetDefault("vector.dimension", 384)
 	v.SetDefault("vector.ollama_host", "http://localhost:11434")
+
+	// Search defaults
+	v.SetDefault("search.enabled", true)
+	v.SetDefault("search.provider", "brave")
+	v.SetDefault("search.max_results", 5)
+	v.SetDefault("search.timeout_seconds", 30)
 }
 
 func getDefaultDataDir() string {
