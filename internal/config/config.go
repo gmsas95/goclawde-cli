@@ -378,7 +378,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("search.timeout_seconds", 30)
 
 	// Vision defaults
-	v.SetDefault("vision.enabled", false)
+	v.SetDefault("vision.enabled", true)
 	v.SetDefault("vision.vision_model", "gpt-4o")
 }
 

@@ -278,11 +278,20 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 	// Execute tools
 	toolResults := make([]map[string]interface{}, 0, len(toolCalls))
 
-	for _, tc := range toolCalls {
+	for i, tc := range toolCalls {
 		a.logger.Info("Executing tool",
 			zap.String("tool", tc.Function.Name),
 			zap.String("args", tc.Function.Arguments),
 		)
+
+		// Generate tool call ID if missing (some LLMs don't provide IDs)
+		toolCallID := tc.ID
+		if toolCallID == "" {
+			toolCallID = fmt.Sprintf("call_%d_%d", time.Now().Unix(), i)
+			a.logger.Warn("Tool call ID missing, generated fallback",
+				zap.String("generated_id", toolCallID),
+				zap.String("tool", tc.Function.Name))
+		}
 
 		// Try skills registry first
 		var result interface{}
@@ -297,7 +306,7 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 		}
 
 		resultObj := map[string]interface{}{
-			"tool_call_id": tc.ID,
+			"tool_call_id": toolCallID,
 			"role":         "tool",
 			"name":         tc.Function.Name,
 		}
@@ -322,7 +331,7 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 			Content:        resultObj["content"].(string),
 			ToolCalls:      store.ToJSON(tc),
 			ToolResults:    store.ToJSON(result),
-			ToolCallID:     tc.ID, // Save the tool_call_id
+			ToolCallID:     toolCallID, // Save the tool_call_id
 		}
 		if err := a.store.CreateMessage(toolMsg); err != nil {
 			a.logger.Warn("Failed to save tool message", zap.Error(err))

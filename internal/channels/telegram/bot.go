@@ -3,7 +3,11 @@ package telegram
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -147,6 +151,16 @@ func (b *Bot) handleUpdate(update tgbotapi.Update) error {
 		return b.handleVoiceMessage(msg)
 	}
 
+	// Handle photos
+	if msg.Photo != nil && len(msg.Photo) > 0 {
+		return b.handlePhoto(msg)
+	}
+
+	// Handle documents (PDFs, etc.)
+	if msg.Document != nil {
+		return b.handleDocument(msg)
+	}
+
 	return nil
 }
 
@@ -266,6 +280,182 @@ func (b *Bot) handleVoiceMessage(msg *tgbotapi.Message) error {
 	// Full voice processing will be implemented in next iteration
 	_, err := b.sendMessage(chatID, "🎙️ Voice message received! Voice processing coming soon to Myrai (未来).")
 	return err
+}
+
+// handlePhoto handles photo messages
+func (b *Bot) handlePhoto(msg *tgbotapi.Message) error {
+	chatID := msg.Chat.ID
+
+	// Show typing indicator
+	typing := tgbotapi.NewChatAction(chatID, tgbotapi.ChatTyping)
+	b.api.Send(typing)
+
+	// Get the largest photo (best quality)
+	photos := msg.Photo
+	if len(photos) == 0 {
+		_, err := b.sendMessage(chatID, "❌ No photo found in message.")
+		return err
+	}
+	photo := photos[len(photos)-1]
+
+	// Download the photo
+	b.sendMessage(chatID, "📸 Downloading and analyzing image...")
+
+	filePath, err := b.downloadFile(photo.FileID, "image")
+	if err != nil {
+		b.logger.Error("Failed to download photo", zap.Error(err))
+		_, sendErr := b.sendMessage(chatID, fmt.Sprintf("❌ Failed to download image: %v", err))
+		return sendErr
+	}
+	defer os.Remove(filePath) // Clean up after processing
+
+	// Process through agent with the image
+	ctx, cancel := context.WithTimeout(b.ctx, 60*time.Second)
+	defer cancel()
+
+	prompt := "Analyze this image and describe what you see."
+	if msg.Caption != "" {
+		prompt = msg.Caption
+	}
+
+	resp, err := b.agent.Chat(ctx, agent.ChatRequest{
+		ConversationID: b.getConversationID(chatID),
+		Message:        fmt.Sprintf("[Image attached: %s]\n\n%s", filePath, prompt),
+		Stream:         false,
+	})
+
+	if err != nil {
+		b.logger.Error("Agent error", zap.Error(err))
+		_, sendErr := b.sendMessage(chatID, fmt.Sprintf("❌ Error analyzing image: %v", err))
+		return sendErr
+	}
+
+	// Save conversation ID
+	b.setConversationID(chatID, resp.ConversationID)
+
+	_, err = b.sendMessage(chatID, resp.Content)
+	return err
+}
+
+// handleDocument handles document/file messages (PDFs, etc.)
+func (b *Bot) handleDocument(msg *tgbotapi.Message) error {
+	chatID := msg.Chat.ID
+	doc := msg.Document
+
+	// Show typing indicator
+	typing := tgbotapi.NewChatAction(chatID, tgbotapi.ChatTyping)
+	b.api.Send(typing)
+
+	// Check file size (limit to 20MB)
+	if doc.FileSize > 20*1024*1024 {
+		_, err := b.sendMessage(chatID, "❌ File too large. Maximum size is 20MB.")
+		return err
+	}
+
+	// Download the document
+	b.sendMessage(chatID, fmt.Sprintf("📄 Downloading file: %s...", doc.FileName))
+
+	filePath, err := b.downloadFile(doc.FileID, "document")
+	if err != nil {
+		b.logger.Error("Failed to download document", zap.Error(err))
+		_, sendErr := b.sendMessage(chatID, fmt.Sprintf("❌ Failed to download file: %v", err))
+		return sendErr
+	}
+	defer os.Remove(filePath) // Clean up after processing
+
+	// Process through agent with the document
+	ctx, cancel := context.WithTimeout(b.ctx, 120*time.Second)
+	defer cancel()
+
+	prompt := fmt.Sprintf("Please analyze this document: %s", filePath)
+	if msg.Caption != "" {
+		prompt = fmt.Sprintf("%s\n\nUser request: %s", prompt, msg.Caption)
+	}
+
+	resp, err := b.agent.Chat(ctx, agent.ChatRequest{
+		ConversationID: b.getConversationID(chatID),
+		Message:        prompt,
+		Stream:         false,
+	})
+
+	if err != nil {
+		b.logger.Error("Agent error", zap.Error(err))
+		_, sendErr := b.sendMessage(chatID, fmt.Sprintf("❌ Error processing document: %v", err))
+		return sendErr
+	}
+
+	// Save conversation ID
+	b.setConversationID(chatID, resp.ConversationID)
+
+	_, err = b.sendMessage(chatID, resp.Content)
+	return err
+}
+
+// downloadFile downloads a file from Telegram and returns the local path
+func (b *Bot) downloadFile(fileID string, fileType string) (string, error) {
+	// Get file info from Telegram
+	fileConfig := tgbotapi.FileConfig{FileID: fileID}
+	file, err := b.api.GetFile(fileConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to get file info: %w", err)
+	}
+
+	// Create temp directory if it doesn't exist
+	tempDir := filepath.Join(os.TempDir(), "myrai-telegram")
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create temp dir: %w", err)
+	}
+
+	// Generate local filename
+	ext := "bin"
+	if fileType == "image" {
+		ext = "jpg"
+	} else if fileType == "document" {
+		ext = "pdf"
+	}
+	localPath := filepath.Join(tempDir, fmt.Sprintf("%s-%d.%s", fileID, time.Now().Unix(), ext))
+
+	// Download file from Telegram
+	fileURL := file.Link(b.api.Token)
+	resp, err := http.Get(fileURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to download file: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("bad status: %s", resp.Status)
+	}
+
+	// Save to local file
+	out, err := os.Create(localPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create file: %w", err)
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to save file: %w", err)
+	}
+
+	return localPath, nil
+}
+
+// getConversationID returns the conversation ID for a chat
+func (b *Bot) getConversationID(chatID int64) string {
+	b.convMu.RLock()
+	defer b.convMu.RUnlock()
+	return b.conversations[chatID]
+}
+
+// setConversationID sets the conversation ID for a chat
+func (b *Bot) setConversationID(chatID int64, convID string) {
+	if convID != "" {
+		b.convMu.Lock()
+		b.conversations[chatID] = convID
+		b.convMu.Unlock()
+	}
 }
 
 func (b *Bot) sendMessage(chatID int64, text string) (int, error) {
