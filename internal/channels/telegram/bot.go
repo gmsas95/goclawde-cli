@@ -212,6 +212,22 @@ Just chat naturally or ask me to:
 		_, err := b.sendMessage(chatID, "✅ Bot is running and ready!")
 		return err
 
+	case "restart":
+		// Clear all conversations
+		b.convMu.Lock()
+		b.conversations = make(map[int64]string)
+		b.convMu.Unlock()
+
+		_, err := b.sendMessage(chatID, "🔄 Restarting...\n\nConversations cleared. Bot will restart shortly.")
+		if err != nil {
+			return err
+		}
+
+		// Signal restart by exiting - relies on external process manager to restart
+		b.logger.Info("Restart requested via Telegram")
+		b.cancel() // Cancel context to trigger shutdown
+		return nil
+
 	default:
 		_, err := b.sendMessage(chatID, "❓ Unknown command. Use /help for available commands.")
 		return err

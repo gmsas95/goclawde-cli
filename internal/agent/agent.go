@@ -341,9 +341,19 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 	// Build follow-up request with tool results
 	// Note: Content must be omitted (not empty string) when ToolCalls are present
 	// Include reasoning_content if present (required by some LLM APIs with thinking enabled)
+
+	// Create updated tool calls with generated IDs (for LLMs that don't provide IDs)
+	updatedToolCalls := make([]llm.ToolCall, len(toolCalls))
+	for i, tc := range toolCalls {
+		updatedToolCalls[i] = tc
+		if tc.ID == "" {
+			updatedToolCalls[i].ID = fmt.Sprintf("call_%d_%d", time.Now().Unix(), i)
+		}
+	}
+
 	followUpMessages := append(req.Messages, llm.Message{
 		Role:             "assistant",
-		ToolCalls:        toolCalls,
+		ToolCalls:        updatedToolCalls,
 		ReasoningContent: msg.ReasoningContent, // Preserve reasoning content
 	})
 

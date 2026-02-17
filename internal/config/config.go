@@ -183,10 +183,31 @@ func Load(configPath, dataDir string) (*Config, error) {
 	// Config file should be in config directory, not data directory
 	if configPath == "" {
 		configDir := getDefaultConfigDir()
+		configPath = filepath.Join(configDir, "myrai.yaml")
+
+		// Check new location first, then fall back to old location for backwards compatibility
+		if _, err := os.Stat(configPath); os.IsNotExist(err) {
+			// Try old location in data directory
+			oldConfigPath := filepath.Join(dataDir, "myrai.yaml")
+			if _, err := os.Stat(oldConfigPath); err == nil {
+				configPath = oldConfigPath
+			} else {
+				// Try even older location in home/.myrai
+				home, _ := os.UserHomeDir()
+				if home != "" {
+					legacyPath := filepath.Join(home, ".myrai", "myrai.yaml")
+					if _, err := os.Stat(legacyPath); err == nil {
+						configPath = legacyPath
+					}
+				}
+			}
+		}
+
+		// Ensure config directory exists
+		configDir = filepath.Dir(configPath)
 		if err := os.MkdirAll(configDir, 0755); err != nil {
 			return nil, fmt.Errorf("failed to create config directory: %w", err)
 		}
-		configPath = filepath.Join(configDir, "myrai.yaml")
 	}
 
 	configPath = expandPath(configPath)
