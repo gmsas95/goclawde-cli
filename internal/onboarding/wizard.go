@@ -34,6 +34,8 @@ type WizardConfig struct {
 	TelegramToken      string
 	SearchAPIKey       string
 	SearchProvider     string
+	EnableVision       bool
+	VisionModel        string
 }
 
 // NewWizard creates a new setup wizard
@@ -1134,6 +1136,51 @@ func (w *Wizard) setupIntegrations() error {
 		w.config.TelegramToken = strings.TrimSpace(token)
 	}
 
+	// Vision Capabilities
+	fmt.Println()
+	fmt.Println("─" + strings.Repeat("─", 60))
+	fmt.Println()
+	fmt.Println("👁️  Vision & Image Analysis")
+	fmt.Println()
+	fmt.Println("Enable vision capabilities to:")
+	fmt.Println("  • Capture and analyze photos from your camera")
+	fmt.Println("  • Analyze images and screenshots")
+	fmt.Println("  • Describe visual content")
+	fmt.Println()
+	fmt.Println("⚠️  Requires a vision-capable LLM:")
+	fmt.Println("  • OpenAI: GPT-4o, GPT-4 Turbo")
+	fmt.Println("  • Anthropic: Claude 3 Opus/Sonnet")
+	fmt.Println("  • Google: Gemini Pro Vision")
+	fmt.Println("  • OpenRouter: Any vision model")
+	fmt.Println()
+	fmt.Print("Enable vision capabilities? (y/n) [default: n]: ")
+	enableVision, _ := w.reader.ReadString('\n')
+	enableVision = strings.ToLower(strings.TrimSpace(enableVision))
+
+	if enableVision == "y" || enableVision == "yes" {
+		w.config.EnableVision = true
+		fmt.Println()
+		fmt.Println("Select vision model:")
+		fmt.Println("  1. GPT-4o (OpenAI) - Best overall vision")
+		fmt.Println("  2. Claude 3 Sonnet (Anthropic) - Great detail")
+		fmt.Println("  3. Gemini Pro Vision (Google) - Good for charts")
+		fmt.Println("  4. Use your current LLM (if vision-capable)")
+		fmt.Print("Choice [1-4] [default: 1]: ")
+		visionChoice, _ := w.reader.ReadString('\n')
+		visionChoice = strings.TrimSpace(visionChoice)
+
+		switch visionChoice {
+		case "2":
+			w.config.VisionModel = "claude-3-sonnet-20240229"
+		case "3":
+			w.config.VisionModel = "gemini-pro-vision"
+		case "4":
+			w.config.VisionModel = w.config.DefaultModel
+		default:
+			w.config.VisionModel = "gpt-4o"
+		}
+	}
+
 	fmt.Println("\n✓ Integrations configured")
 	time.Sleep(500 * time.Millisecond)
 
@@ -1216,6 +1263,10 @@ search:
   max_results: 5
   timeout_seconds: 30
 
+vision:
+  enabled: %v
+  vision_model: "%s"
+
 tools:
   enabled:
     - read_file
@@ -1228,7 +1279,7 @@ tools:
 security:
   allow_origins:
     - "*"
-`, time.Now().Format("2006-01-02"), w.config.LLMProvider, providerConfig, w.workspace, w.config.EnableTelegram, w.config.TelegramToken, w.config.SearchProvider != "", w.config.SearchProvider, w.config.SearchAPIKey)
+`, time.Now().Format("2006-01-02"), w.config.LLMProvider, providerConfig, w.workspace, w.config.EnableTelegram, w.config.TelegramToken, w.config.SearchProvider != "", w.config.SearchProvider, w.config.SearchAPIKey, w.config.EnableVision, w.config.VisionModel)
 
 	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)

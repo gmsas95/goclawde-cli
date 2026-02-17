@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/gmsas95/myrai-cli/internal/config"
+	"github.com/gmsas95/myrai-cli/internal/llm"
 	"github.com/gmsas95/myrai-cli/internal/skills"
 	"github.com/gmsas95/myrai-cli/internal/skills/agentic"
 	"github.com/gmsas95/myrai-cli/internal/skills/browser"
@@ -13,13 +14,14 @@ import (
 	"github.com/gmsas95/myrai-cli/internal/skills/search"
 	"github.com/gmsas95/myrai-cli/internal/skills/shopping"
 	"github.com/gmsas95/myrai-cli/internal/skills/system"
+	"github.com/gmsas95/myrai-cli/internal/skills/vision"
 	"github.com/gmsas95/myrai-cli/internal/skills/voice"
 	"github.com/gmsas95/myrai-cli/internal/skills/weather"
 	"github.com/gmsas95/myrai-cli/internal/store"
 	"go.uber.org/zap"
 )
 
-func RegisterSkills(cfg *config.Config, st *store.Store, registry *skills.Registry, logger *zap.Logger) {
+func RegisterSkills(cfg *config.Config, st *store.Store, registry *skills.Registry, logger *zap.Logger, llmClient *llm.Client) {
 	systemSkill := system.NewSystemSkill(cfg.Tools.AllowedCmds)
 	registry.Register(systemSkill)
 
@@ -83,5 +85,16 @@ func RegisterSkills(cfg *config.Config, st *store.Store, registry *skills.Regist
 	if searchSkill.IsEnabled() {
 		registry.Register(searchSkill)
 		logger.Info("Search skill registered", zap.String("provider", cfg.Skills.Search.Provider))
+	}
+
+	// Register Vision skill if enabled and LLM client supports vision
+	if cfg.Skills.Vision.Enabled && llmClient != nil {
+		visionConfig := vision.VisionSkillConfig{
+			VisionModel: cfg.Skills.Vision.VisionModel,
+			DataDir:     cfg.Storage.DataDir,
+		}
+		visionSkill := vision.NewVisionSkill(llmClient, visionConfig)
+		registry.Register(visionSkill)
+		logger.Info("Vision skill registered", zap.String("vision_model", cfg.Skills.Vision.VisionModel))
 	}
 }

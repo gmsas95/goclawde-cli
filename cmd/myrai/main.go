@@ -156,7 +156,8 @@ func initApp() *app.App {
 	}
 
 	skillsRegistry := skills.NewRegistry(st)
-	app.RegisterSkills(cfg, st, skillsRegistry, logger)
+	// Pass nil for LLM client - vision skill will check if LLM supports vision when initialized
+	app.RegisterSkills(cfg, st, skillsRegistry, logger, nil)
 
 	application := app.New(cfg, st, logger, pm, version)
 	application.SetSkillsRegistry(skillsRegistry)

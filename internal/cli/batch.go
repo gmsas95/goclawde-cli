@@ -103,7 +103,7 @@ func HandleBatchCommand(args []string) {
 	llmClient := llm.NewClient(provider)
 
 	skillsRegistry := skills.NewRegistry(st)
-	app.RegisterSkills(cfg, st, skillsRegistry, logger)
+	app.RegisterSkills(cfg, st, skillsRegistry, logger, llmClient)
 
 	agentInstance := agent.New(llmClient, nil, st, logger, pm)
 	agentInstance.SetSkillsRegistry(skillsRegistry)

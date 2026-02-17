@@ -97,6 +97,7 @@ type SkillsConfig struct {
 	Browser BrowserSkillConfig `mapstructure:"browser"`
 	Brave   BraveSkillConfig   `mapstructure:"brave"`
 	Search  SearchSkillConfig  `mapstructure:"search"`
+	Vision  VisionSkillConfig  `mapstructure:"vision"`
 }
 
 type GitHubSkillConfig struct {
@@ -123,6 +124,11 @@ type SearchSkillConfig struct {
 	APIKey      string `mapstructure:"api_key"`
 	MaxResults  int    `mapstructure:"max_results"`
 	TimeoutSecs int    `mapstructure:"timeout_seconds"`
+}
+
+type VisionSkillConfig struct {
+	Enabled     bool   `mapstructure:"enabled"`
+	VisionModel string `mapstructure:"vision_model"` // gpt-4o, claude-3-opus, gemini-pro-vision
 }
 
 // MCPConfig holds MCP server configuration
@@ -370,6 +376,10 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("search.provider", "brave")
 	v.SetDefault("search.max_results", 5)
 	v.SetDefault("search.timeout_seconds", 30)
+
+	// Vision defaults
+	v.SetDefault("vision.enabled", false)
+	v.SetDefault("vision.vision_model", "gpt-4o")
 }
 
 func getDefaultDataDir() string {

@@ -332,7 +332,8 @@ func HandleSkillsCommand(args []string) {
 	defer st.Close()
 
 	registry := skills.NewRegistry(st)
-	app.RegisterSkills(cfg, st, registry, logger)
+	// Note: Passing nil for LLM client since vision isn't needed for skills command
+	app.RegisterSkills(cfg, st, registry, logger, nil)
 
 	if len(args) == 0 || args[0] == "list" {
 		skillsList := registry.ListSkills()
