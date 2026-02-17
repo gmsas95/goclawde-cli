@@ -95,6 +95,29 @@ func (w *Wizard) Run() error {
 	// Show completion message
 	w.showCompletion()
 
+	// Verify files were created
+	fmt.Println()
+	fmt.Println("Verifying installation...")
+
+	configPath := filepath.Join(w.configDir, "myrai.yaml")
+	envPath := filepath.Join(w.configDir, ".env")
+
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		fmt.Println("⚠️  Warning: Config file was not created!")
+	} else {
+		fmt.Println("✓ Config file verified:", configPath)
+	}
+
+	if _, err := os.Stat(envPath); os.IsNotExist(err) {
+		fmt.Println("⚠️  Warning: .env file was not created!")
+	} else {
+		fmt.Println("✓ Secrets file verified:", envPath)
+	}
+
+	fmt.Println()
+	fmt.Print("Press Enter to exit...")
+	w.reader.ReadString('\n')
+
 	return nil
 }
 
@@ -1467,6 +1490,7 @@ func (w *Wizard) showCompletion() {
 	message := SetupCompleteMessage
 	message = strings.ReplaceAll(message, "{{.WorkspacePath}}", data.WorkspacePath)
 	message = strings.ReplaceAll(message, "{{.ConfigPath}}", data.ConfigPath)
+	message = strings.ReplaceAll(message, "{{.ConfigDir}}", data.ConfigDir)
 
 	fmt.Print(message)
 	fmt.Println()
@@ -1518,7 +1542,7 @@ func (w *Wizard) startSpinner(message string) *chan bool {
 func (w *Wizard) stopSpinner(stopChan *chan bool) {
 	if stopChan != nil {
 		close(*stopChan)
-		time.Sleep(50 * time.Millisecond) // Brief pause for clean output
+		time.Sleep(150 * time.Millisecond) // Wait for spinner to finish printing
 	}
 }
 
