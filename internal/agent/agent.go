@@ -101,18 +101,24 @@ func (a *Agent) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error
 		return nil, fmt.Errorf("failed to save user message: %w", err)
 	}
 
+	// Build system prompt
+	systemPrompt := req.SystemPrompt
+	if systemPrompt == "" {
+		systemPrompt = a.buildSystemPrompt()
+	}
+
 	// Build message history using context manager if available
 	var messages []llm.Message
 	if a.contextManager != nil {
-		convCtx, err := a.contextManager.BuildContext(ctx, conv.ID, req.SystemPrompt, req.Message)
+		convCtx, err := a.contextManager.BuildContext(ctx, conv.ID, systemPrompt, req.Message)
 		if err != nil {
 			a.logger.Warn("Context manager failed, falling back to default", zap.Error(err))
-			messages, _ = a.buildContext(ctx, conv.ID, req.SystemPrompt)
+			messages, _ = a.buildContext(ctx, conv.ID, systemPrompt)
 		} else {
 			messages = convCtx.Messages
 		}
 	} else {
-		messages, err = a.buildContext(ctx, conv.ID, req.SystemPrompt)
+		messages, err = a.buildContext(ctx, conv.ID, systemPrompt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to build context: %w", err)
 		}
