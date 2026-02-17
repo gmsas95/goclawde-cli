@@ -32,10 +32,10 @@ type Bot struct {
 
 // Config holds Telegram bot configuration
 type Config struct {
-	Token       string
-	Enabled     bool
-	AllowList   []int64 // List of allowed user IDs (empty = allow all)
-	WebhookURL  string  // Optional webhook URL (empty = use polling)
+	Token      string
+	Enabled    bool
+	AllowList  []int64 // List of allowed user IDs (empty = allow all)
+	WebhookURL string  // Optional webhook URL (empty = use polling)
 }
 
 // NewBot creates a new Telegram bot
@@ -155,13 +155,13 @@ func (b *Bot) handleCommand(msg *tgbotapi.Message) error {
 
 	switch msg.Command() {
 	case "start":
-		_, err := b.sendMessage(chatID, `🤖 *GoClawde Bot*
+		_, err := b.sendMessage(chatID, `🤖 *Myrai Bot*
 
-Welcome! I'm your AI assistant. I can help you with:
+Welcome! I'm your personal AI assistant. I can help you with:
 
 • Answering questions
 • File operations
-• System commands  
+• System commands
 • GitHub integration
 • Note-taking
 • Weather info

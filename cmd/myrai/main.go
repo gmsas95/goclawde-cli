@@ -13,6 +13,7 @@ import (
 	"github.com/gmsas95/myrai-cli/internal/app"
 	"github.com/gmsas95/myrai-cli/internal/cli"
 	"github.com/gmsas95/myrai-cli/internal/config"
+	"github.com/gmsas95/myrai-cli/internal/llm"
 	"github.com/gmsas95/myrai-cli/internal/onboarding"
 	"github.com/gmsas95/myrai-cli/internal/persona"
 	"github.com/gmsas95/myrai-cli/internal/skills"
@@ -155,9 +156,17 @@ func initApp() *app.App {
 		pm = nil
 	}
 
+	// Create LLM client for vision skill
+	var llmClient *llm.Client
+	provider, err := cfg.DefaultProvider()
+	if err != nil {
+		logger.Warn("Failed to get LLM provider", zap.Error(err))
+	} else {
+		llmClient = llm.NewClient(provider)
+	}
+
 	skillsRegistry := skills.NewRegistry(st)
-	// Pass nil for LLM client - vision skill will check if LLM supports vision when initialized
-	app.RegisterSkills(cfg, st, skillsRegistry, logger, nil)
+	app.RegisterSkills(cfg, st, skillsRegistry, logger, llmClient)
 
 	application := app.New(cfg, st, logger, pm, version)
 	application.SetSkillsRegistry(skillsRegistry)

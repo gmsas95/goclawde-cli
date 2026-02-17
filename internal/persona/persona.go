@@ -18,16 +18,16 @@ type PersonaManager struct {
 	logger        *zap.Logger
 
 	// Core files
-	identity   *Identity
-	user       *UserProfile
-	tools      string
-	agents     string
+	identity *Identity
+	user     *UserProfile
+	tools    string
+	agents   string
 
 	// Runtime state
 	currentProject *Project
 	projects       *ProjectManager
 	timeAwareness  *TimeAwareness
-	
+
 	// Caching
 	systemPromptCache string
 	cacheValid        bool
@@ -47,13 +47,13 @@ type Identity struct {
 
 // UserProfile represents learned user preferences
 type UserProfile struct {
-	Name              string
+	Name               string
 	CommunicationStyle string
-	Preferences       map[string]string
-	Expertise         []string
-	Goals             []string
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	Preferences        map[string]string
+	Expertise          []string
+	Goals              []string
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 // NewPersonaManager creates a new persona manager
@@ -61,7 +61,7 @@ func NewPersonaManager(workspacePath string, logger *zap.Logger) (*PersonaManage
 	pm := &PersonaManager{
 		workspacePath: workspacePath,
 		logger:        logger,
-		identity:      &Identity{Name: "GoClawde"},
+		identity:      &Identity{Name: "Myrai"},
 		user: &UserProfile{
 			Preferences: make(map[string]string),
 			CreatedAt:   time.Now(),
@@ -187,7 +187,7 @@ func (pm *PersonaManager) GetSystemPrompt() string {
 
 	// Join all parts except time (which is parts[0])
 	cachedParts := strings.Join(parts[1:], "\n\n")
-	
+
 	// Cache only the non-time-sensitive parts
 	pm.cacheMu.Lock()
 	pm.systemPromptCache = cachedParts
@@ -256,7 +256,7 @@ func (pm *PersonaManager) SwitchProject(name string) error {
 	pm.mu.Lock()
 	pm.currentProject = project
 	pm.mu.Unlock()
-	
+
 	pm.InvalidateCache()
 	return nil
 }
@@ -470,7 +470,7 @@ func (u *UserProfile) String() string {
 // Parse functions for deserialization
 
 func parseIdentity(data string) *Identity {
-	i := &Identity{Name: "GoClawde"}
+	i := &Identity{Name: "Myrai"}
 	lines := strings.Split(data, "\n")
 	var currentSection string
 
