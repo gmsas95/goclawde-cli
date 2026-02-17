@@ -408,8 +408,10 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 Built with inspiration from:
 - [OpenClaw](https://github.com/openclaw/openclaw) - Agentic patterns and tool use
+- [nanobot](https://github.com/HKUDS/nanobot) - Discord bot with agentic capabilities
+- [nanoclaw](https://github.com/qwibitai/nanoclaw) - Lightweight AI assistant
+- [zeptoclaw](https://github.com/qhkm/zeptoclaw) - Ultra-lightweight agent architecture
 - **MemoryCore** by [Kiyoraka](https://github.com/Kiyoraka/Project-AI-MemoryCore) - Knowledge retention and memory systems
-- **PicoClaw/Nanoclaw/ZeptoClaw** - Lightweight AI assistant architectures
 
 ---
 
