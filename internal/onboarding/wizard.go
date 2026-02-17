@@ -92,9 +92,6 @@ func (w *Wizard) Run() error {
 	}
 	w.stopSpinner(spinner)
 
-	// Show completion message
-	w.showCompletion()
-
 	// Verify files were created
 	fmt.Println()
 	fmt.Println("Verifying installation...")
@@ -102,21 +99,31 @@ func (w *Wizard) Run() error {
 	configPath := filepath.Join(w.configDir, "myrai.yaml")
 	envPath := filepath.Join(w.configDir, ".env")
 
+	configExists := false
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		fmt.Println("⚠️  Warning: Config file was not created!")
 	} else {
 		fmt.Println("✓ Config file verified:", configPath)
+		configExists = true
 	}
 
+	envExists := false
 	if _, err := os.Stat(envPath); os.IsNotExist(err) {
 		fmt.Println("⚠️  Warning: .env file was not created!")
 	} else {
 		fmt.Println("✓ Secrets file verified:", envPath)
+		envExists = true
 	}
 
-	fmt.Println()
-	fmt.Print("Press Enter to exit...")
-	w.reader.ReadString('\n')
+	// Show completion message
+	if configExists && envExists {
+		fmt.Println()
+		fmt.Println("═════════════════════════════════════════════════════════════")
+		fmt.Println("✅ SETUP COMPLETE! Your AI assistant is ready to use.")
+		fmt.Println("═════════════════════════════════════════════════════════════")
+		fmt.Println()
+		fmt.Println("Run 'myrai server' to start!")
+	}
 
 	return nil
 }
