@@ -113,6 +113,7 @@ The **onboarding wizard** will guide you through:
 | **Ollama** | **FREE** | Unlimited (runs locally) |
 | **Groq** | ~$0.0001/1K tokens | $10-50 credits |
 | **DeepSeek** | Very cheap | $10 credits |
+| **OpenRouter** | Varies by model | $1 credits |
 | **OpenAI** | Standard | $5 credits |
 | **Anthropic** | Standard | $5 credits |
 
@@ -135,12 +136,17 @@ The **onboarding wizard** will guide you through:
 | **Google** | Multilingual | [Get Key](https://aistudio.google.com) |
 | **Kimi** | Long context | [Get Key](https://platform.moonshot.cn) |
 
+### Model Aggregators (One API, Many Models)
+| Provider | Best For | Get API Key |
+|----------|----------|-------------|
+| **OpenRouter** | Access 100+ models with one API | [Get Key](https://openrouter.ai/keys) |
+| **Together AI** | Open source models | [Get Key](https://api.together.xyz) |
+
 ### Fast & Affordable
 | Provider | Best For | Get API Key |
 |----------|----------|-------------|
 | **Groq** | Speed | [Get Key](https://console.groq.com) |
 | **DeepSeek** | Coding | [Get Key](https://platform.deepseek.com) |
-| **Together AI** | Open models | [Get Key](https://api.together.xyz) |
 | **Cerebras** | Fast inference | [Get Key](https://cerebras.ai) |
 
 ### Free / Self-Hosted
@@ -401,9 +407,11 @@ MIT License - See [LICENSE](LICENSE) for details.
 ## 🙏 Acknowledgments
 
 Built with inspiration from:
-- [OpenClaude](https://github.com/openclaw/openclaw) - Agentic patterns
-- [Anthropic](https://www.anthropic.com) - Claude AI
-- [OpenAI](https://openai.com) - GPT models
+- [OpenClaw](https://github.com/openclaw/openclaw) - Agentic patterns and tool use
+- [Nanoclaw](https://github.com/gmsas95/nanoclaw) - Lightweight agent architecture
+- [PicoClaw](https://github.com/gmsas95/picoclaw) - Minimalist AI assistant philosophy
+- [ZeptoClaw](https://github.com/gmsas95/zeptoclaw) - Ultra-lightweight design principles
+- **MemoryCore** - Knowledge retention and memory systems
 
 ---
 
