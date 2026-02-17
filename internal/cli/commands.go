@@ -240,8 +240,7 @@ func HandleConfigCommand(args []string) {
 		return
 	}
 
-	workspace := onboarding.GetWorkspacePath()
-	configPath := workspace + "/config.yaml"
+	configPath := onboarding.GetConfigPath()
 
 	switch args[0] {
 	case "get":
