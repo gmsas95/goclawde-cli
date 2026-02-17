@@ -32,6 +32,8 @@ type WizardConfig struct {
 	DefaultModel       string
 	EnableTelegram     bool
 	TelegramToken      string
+	SearchAPIKey       string
+	SearchProvider     string
 }
 
 // NewWizard creates a new setup wizard
@@ -902,8 +904,75 @@ func (w *Wizard) configureVLLM() error {
 	if modelName == "" {
 		w.config.DefaultModel = "llama3"
 	} else {
-		w.config.DefaultModel = modelName
+		w.config.TelegramToken = ""
 	}
+
+	// Web Search
+	fmt.Println()
+	fmt.Println("─" + strings.Repeat("─", 60))
+	fmt.Println()
+	fmt.Println("🌐 Web Search Integration")
+	fmt.Println()
+	fmt.Println("Enable web search to get real-time information from the internet.")
+	fmt.Println("This allows Myrai to answer questions about:")
+	fmt.Println("  • Current news and events")
+	fmt.Println("  • Weather, stock prices, sports scores")
+	fmt.Println("  • Recent developments beyond training data")
+	fmt.Println()
+	fmt.Println("Available providers:")
+	fmt.Println("  • Brave Search (Recommended) - https://api.search.brave.com")
+	fmt.Println("    Free tier: 2,000 queries/month")
+	fmt.Println("  • Serper (Google) - https://serper.dev")
+	fmt.Println("    Free tier: 2,500 queries")
+	fmt.Println("  • DuckDuckGo - No API key needed (less reliable)")
+	fmt.Println()
+	fmt.Print("Enable web search? (y/n) [default: y]: ")
+	enableSearch, _ := w.reader.ReadString('\n')
+	enableSearch = strings.ToLower(strings.TrimSpace(enableSearch))
+
+	if enableSearch != "n" && enableSearch != "no" {
+		fmt.Println()
+		fmt.Println("Select search provider:")
+		fmt.Println("  1. Brave Search (recommended)")
+		fmt.Println("  2. Serper (Google)")
+		fmt.Println("  3. DuckDuckGo (no API key)")
+		fmt.Print("Choice [1-3] [default: 1]: ")
+		providerChoice, _ := w.reader.ReadString('\n')
+		providerChoice = strings.TrimSpace(providerChoice)
+
+		switch providerChoice {
+		case "2":
+			w.config.SearchProvider = "serper"
+		case "3":
+			w.config.SearchProvider = "duckduckgo"
+		default:
+			w.config.SearchProvider = "brave"
+		}
+
+		if w.config.SearchProvider != "duckduckgo" {
+			fmt.Println()
+			fmt.Printf("To use %s:\n", w.config.SearchProvider)
+			if w.config.SearchProvider == "brave" {
+				fmt.Println("1. Go to https://api.search.brave.com")
+				fmt.Println("2. Sign up and get your API key")
+			} else {
+				fmt.Println("1. Go to https://serper.dev")
+				fmt.Println("2. Sign up and get your API key")
+			}
+			fmt.Println()
+			fmt.Print("Enter your API key (press Enter to skip): ")
+			apiKey, _ := w.reader.ReadString('\n')
+			w.config.SearchAPIKey = strings.TrimSpace(apiKey)
+		} else {
+			w.config.SearchAPIKey = ""
+		}
+	} else {
+		w.config.SearchProvider = ""
+		w.config.SearchAPIKey = ""
+	}
+
+	fmt.Println("\n✓ Integrations configured")
+	time.Sleep(500 * time.Millisecond)
 
 	return nil
 }
@@ -1140,6 +1209,13 @@ channels:
     bot_token: "%s"
     allow_list: []
 
+search:
+  enabled: %v
+  provider: "%s"
+  api_key: "%s"
+  max_results: 5
+  timeout_seconds: 30
+
 tools:
   enabled:
     - read_file
@@ -1152,7 +1228,7 @@ tools:
 security:
   allow_origins:
     - "*"
-`, time.Now().Format("2006-01-02"), w.config.LLMProvider, providerConfig, w.workspace, w.config.EnableTelegram, w.config.TelegramToken)
+`, time.Now().Format("2006-01-02"), w.config.LLMProvider, providerConfig, w.workspace, w.config.EnableTelegram, w.config.TelegramToken, w.config.SearchProvider != "", w.config.SearchProvider, w.config.SearchAPIKey)
 
 	if err := os.WriteFile(configPath, []byte(configContent), 0600); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
@@ -1198,6 +1274,13 @@ security:
 
 	if w.config.EnableTelegram && w.config.TelegramToken != "" {
 		envContent += fmt.Sprintf("TELEGRAM_BOT_TOKEN=%s\n", w.config.TelegramToken)
+	}
+
+	if w.config.SearchProvider != "" && w.config.SearchAPIKey != "" {
+		envContent += fmt.Sprintf("MYRAI_SEARCH_API_KEY=%s\n", w.config.SearchAPIKey)
+		if w.config.SearchProvider != "brave" {
+			envContent += fmt.Sprintf("MYRAI_SEARCH_PROVIDER=%s\n", w.config.SearchProvider)
+		}
 	}
 
 	if err := os.WriteFile(envPath, []byte(envContent), 0600); err != nil {
