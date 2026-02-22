@@ -275,6 +275,21 @@ func (a *Agent) chatStream(ctx context.Context, req llm.ChatRequest, convID stri
 
 func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID string, msg llm.Message) (*ChatResponse, error) {
 	toolCalls := msg.ToolCalls
+
+	// Pre-generate consistent tool call IDs to avoid mismatches
+	toolCallIDs := make([]string, len(toolCalls))
+	baseTimestamp := time.Now().Unix()
+	for i, tc := range toolCalls {
+		if tc.ID != "" {
+			toolCallIDs[i] = tc.ID
+		} else {
+			toolCallIDs[i] = fmt.Sprintf("call_%d_%d", baseTimestamp, i)
+			a.logger.Warn("Tool call ID missing, generated fallback",
+				zap.String("generated_id", toolCallIDs[i]),
+				zap.String("tool", tc.Function.Name))
+		}
+	}
+
 	// Execute tools
 	toolResults := make([]map[string]interface{}, 0, len(toolCalls))
 
@@ -284,14 +299,7 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 			zap.String("args", tc.Function.Arguments),
 		)
 
-		// Generate tool call ID if missing (some LLMs don't provide IDs)
-		toolCallID := tc.ID
-		if toolCallID == "" {
-			toolCallID = fmt.Sprintf("call_%d_%d", time.Now().Unix(), i)
-			a.logger.Warn("Tool call ID missing, generated fallback",
-				zap.String("generated_id", toolCallID),
-				zap.String("tool", tc.Function.Name))
-		}
+		toolCallID := toolCallIDs[i]
 
 		// Try skills registry first
 		var result interface{}
@@ -324,14 +332,14 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 
 		toolResults = append(toolResults, resultObj)
 
-		// Save tool call and result
+		// Save tool call and result with the generated ID
 		toolMsg := &store.Message{
 			ConversationID: convID,
 			Role:           "tool",
 			Content:        resultObj["content"].(string),
 			ToolCalls:      store.ToJSON(tc),
 			ToolResults:    store.ToJSON(result),
-			ToolCallID:     toolCallID, // Save the tool_call_id
+			ToolCallID:     toolCallID,
 		}
 		if err := a.store.CreateMessage(toolMsg); err != nil {
 			a.logger.Warn("Failed to save tool message", zap.Error(err))
@@ -342,13 +350,11 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 	// Note: Content must be omitted (not empty string) when ToolCalls are present
 	// Include reasoning_content if present (required by some LLM APIs with thinking enabled)
 
-	// Create updated tool calls with generated IDs (for LLMs that don't provide IDs)
+	// Create updated tool calls with consistent generated IDs
 	updatedToolCalls := make([]llm.ToolCall, len(toolCalls))
 	for i, tc := range toolCalls {
 		updatedToolCalls[i] = tc
-		if tc.ID == "" {
-			updatedToolCalls[i].ID = fmt.Sprintf("call_%d_%d", time.Now().Unix(), i)
-		}
+		updatedToolCalls[i].ID = toolCallIDs[i]
 	}
 
 	followUpMessages := append(req.Messages, llm.Message{
