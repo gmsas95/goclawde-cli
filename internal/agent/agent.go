@@ -300,10 +300,11 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 	// Save assistant message with tool calls BEFORE executing tools
 	// This ensures the conversation history is complete
 	assistantMsg := &store.Message{
-		ConversationID: convID,
-		Role:           "assistant",
-		Content:        msg.Content,
-		ToolCalls:      store.ToJSON(updatedToolCalls),
+		ConversationID:   convID,
+		Role:             "assistant",
+		Content:          msg.Content,
+		ToolCalls:        store.ToJSON(updatedToolCalls),
+		ReasoningContent: msg.ReasoningContent, // Save reasoning content for thinking models
 	}
 	if err := a.store.CreateMessage(assistantMsg); err != nil {
 		a.logger.Warn("Failed to save assistant message with tool calls", zap.Error(err))
@@ -476,9 +477,10 @@ func (a *Agent) buildContext(ctx context.Context, convID string, systemPrompt st
 
 	for _, msg := range storeMsgs {
 		lmMsg := llm.Message{
-			Role:       msg.Role,
-			Content:    msg.Content,
-			ToolCallID: msg.ToolCallID, // Restore tool_call_id from history
+			Role:             msg.Role,
+			Content:          msg.Content,
+			ToolCallID:       msg.ToolCallID,       // Restore tool_call_id from history
+			ReasoningContent: msg.ReasoningContent, // Restore reasoning content for thinking models
 		}
 
 		// Handle tool calls from history

@@ -231,6 +231,18 @@ func (s *Store) GetChatMapping(chatID int64, chatType string) (*ChatMapping, err
 
 // SetChatMapping creates or updates the mapping between a chat and conversation
 func (s *Store) SetChatMapping(chatID int64, chatType, conversationID string) error {
+	// Try to update existing mapping first (in case unique constraint exists)
+	result := s.db.Model(&ChatMapping{}).
+		Where("chat_id = ? AND chat_type = ? AND is_active = ?", chatID, chatType, true).
+		Updates(map[string]interface{}{
+			"conversation_id": conversationID,
+			"updated_at":      time.Now(),
+		})
+
+	if result.Error == nil && result.RowsAffected > 0 {
+		return nil // Successfully updated existing mapping
+	}
+
 	// Deactivate any existing active mappings for this chat
 	s.db.Model(&ChatMapping{}).
 		Where("chat_id = ? AND chat_type = ? AND is_active = ?", chatID, chatType, true).
