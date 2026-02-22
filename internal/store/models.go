@@ -19,16 +19,16 @@ type User struct {
 
 // Conversation represents a chat conversation
 type Conversation struct {
-	ID            string    `gorm:"primaryKey" json:"id"`
-	Title         string    `json:"title"`
-	Model         string    `json:"model"`
-	SystemPrompt  string    `json:"system_prompt"`
-	TokensUsed    int64     `json:"tokens_used"`
-	MessageCount  int       `json:"message_count"`
-	IsArchived    bool      `json:"is_archived"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
-	
+	ID           string    `gorm:"primaryKey" json:"id"`
+	Title        string    `json:"title"`
+	Model        string    `json:"model"`
+	SystemPrompt string    `json:"system_prompt"`
+	TokensUsed   int64     `json:"tokens_used"`
+	MessageCount int       `json:"message_count"`
+	IsArchived   bool      `json:"is_archived"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+
 	// Relationships
 	Messages []Message `json:"messages,omitempty" gorm:"foreignKey:ConversationID"`
 }
@@ -49,16 +49,16 @@ type Message struct {
 
 // Memory represents a stored fact or preference
 type Memory struct {
-	ID          string          `gorm:"primaryKey" json:"id"`
-	Type        string          `json:"type"` // fact, preference, task, person
-	Content     string          `json:"content"`
-	Embedding   []byte          `json:"-" gorm:"type:blob"` // Vector embedding for semantic search
-	Importance  int             `json:"importance"` // 1-10
-	AccessCount int             `json:"access_count"`
-	LastAccessed *time.Time     `json:"last_accessed"`
-	Source      string          `json:"source"` // conversation_id or import
-	CreatedAt   time.Time       `json:"created_at"`
-	UpdatedAt   time.Time       `json:"updated_at"`
+	ID           string     `gorm:"primaryKey" json:"id"`
+	Type         string     `json:"type"` // fact, preference, task, person
+	Content      string     `json:"content"`
+	Embedding    []byte     `json:"-" gorm:"type:blob"` // Vector embedding for semantic search
+	Importance   int        `json:"importance"`         // 1-10
+	AccessCount  int        `json:"access_count"`
+	LastAccessed *time.Time `json:"last_accessed"`
+	Source       string     `json:"source"` // conversation_id or import
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 }
 
 // File represents an uploaded file
@@ -69,35 +69,58 @@ type File struct {
 	SizeBytes      int64     `json:"size_bytes"`
 	StoragePath    string    `json:"storage_path"`
 	ConversationID *string   `json:"conversation_id,omitempty"`
+	SourceChatID   *int64    `json:"source_chat_id,omitempty"` // Which chat uploaded this file
 	ProcessedText  string    `json:"processed_text,omitempty" gorm:"type:text"`
 	CreatedAt      time.Time `json:"created_at"`
 }
 
 // Task represents a background task
 type Task struct {
-	ID           string          `gorm:"primaryKey" json:"id"`
-	Type         string          `json:"type"`
-	Status       string          `json:"status"` // pending, running, completed, failed
-	Title        string          `json:"title"`
-	Prompt       string          `json:"prompt" gorm:"type:text"`
-	Result       json.RawMessage `json:"result,omitempty" gorm:"type:text"`
-	Error        string          `json:"error,omitempty"`
-	StartedAt    *time.Time      `json:"started_at"`
-	CompletedAt  *time.Time      `json:"completed_at"`
-	CreatedAt    time.Time       `json:"created_at"`
+	ID          string          `gorm:"primaryKey" json:"id"`
+	Type        string          `json:"type"`
+	Status      string          `json:"status"` // pending, running, completed, failed
+	Title       string          `json:"title"`
+	Prompt      string          `json:"prompt" gorm:"type:text"`
+	Result      json.RawMessage `json:"result,omitempty" gorm:"type:text"`
+	Error       string          `json:"error,omitempty"`
+	StartedAt   *time.Time      `json:"started_at"`
+	CompletedAt *time.Time      `json:"completed_at"`
+	CreatedAt   time.Time       `json:"created_at"`
 }
 
 // ScheduledJob represents a recurring job
 type ScheduledJob struct {
-	ID              string     `gorm:"primaryKey" json:"id"`
-	Name            string     `json:"name"`
-	CronExpression  string     `json:"cron_expression"`
-	Prompt          string     `json:"prompt" gorm:"type:text"`
-	IsActive        bool       `json:"is_active"`
-	LastRunAt       *time.Time `json:"last_run_at"`
-	NextRunAt       *time.Time `json:"next_run_at"`
-	RunCount        int        `json:"run_count"`
-	CreatedAt       time.Time  `json:"created_at"`
+	ID             string     `gorm:"primaryKey" json:"id"`
+	Name           string     `json:"name"`
+	CronExpression string     `json:"cron_expression"`
+	Prompt         string     `json:"prompt" gorm:"type:text"`
+	IsActive       bool       `json:"is_active"`
+	LastRunAt      *time.Time `json:"last_run_at"`
+	NextRunAt      *time.Time `json:"next_run_at"`
+	RunCount       int        `json:"run_count"`
+	CreatedAt      time.Time  `json:"created_at"`
+}
+
+// ChatMapping stores the mapping between chat IDs and conversation IDs for persistence across restarts
+type ChatMapping struct {
+	ID             string    `gorm:"primaryKey" json:"id"`
+	ChatID         int64     `gorm:"uniqueIndex:idx_chat_mapping" json:"chat_id"`
+	ChatType       string    `json:"chat_type"` // telegram, discord, etc.
+	ConversationID string    `gorm:"index" json:"conversation_id"`
+	IsActive       bool      `json:"is_active"` // Whether this is the currently active conversation
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+// BeforeCreate hook for ChatMapping
+func (cm *ChatMapping) BeforeCreate(tx *gorm.DB) error {
+	if cm.ID == "" {
+		cm.ID = generateID("chatmap")
+	}
+	if cm.ChatType == "" {
+		cm.ChatType = "telegram"
+	}
+	return nil
 }
 
 // Config stores key-value configuration

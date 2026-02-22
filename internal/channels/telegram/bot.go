@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -189,6 +190,9 @@ Just send me a message!`)
 /start - Start the bot
 /help - Show this help
 /new - Start new conversation
+/history - Show conversation history
+/resume <number> - Resume a previous conversation
+/documents - Show all uploaded documents
 /status - Show bot status
 
 *Features:*
@@ -197,16 +201,21 @@ Just chat naturally or ask me to:
 • Execute commands
 • Search GitHub
 • Take notes
-• Check weather`)
+• Check weather
+• Analyze documents and images`)
 		return err
 
 	case "new":
 		// Clear conversation context for this chat
-		b.convMu.Lock()
-		delete(b.conversations, chatID)
-		b.convMu.Unlock()
+		b.clearConversationID(chatID)
 		_, err := b.sendMessage(chatID, "🆕 Starting new conversation! Context cleared.")
 		return err
+
+	case "history":
+		return b.handleHistoryCommand(chatID)
+
+	case "resume":
+		return b.handleResumeCommand(msg)
 
 	case "status":
 		_, err := b.sendMessage(chatID, "✅ Bot is running and ready!")
@@ -228,9 +237,167 @@ Just chat naturally or ask me to:
 		b.cancel() // Cancel context to trigger shutdown
 		return nil
 
+	case "documents":
+		return b.handleDocumentsCommand(chatID)
+
 	default:
 		_, err := b.sendMessage(chatID, "❓ Unknown command. Use /help for available commands.")
 		return err
+	}
+}
+
+// handleHistoryCommand shows conversation history for the chat
+func (b *Bot) handleHistoryCommand(chatID int64) error {
+	if b.store == nil {
+		_, err := b.sendMessage(chatID, "❌ History not available - database not connected.")
+		return err
+	}
+
+	mappings, err := b.store.GetChatConversationHistory(chatID, "telegram", 10)
+	if err != nil {
+		b.logger.Error("Failed to get conversation history", zap.Error(err))
+		_, err := b.sendMessage(chatID, "❌ Failed to retrieve conversation history.")
+		return err
+	}
+
+	if len(mappings) == 0 {
+		_, err := b.sendMessage(chatID, "📭 No conversation history found.\n\nStart chatting to create a conversation!")
+		return err
+	}
+
+	var sb strings.Builder
+	sb.WriteString("📜 *Conversation History*\n\n")
+
+	for i, mapping := range mappings {
+		// Get conversation details
+		conv, err := b.store.GetConversation(mapping.ConversationID)
+		if err != nil {
+			continue
+		}
+
+		status := ""
+		if mapping.IsActive {
+			status = " ✅ *Active*"
+		}
+
+		sb.WriteString(fmt.Sprintf("%d. *%s*%s\n", i+1, conv.Title, status))
+		sb.WriteString(fmt.Sprintf("   🕐 %s\n", conv.UpdatedAt.Format("Jan 2, 3:04 PM")))
+		sb.WriteString(fmt.Sprintf("   💬 %d messages\n\n", conv.MessageCount))
+	}
+
+	sb.WriteString("Use `/resume <number>` to continue a conversation.")
+
+	_, err = b.sendMessage(chatID, sb.String())
+	return err
+}
+
+// handleResumeCommand resumes a previous conversation
+func (b *Bot) handleResumeCommand(msg *tgbotapi.Message) error {
+	chatID := msg.Chat.ID
+
+	// Parse the command argument
+	args := strings.Fields(msg.CommandArguments())
+	if len(args) < 1 {
+		_, err := b.sendMessage(chatID, "❌ Please specify a conversation number.\n\nExample: `/resume 1`\n\nUse `/history` to see available conversations.")
+		return err
+	}
+
+	// Parse the number
+	num, err := strconv.Atoi(args[0])
+	if err != nil || num < 1 {
+		_, err := b.sendMessage(chatID, "❌ Invalid conversation number. Please use a number from 1-10.")
+		return err
+	}
+
+	if b.store == nil {
+		_, err := b.sendMessage(chatID, "❌ Resume not available - database not connected.")
+		return err
+	}
+
+	// Get conversation history
+	mappings, err := b.store.GetChatConversationHistory(chatID, "telegram", 10)
+	if err != nil {
+		b.logger.Error("Failed to get conversation history", zap.Error(err))
+		_, err := b.sendMessage(chatID, "❌ Failed to retrieve conversation history.")
+		return err
+	}
+
+	if num > len(mappings) {
+		_, err := b.sendMessage(chatID, fmt.Sprintf("❌ Conversation %d not found. Only %d conversations available.\n\nUse `/history` to see available conversations.", num, len(mappings)))
+		return err
+	}
+
+	// Get the selected conversation
+	selectedMapping := mappings[num-1]
+
+	// Set this as the active conversation
+	b.setConversationID(chatID, selectedMapping.ConversationID)
+
+	// Get conversation details
+	conv, err := b.store.GetConversation(selectedMapping.ConversationID)
+	if err != nil {
+		b.logger.Error("Failed to get conversation", zap.Error(err))
+		_, err := b.sendMessage(chatID, "❌ Failed to resume conversation.")
+		return err
+	}
+
+	_, err = b.sendMessage(chatID, fmt.Sprintf("✅ Resumed conversation: *%s*\n\n📊 %d messages\n🕐 Last updated: %s\n\nYou can now continue chatting!",
+		conv.Title,
+		conv.MessageCount,
+		conv.UpdatedAt.Format("Jan 2, 3:04 PM")))
+	return err
+}
+
+// handleDocumentsCommand shows all uploaded documents
+func (b *Bot) handleDocumentsCommand(chatID int64) error {
+	if b.store == nil {
+		_, err := b.sendMessage(chatID, "❌ Document storage not available - database not connected.")
+		return err
+	}
+
+	files, err := b.store.ListAllFiles(20, 0)
+	if err != nil {
+		b.logger.Error("Failed to list documents", zap.Error(err))
+		_, err := b.sendMessage(chatID, "❌ Failed to retrieve documents.")
+		return err
+	}
+
+	if len(files) == 0 {
+		_, err := b.sendMessage(chatID, "📭 No documents found.\n\nUpload PDFs, images, or other files to access them here!")
+		return err
+	}
+
+	var sb strings.Builder
+	sb.WriteString("📁 *Your Documents*\n\n")
+
+	for i, file := range files {
+		sizeStr := formatFileSize(file.SizeBytes)
+		sb.WriteString(fmt.Sprintf("%d. *%s*\n", i+1, file.Filename))
+		sb.WriteString(fmt.Sprintf("   📄 %s | 📦 %s\n", file.MimeType, sizeStr))
+		sb.WriteString(fmt.Sprintf("   🕐 %s\n\n", file.CreatedAt.Format("Jan 2, 3:04 PM")))
+	}
+
+	_, err = b.sendMessage(chatID, sb.String())
+	return err
+}
+
+// formatFileSize converts bytes to human readable format
+func formatFileSize(bytes int64) string {
+	const (
+		KB = 1024
+		MB = KB * 1024
+		GB = MB * 1024
+	)
+
+	switch {
+	case bytes >= GB:
+		return fmt.Sprintf("%.2f GB", float64(bytes)/GB)
+	case bytes >= MB:
+		return fmt.Sprintf("%.2f MB", float64(bytes)/MB)
+	case bytes >= KB:
+		return fmt.Sprintf("%.2f KB", float64(bytes)/KB)
+	default:
+		return fmt.Sprintf("%d B", bytes)
 	}
 }
 
@@ -239,9 +406,7 @@ func (b *Bot) handleMessage(msg *tgbotapi.Message) error {
 	text := msg.Text
 
 	// Get or create conversation for this chat
-	b.convMu.RLock()
-	convID := b.conversations[chatID]
-	b.convMu.RUnlock()
+	convID := b.getConversationID(chatID)
 
 	// Show typing indicator
 	typing := tgbotapi.NewChatAction(chatID, tgbotapi.ChatTyping)
@@ -265,11 +430,9 @@ func (b *Bot) handleMessage(msg *tgbotapi.Message) error {
 		return sendErr
 	}
 
-	// Save conversation ID for future messages in this chat
+	// Save conversation ID for future messages in this chat (persisted to database)
 	if resp.ConversationID != "" {
-		b.convMu.Lock()
-		b.conversations[chatID] = resp.ConversationID
-		b.convMu.Unlock()
+		b.setConversationID(chatID, resp.ConversationID)
 	}
 
 	responseText.WriteString(resp.Content)
@@ -354,6 +517,34 @@ func (b *Bot) handlePhoto(msg *tgbotapi.Message) error {
 			zap.Error(err))
 	}
 
+	// Save image to database for global access
+	var fileRecord *store.File
+	if b.store != nil {
+		convID := b.getConversationID(chatID)
+		mimeType := "image/jpeg"
+		fileSize := int64(photo.FileSize)
+		fileRecord = &store.File{
+			Filename:    fmt.Sprintf("photo_%d.jpg", time.Now().Unix()),
+			MimeType:    mimeType,
+			SizeBytes:   fileSize,
+			StoragePath: filePath,
+			ConversationID: func() *string {
+				if convID != "" {
+					return &convID
+				} else {
+					return nil
+				}
+			}(),
+			SourceChatID: &chatID,
+		}
+		if err := b.store.CreateFile(fileRecord); err != nil {
+			b.logger.Warn("Failed to save image record", zap.Error(err))
+			// Continue anyway, not critical
+		} else {
+			b.logger.Info("Image saved to database", zap.String("file_id", fileRecord.ID))
+		}
+	}
+
 	// Build message - include image analysis if we got it, otherwise just the path
 	var message string
 	if imageAnalysis != "" {
@@ -376,6 +567,11 @@ func (b *Bot) handlePhoto(msg *tgbotapi.Message) error {
 
 	// Save conversation ID
 	b.setConversationID(chatID, resp.ConversationID)
+
+	// Update file record with processed text if successful
+	if fileRecord != nil && b.store != nil {
+		b.store.UpdateFileProcessedText(fileRecord.ID, resp.Content)
+	}
 
 	_, err = b.sendMessage(chatID, resp.Content)
 	return err
@@ -407,6 +603,32 @@ func (b *Bot) handleDocument(msg *tgbotapi.Message) error {
 	}
 	defer os.Remove(filePath) // Clean up after processing
 
+	// Save file to database for global access
+	var fileRecord *store.File
+	if b.store != nil {
+		convID := b.getConversationID(chatID)
+		fileRecord = &store.File{
+			Filename:    doc.FileName,
+			MimeType:    doc.MimeType,
+			SizeBytes:   int64(doc.FileSize),
+			StoragePath: filePath,
+			ConversationID: func() *string {
+				if convID != "" {
+					return &convID
+				} else {
+					return nil
+				}
+			}(),
+			SourceChatID: &chatID,
+		}
+		if err := b.store.CreateFile(fileRecord); err != nil {
+			b.logger.Warn("Failed to save file record", zap.Error(err))
+			// Continue anyway, not critical
+		} else {
+			b.logger.Info("File saved to database", zap.String("file_id", fileRecord.ID), zap.String("filename", doc.FileName))
+		}
+	}
+
 	// Process through agent with the document
 	ctx, cancel := context.WithTimeout(b.ctx, 120*time.Second)
 	defer cancel()
@@ -430,6 +652,11 @@ func (b *Bot) handleDocument(msg *tgbotapi.Message) error {
 
 	// Save conversation ID
 	b.setConversationID(chatID, resp.ConversationID)
+
+	// Update file record with processed text if successful
+	if fileRecord != nil && b.store != nil {
+		b.store.UpdateFileProcessedText(fileRecord.ID, resp.Content)
+	}
 
 	_, err = b.sendMessage(chatID, resp.Content)
 	return err
@@ -486,19 +713,71 @@ func (b *Bot) downloadFile(fileID string, fileType string) (string, error) {
 	return localPath, nil
 }
 
-// getConversationID returns the conversation ID for a chat
+// getConversationID returns the conversation ID for a chat (checks memory first, then database)
 func (b *Bot) getConversationID(chatID int64) string {
+	// Check in-memory cache first
 	b.convMu.RLock()
-	defer b.convMu.RUnlock()
-	return b.conversations[chatID]
+	convID := b.conversations[chatID]
+	b.convMu.RUnlock()
+
+	if convID != "" {
+		return convID
+	}
+
+	// Try to load from database
+	if b.store != nil {
+		mapping, err := b.store.GetChatMapping(chatID, "telegram")
+		if err == nil && mapping != nil {
+			b.convMu.Lock()
+			b.conversations[chatID] = mapping.ConversationID
+			b.convMu.Unlock()
+			return mapping.ConversationID
+		}
+	}
+
+	return ""
 }
 
-// setConversationID sets the conversation ID for a chat
+// setConversationID sets the conversation ID for a chat and persists it
 func (b *Bot) setConversationID(chatID int64, convID string) {
-	if convID != "" {
-		b.convMu.Lock()
-		b.conversations[chatID] = convID
-		b.convMu.Unlock()
+	if convID == "" {
+		return
+	}
+
+	// Update in-memory cache
+	b.convMu.Lock()
+	b.conversations[chatID] = convID
+	b.convMu.Unlock()
+
+	// Persist to database
+	if b.store != nil {
+		if err := b.store.SetChatMapping(chatID, "telegram", convID); err != nil {
+			b.logger.Warn("Failed to persist conversation mapping",
+				zap.Error(err),
+				zap.Int64("chat_id", chatID),
+				zap.String("conversation_id", convID))
+		} else {
+			b.logger.Debug("Conversation mapping persisted",
+				zap.Int64("chat_id", chatID),
+				zap.String("conversation_id", convID))
+		}
+	}
+}
+
+// clearConversationID clears the conversation mapping for a chat
+func (b *Bot) clearConversationID(chatID int64) {
+	// Clear in-memory cache
+	b.convMu.Lock()
+	delete(b.conversations, chatID)
+	b.convMu.Unlock()
+
+	// Deactivate in database
+	if b.store != nil {
+		if err := b.store.DeactivateChatMapping(chatID, "telegram"); err != nil {
+			b.logger.Warn("Failed to deactivate conversation mapping",
+				zap.Error(err),
+				zap.Int64("chat_id", chatID))
+		}
 	}
 }
 

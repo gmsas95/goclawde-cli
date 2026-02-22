@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/gmsas95/myrai-cli/internal/config"
 	"github.com/dgraph-io/badger/v4"
 	_ "github.com/glebarez/go-sqlite" // Pure Go SQLite driver
+	"github.com/gmsas95/myrai-cli/internal/config"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -36,12 +36,12 @@ func New(cfg *config.Config) (*Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite: %w", err)
 	}
-	
+
 	// Configure connection pool
 	sqliteDB.SetMaxOpenConns(10)
 	sqliteDB.SetMaxIdleConns(5)
 	sqliteDB.SetConnMaxLifetime(time.Hour)
-	
+
 	db, err := gorm.Open(sqlite.Dialector{Conn: sqliteDB}, &gorm.Config{
 		Logger:                 logger.Default.LogMode(logger.Silent),
 		SkipDefaultTransaction: true,
@@ -61,6 +61,7 @@ func New(cfg *config.Config) (*Store, error) {
 		&ScheduledJob{},
 		&User{},
 		&Config{},
+		&ChatMapping{},
 	); err != nil {
 		return nil, fmt.Errorf("failed to migrate: %w", err)
 	}
@@ -78,7 +79,7 @@ func New(cfg *config.Config) (*Store, error) {
 		WithCompactL0OnClose(true).
 		WithValueLogFileSize(16 << 20). // 16MB value log files
 		WithMemTableSize(16 << 20)      // 16MB memtable
-	
+
 	badgerDB, err := badger.Open(badgerOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open badger: %w", err)
@@ -122,9 +123,9 @@ func (s *Store) createDefaultUser() error {
 
 	if count == 0 {
 		user := &User{
-			ID:           "default",
-			DisplayName:  "User",
-			Preferences:  json.RawMessage(`{}`),
+			ID:          "default",
+			DisplayName: "User",
+			Preferences: json.RawMessage(`{}`),
 		}
 		return s.db.Create(user).Error
 	}
@@ -212,6 +213,94 @@ func (s *Store) GetRecentMemories(limit int) ([]Memory, error) {
 	var memories []Memory
 	err := s.db.Order("created_at DESC").Limit(limit).Find(&memories).Error
 	return memories, err
+}
+
+// ==================== Chat Mapping Methods ====================
+
+// GetChatMapping retrieves the active conversation ID for a chat
+func (s *Store) GetChatMapping(chatID int64, chatType string) (*ChatMapping, error) {
+	var mapping ChatMapping
+	err := s.db.Where("chat_id = ? AND chat_type = ? AND is_active = ?", chatID, chatType, true).
+		Order("updated_at DESC").
+		First(&mapping).Error
+	if err != nil {
+		return nil, err
+	}
+	return &mapping, nil
+}
+
+// SetChatMapping creates or updates the mapping between a chat and conversation
+func (s *Store) SetChatMapping(chatID int64, chatType, conversationID string) error {
+	// Deactivate any existing active mappings for this chat
+	s.db.Model(&ChatMapping{}).
+		Where("chat_id = ? AND chat_type = ? AND is_active = ?", chatID, chatType, true).
+		Update("is_active", false)
+
+	// Create new mapping
+	mapping := &ChatMapping{
+		ChatID:         chatID,
+		ChatType:       chatType,
+		ConversationID: conversationID,
+		IsActive:       true,
+	}
+	return s.db.Create(mapping).Error
+}
+
+// GetChatConversationHistory gets all conversation mappings for a chat
+func (s *Store) GetChatConversationHistory(chatID int64, chatType string, limit int) ([]ChatMapping, error) {
+	var mappings []ChatMapping
+	err := s.db.Where("chat_id = ? AND chat_type = ?", chatID, chatType).
+		Order("updated_at DESC").
+		Limit(limit).
+		Find(&mappings).Error
+	return mappings, err
+}
+
+// DeactivateChatMapping marks a chat mapping as inactive
+func (s *Store) DeactivateChatMapping(chatID int64, chatType string) error {
+	return s.db.Model(&ChatMapping{}).
+		Where("chat_id = ? AND chat_type = ? AND is_active = ?", chatID, chatType, true).
+		Update("is_active", false).Error
+}
+
+// ==================== File/Document Methods ====================
+
+// CreateFile creates a new file entry
+func (s *Store) CreateFile(file *File) error {
+	return s.db.Create(file).Error
+}
+
+// GetFile retrieves a file by ID
+func (s *Store) GetFile(fileID string) (*File, error) {
+	var file File
+	err := s.db.First(&file, "id = ?", fileID).Error
+	if err != nil {
+		return nil, err
+	}
+	return &file, nil
+}
+
+// ListFiles retrieves files with optional filters
+func (s *Store) ListFiles(conversationID *string, limit, offset int) ([]File, error) {
+	var files []File
+	query := s.db.Order("created_at DESC").Limit(limit).Offset(offset)
+	if conversationID != nil {
+		query = query.Where("conversation_id = ?", *conversationID)
+	}
+	err := query.Find(&files).Error
+	return files, err
+}
+
+// ListAllFiles retrieves all files globally (for cross-conversation access)
+func (s *Store) ListAllFiles(limit, offset int) ([]File, error) {
+	var files []File
+	err := s.db.Order("created_at DESC").Limit(limit).Offset(offset).Find(&files).Error
+	return files, err
+}
+
+// UpdateFileProcessedText updates the processed text for a file
+func (s *Store) UpdateFileProcessedText(fileID string, processedText string) error {
+	return s.db.Model(&File{}).Where("id = ?", fileID).Update("processed_text", processedText).Error
 }
 
 // ==================== Task Methods ====================
