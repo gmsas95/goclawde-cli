@@ -554,3 +554,24 @@ func (a *Agent) GenerateTitle(ctx context.Context, firstMessage string) (string,
 
 	return title, nil
 }
+
+// ExecuteTool executes a tool directly by name with the given arguments
+func (a *Agent) ExecuteTool(ctx context.Context, toolName string, args map[string]interface{}) (interface{}, error) {
+	if a.skillsRegistry != nil {
+		// Convert args to JSON for the skills registry
+		argsJSON, err := json.Marshal(args)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal tool arguments: %w", err)
+		}
+		return a.skillsRegistry.ExecuteTool(ctx, toolName, argsJSON)
+	}
+	if a.tools != nil {
+		// Convert args to JSON string for the tools registry
+		argsJSON, err := json.Marshal(args)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal tool arguments: %w", err)
+		}
+		return a.tools.ExecuteJSON(ctx, toolName, string(argsJSON))
+	}
+	return nil, fmt.Errorf("no tool registry available")
+}

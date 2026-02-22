@@ -325,7 +325,7 @@ func (b *Bot) handlePhoto(msg *tgbotapi.Message) error {
 	}
 	defer os.Remove(filePath) // Clean up after processing
 
-	// Process through agent with the image
+	// Process image through skills registry first
 	ctx, cancel := context.WithTimeout(b.ctx, 60*time.Second)
 	defer cancel()
 
@@ -334,9 +334,37 @@ func (b *Bot) handlePhoto(msg *tgbotapi.Message) error {
 		prompt = msg.Caption
 	}
 
+	// Try to process image using the process_image skill if available
+	var imageAnalysis string
+	if result, err := b.agent.ExecuteTool(ctx, "process_image", map[string]interface{}{
+		"file_path": filePath,
+		"query":     prompt,
+	}); err == nil {
+		// Successfully processed image, extract the description
+		if resultMap, ok := result.(map[string]interface{}); ok {
+			if desc, ok := resultMap["description"].(string); ok && desc != "" {
+				imageAnalysis = desc
+			} else if text, ok := resultMap["text"].(string); ok && text != "" {
+				imageAnalysis = text
+			}
+		}
+		b.logger.Info("Image processed via vision API", zap.String("file", filePath))
+	} else {
+		b.logger.Warn("Image processing via skills failed, falling back to LLM tool calling",
+			zap.Error(err))
+	}
+
+	// Build message - include image analysis if we got it, otherwise just the path
+	var message string
+	if imageAnalysis != "" {
+		message = fmt.Sprintf("Image Analysis:\n%s\n\nUser question: %s", imageAnalysis, prompt)
+	} else {
+		message = fmt.Sprintf("[Image attached: %s]\n\n%s", filePath, prompt)
+	}
+
 	resp, err := b.agent.Chat(ctx, agent.ChatRequest{
 		ConversationID: b.getConversationID(chatID),
-		Message:        fmt.Sprintf("[Image attached: %s]\n\n%s", filePath, prompt),
+		Message:        message,
 		Stream:         false,
 	})
 
