@@ -104,7 +104,7 @@ type ScheduledJob struct {
 // ChatMapping stores the mapping between chat IDs and conversation IDs for persistence across restarts
 type ChatMapping struct {
 	ID             string    `gorm:"primaryKey" json:"id"`
-	ChatID         int64     `gorm:"uniqueIndex:idx_chat_mapping" json:"chat_id"`
+	ChatID         int64     `json:"chat_id"`
 	ChatType       string    `json:"chat_type"` // telegram, discord, etc.
 	ConversationID string    `gorm:"index" json:"conversation_id"`
 	IsActive       bool      `json:"is_active"` // Whether this is the currently active conversation

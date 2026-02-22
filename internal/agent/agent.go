@@ -290,6 +290,25 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 		}
 	}
 
+	// Create updated tool calls with consistent IDs for storage
+	updatedToolCalls := make([]llm.ToolCall, len(toolCalls))
+	for i, tc := range toolCalls {
+		updatedToolCalls[i] = tc
+		updatedToolCalls[i].ID = toolCallIDs[i]
+	}
+
+	// Save assistant message with tool calls BEFORE executing tools
+	// This ensures the conversation history is complete
+	assistantMsg := &store.Message{
+		ConversationID: convID,
+		Role:           "assistant",
+		Content:        msg.Content,
+		ToolCalls:      store.ToJSON(updatedToolCalls),
+	}
+	if err := a.store.CreateMessage(assistantMsg); err != nil {
+		a.logger.Warn("Failed to save assistant message with tool calls", zap.Error(err))
+	}
+
 	// Execute tools
 	toolResults := make([]map[string]interface{}, 0, len(toolCalls))
 
@@ -333,11 +352,14 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 		toolResults = append(toolResults, resultObj)
 
 		// Save tool call and result with the generated ID
+		// IMPORTANT: Save the updated tool call with the generated ID, not the original!
+		updatedToolCallForSave := tc
+		updatedToolCallForSave.ID = toolCallID
 		toolMsg := &store.Message{
 			ConversationID: convID,
 			Role:           "tool",
 			Content:        resultObj["content"].(string),
-			ToolCalls:      store.ToJSON(tc),
+			ToolCalls:      store.ToJSON(updatedToolCallForSave),
 			ToolResults:    store.ToJSON(result),
 			ToolCallID:     toolCallID,
 		}
@@ -350,12 +372,7 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 	// Note: Content must be omitted (not empty string) when ToolCalls are present
 	// Include reasoning_content if present (required by some LLM APIs with thinking enabled)
 
-	// Create updated tool calls with consistent generated IDs
-	updatedToolCalls := make([]llm.ToolCall, len(toolCalls))
-	for i, tc := range toolCalls {
-		updatedToolCalls[i] = tc
-		updatedToolCalls[i].ID = toolCallIDs[i]
-	}
+	// updatedToolCalls already created above
 
 	followUpMessages := append(req.Messages, llm.Message{
 		Role:             "assistant",
@@ -392,13 +409,13 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 	finalContent := resp.Choices[0].Message.Content
 
 	// Save final assistant message
-	assistantMsg := &store.Message{
+	finalAssistantMsg := &store.Message{
 		ConversationID: convID,
 		Role:           "assistant",
 		Content:        finalContent,
 		Tokens:         resp.Usage.CompletionTokens,
 	}
-	if err := a.store.CreateMessage(assistantMsg); err != nil {
+	if err := a.store.CreateMessage(finalAssistantMsg); err != nil {
 		a.logger.Warn("Failed to save assistant message", zap.Error(err))
 	}
 
