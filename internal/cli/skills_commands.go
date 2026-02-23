@@ -66,7 +66,7 @@ func HandleEnhancedSkillsCommand(args []string) {
 			os.Exit(1)
 		}
 		query := args[1]
-		searchSkills(registry, query)
+		searchSkills(registry, query, logger)
 
 	case "watch":
 		if len(args) < 2 {
@@ -98,7 +98,7 @@ func HandleEnhancedSkillsCommand(args []string) {
 			os.Exit(1)
 		}
 		skillName := args[1]
-		uninstallSkill(registry, skillsDir, skillName)
+		uninstallSkill(registry, skillsDir, skillName, logger)
 
 	case "validate":
 		if len(args) < 2 {
@@ -214,7 +214,7 @@ func HandleMCPCommand(args []string) {
 
 func installFromGitHub(registry *skills.EnhancedRegistry, skillsDir, repo string, logger *zap.Logger) {
 	loader := skills.NewSkillLoader(registry, skillsDir)
-	installer := skills.NewGitHubInstaller(loader, skillsDir)
+	installer := skills.NewGitHubInstaller(loader, skillsDir, logger)
 
 	fmt.Printf("📦 Installing skill from %s...\n", repo)
 
@@ -234,7 +234,7 @@ func installFromGitHub(registry *skills.EnhancedRegistry, skillsDir, repo string
 
 func updateSkill(registry *skills.EnhancedRegistry, skillsDir, skillName string, logger *zap.Logger) {
 	loader := skills.NewSkillLoader(registry, skillsDir)
-	installer := skills.NewGitHubInstaller(loader, skillsDir)
+	installer := skills.NewGitHubInstaller(loader, skillsDir, logger)
 
 	fmt.Printf("🔄 Updating skill '%s'...\n", skillName)
 
@@ -247,7 +247,7 @@ func updateSkill(registry *skills.EnhancedRegistry, skillsDir, skillName string,
 	fmt.Printf("✅ Skill '%s' updated to version %s!\n", skill.Manifest.Name, skill.Manifest.Version)
 }
 
-func searchSkills(registry *skills.EnhancedRegistry, query string) {
+func searchSkills(registry *skills.EnhancedRegistry, query string, logger *zap.Logger) {
 	// First search local registry
 	localResults := registry.SearchSkills(query)
 
@@ -267,7 +267,7 @@ func searchSkills(registry *skills.EnhancedRegistry, query string) {
 
 	// Search GitHub
 	loader := skills.NewSkillLoader(registry, "")
-	installer := skills.NewGitHubInstaller(loader, "")
+	installer := skills.NewGitHubInstaller(loader, "", logger)
 	githubResults, _ := installer.SearchGitHub(query)
 
 	if len(githubResults) > 0 {
@@ -331,7 +331,7 @@ func disableSkill(registry *skills.EnhancedRegistry, skillName string) {
 	fmt.Printf("✅ Skill '%s' disabled\n", skillName)
 }
 
-func uninstallSkill(registry *skills.EnhancedRegistry, skillsDir, skillName string) {
+func uninstallSkill(registry *skills.EnhancedRegistry, skillsDir, skillName string, logger *zap.Logger) {
 	skill, ok := registry.GetRuntimeSkill(skillName)
 	if !ok {
 		fmt.Printf("❌ Skill '%s' not found\n", skillName)
@@ -340,7 +340,7 @@ func uninstallSkill(registry *skills.EnhancedRegistry, skillsDir, skillName stri
 
 	if skill.Source == skills.SourceGitHub {
 		loader := skills.NewSkillLoader(registry, skillsDir)
-		installer := skills.NewGitHubInstaller(loader, skillsDir)
+		installer := skills.NewGitHubInstaller(loader, skillsDir, logger)
 		if err := installer.UninstallSkill(skillName); err != nil {
 			fmt.Printf("❌ Failed to uninstall skill: %v\n", err)
 			os.Exit(1)

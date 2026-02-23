@@ -4,27 +4,31 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/gmsas95/myrai-cli/internal/circuitbreaker"
+	"go.uber.org/zap"
 )
 
 // GitHubInstaller handles installation of skills from GitHub
 type GitHubInstaller struct {
 	loader    *SkillLoader
 	skillsDir string
-	client    *http.Client
+	client    *circuitbreaker.HTTPClient
+	logger    *zap.Logger
 }
 
 // NewGitHubInstaller creates a new GitHub installer
-func NewGitHubInstaller(loader *SkillLoader, skillsDir string) *GitHubInstaller {
+func NewGitHubInstaller(loader *SkillLoader, skillsDir string, logger *zap.Logger) *GitHubInstaller {
 	return &GitHubInstaller{
 		loader:    loader,
 		skillsDir: skillsDir,
-		client:    &http.Client{Timeout: 60 * time.Second},
+		client:    circuitbreaker.NewHTTPClient("github-api", 60*time.Second, logger),
+		logger:    logger,
 	}
 }
 
@@ -61,7 +65,7 @@ func (gi *GitHubInstaller) InstallFromGitHub(repo string) (*RuntimeSkill, error)
 	}
 
 	// Download the repository
-	log.Printf("[GitHub] Downloading from %s...", downloadURL)
+	gi.logger.Info("[GitHub] Downloading...", zap.String("url", downloadURL))
 	zipPath := filepath.Join(skillDir, "download.zip")
 	if err := gi.downloadFile(downloadURL, zipPath); err != nil {
 		return nil, fmt.Errorf("failed to download repository: %w", err)
@@ -69,7 +73,7 @@ func (gi *GitHubInstaller) InstallFromGitHub(repo string) (*RuntimeSkill, error)
 	defer os.Remove(zipPath)
 
 	// Extract the zip
-	log.Printf("[GitHub] Extracting...")
+	gi.logger.Info("[GitHub] Extracting...")
 	extractDir := filepath.Join(skillDir, "extracted")
 	if err := gi.extractZip(zipPath, extractDir); err != nil {
 		return nil, fmt.Errorf("failed to extract repository: %w", err)
@@ -100,7 +104,7 @@ func (gi *GitHubInstaller) InstallFromGitHub(repo string) (*RuntimeSkill, error)
 			return nil, fmt.Errorf("skill requires Myrai version %s or higher, current version is %s",
 				manifest.MinMyraiVersion, currentVersion)
 		}
-		log.Printf("[GitHub] Version check passed: required %s, current %s", manifest.MinMyraiVersion, currentVersion)
+		gi.logger.Info("[GitHub] Version check passed", zap.String("required", manifest.MinMyraiVersion), zap.String("current", currentVersion))
 	}
 
 	// Move files to final location
@@ -134,7 +138,7 @@ func (gi *GitHubInstaller) InstallFromGitHub(repo string) (*RuntimeSkill, error)
 		return nil, fmt.Errorf("failed to register skill: %w", err)
 	}
 
-	log.Printf("[GitHub] Skill '%s' installed successfully from %s", manifest.Name, repoURL)
+	gi.logger.Info("[GitHub] Skill installed successfully", zap.String("name", manifest.Name), zap.String("repo", repoURL))
 	return skill, nil
 }
 
@@ -180,7 +184,7 @@ func (gi *GitHubInstaller) UninstallSkill(skillName string) error {
 		return fmt.Errorf("failed to unregister skill: %w", err)
 	}
 
-	log.Printf("[GitHub] Skill '%s' uninstalled", skillName)
+	gi.logger.Info("[GitHub] Skill uninstalled", zap.String("name", skillName))
 	return nil
 }
 
