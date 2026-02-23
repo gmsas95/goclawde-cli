@@ -2,17 +2,22 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"golang.org/x/term"
 
 	"github.com/gmsas95/myrai-cli/internal/app"
 	"github.com/gmsas95/myrai-cli/internal/cli"
 	"github.com/gmsas95/myrai-cli/internal/config"
+	"github.com/gmsas95/myrai-cli/internal/jobs"
 	"github.com/gmsas95/myrai-cli/internal/llm"
 	"github.com/gmsas95/myrai-cli/internal/onboarding"
 	"github.com/gmsas95/myrai-cli/internal/persona"
@@ -30,6 +35,14 @@ var (
 	onboard    = flag.Bool("onboard", false, "Run onboarding wizard")
 	version    = "dev"
 )
+
+// AppContext holds the application context for graceful shutdown
+type AppContext struct {
+	App         *app.App
+	JobRegistry *jobs.Registry
+	Logger      *zap.Logger
+	Store       *store.Store
+}
 
 func main() {
 	if len(os.Args) > 1 {
@@ -63,8 +76,8 @@ func main() {
 				cli.PrintGatewayHelp()
 				return
 			}
-			application := initApp()
-			cli.HandleGatewayCommand(os.Args[2:], application)
+			appCtx := initAppWithGracefulShutdown()
+			cli.HandleGatewayCommand(os.Args[2:], appCtx.App)
 			return
 		case "status":
 			cli.HandleStatusCommand()
@@ -86,6 +99,9 @@ func main() {
 			return
 		case "marketplace":
 			cli.HandleMarketplaceCommand(os.Args[2:])
+			return
+		case "job":
+			handleJobCommand(os.Args[2:])
 			return
 		case "help", "--help", "-h":
 			cli.PrintExtendedHelp()
@@ -121,14 +137,16 @@ func main() {
 		return
 	}
 
-	application := initApp()
+	appCtx := initAppWithGracefulShutdown()
 
 	if *cliMode || *message != "" {
-		application.RunCLI(*message)
+		appCtx.App.RunCLI(*message)
+		shutdown(appCtx)
 		return
 	}
 
-	application.RunServer()
+	// Server mode with graceful shutdown
+	runServerWithGracefulShutdown(appCtx)
 }
 
 func runOnboarding() {
@@ -142,12 +160,11 @@ func runOnboarding() {
 	}
 }
 
-func initApp() *app.App {
+func initAppWithGracefulShutdown() *AppContext {
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
 	}
-	defer logger.Sync()
 
 	logger.Info("Starting Myrai",
 		zap.String("version", version),
@@ -186,7 +203,190 @@ func initApp() *app.App {
 	application := app.New(cfg, st, logger, pm, version)
 	application.SetSkillsRegistry(skillsRegistry)
 
-	return application
+	// Initialize job registry
+	var jobRegistry *jobs.Registry
+	if cfg.Cron.Enabled {
+		jobRegistry, err = jobs.NewRegistry(st, cfg, logger)
+		if err != nil {
+			logger.Warn("Failed to initialize job registry", zap.Error(err))
+		} else {
+			if err := jobRegistry.Initialize(); err != nil {
+				logger.Warn("Failed to initialize jobs", zap.Error(err))
+			}
+		}
+	}
+
+	return &AppContext{
+		App:         application,
+		JobRegistry: jobRegistry,
+		Logger:      logger,
+		Store:       st,
+	}
+}
+
+func runServerWithGracefulShutdown(appCtx *AppContext) {
+	// Start job scheduler if available
+	if appCtx.JobRegistry != nil {
+		appCtx.JobRegistry.Start()
+		appCtx.Logger.Info("Background job scheduler started")
+	}
+
+	// Setup signal handling
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	// Run server in goroutine
+	serverDoneCh := make(chan struct{})
+	go func() {
+		appCtx.App.RunServer()
+		close(serverDoneCh)
+	}()
+
+	// Wait for shutdown signal or server to exit
+	select {
+	case sig := <-sigCh:
+		appCtx.Logger.Info("Received shutdown signal",
+			zap.String("signal", sig.String()),
+		)
+	case <-serverDoneCh:
+		appCtx.Logger.Info("Server exited")
+	}
+
+	// Graceful shutdown
+	shutdown(appCtx)
+}
+
+func shutdown(appCtx *AppContext) {
+	appCtx.Logger.Info("Shutting down gracefully...")
+
+	// Create shutdown context with timeout
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Stop job scheduler
+	if appCtx.JobRegistry != nil {
+		appCtx.Logger.Info("Stopping job scheduler...")
+		appCtx.JobRegistry.Stop()
+
+		// Wait for jobs to complete
+		if err := appCtx.JobRegistry.Wait(shutdownCtx); err != nil {
+			appCtx.Logger.Warn("Timeout waiting for jobs to complete", zap.Error(err))
+		}
+	}
+
+	// Close store
+	if appCtx.Store != nil {
+		appCtx.Logger.Info("Closing store...")
+		appCtx.Store.Close()
+	}
+
+	// Sync logger
+	appCtx.Logger.Sync()
+
+	appCtx.Logger.Info("Shutdown complete")
+}
+
+func handleJobCommand(args []string) {
+	if len(args) == 0 {
+		fmt.Println("Usage: myrai job <command>")
+		fmt.Println()
+		fmt.Println("Commands:")
+		fmt.Println("  list              List all scheduled jobs")
+		fmt.Println("  run <job-id>      Run a job immediately")
+		fmt.Println("  enable <job-id>   Enable a job")
+		fmt.Println("  disable <job-id>  Disable a job")
+		return
+	}
+
+	logger, _ := zap.NewDevelopment()
+	defer logger.Sync()
+
+	cfg, err := config.Load(*configPath, *dataDir)
+	if err != nil {
+		fmt.Printf("Error loading config: %v\n", err)
+		os.Exit(1)
+	}
+
+	st, err := store.New(cfg)
+	if err != nil {
+		fmt.Printf("Error initializing store: %v\n", err)
+		os.Exit(1)
+	}
+	defer st.Close()
+
+	jobRegistry, err := jobs.NewRegistry(st, cfg, logger)
+	if err != nil {
+		fmt.Printf("Error initializing job registry: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := jobRegistry.Initialize(); err != nil {
+		fmt.Printf("Error initializing jobs: %v\n", err)
+		os.Exit(1)
+	}
+
+	switch args[0] {
+	case "list":
+		jobList := jobRegistry.ListJobs()
+		if len(jobList) == 0 {
+			fmt.Println("No jobs registered")
+			return
+		}
+		fmt.Printf("%-30s %-20s %-10s %s\n", "ID", "Name", "Status", "Next Run")
+		fmt.Println(strings.Repeat("-", 80))
+		for _, job := range jobList {
+			status := "disabled"
+			if job.Enabled {
+				status = "enabled"
+			}
+			nextRun := "N/A"
+			if job.NextRun != nil {
+				nextRun = job.NextRun.Format("2006-01-02 15:04")
+			}
+			fmt.Printf("%-30s %-20s %-10s %s\n", job.ID, job.Name, status, nextRun)
+		}
+
+	case "run":
+		if len(args) < 2 {
+			fmt.Println("Usage: myrai job run <job-id>")
+			os.Exit(1)
+		}
+		jobID := args[1]
+		fmt.Printf("Triggering job: %s\n", jobID)
+		if err := jobRegistry.ManualJobTrigger(jobID); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Job triggered successfully")
+
+	case "enable":
+		if len(args) < 2 {
+			fmt.Println("Usage: myrai job enable <job-id>")
+			os.Exit(1)
+		}
+		jobID := args[1]
+		if err := jobRegistry.GetScheduler().EnableJob(jobID); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Job %s enabled\n", jobID)
+
+	case "disable":
+		if len(args) < 2 {
+			fmt.Println("Usage: myrai job disable <job-id>")
+			os.Exit(1)
+		}
+		jobID := args[1]
+		if err := jobRegistry.GetScheduler().DisableJob(jobID); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Job %s disabled\n", jobID)
+
+	default:
+		fmt.Printf("Unknown command: %s\n", args[0])
+		os.Exit(1)
+	}
 }
 
 func getMode() string {
