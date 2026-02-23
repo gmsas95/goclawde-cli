@@ -213,6 +213,10 @@ func (cm *ContextManager) retrieveRelevantMemories(ctx context.Context, query st
 	}
 
 	// Fall back to raw vector search
+	if cm.vectorSearcher == nil {
+		return nil, nil // No searcher available
+	}
+
 	results, err := cm.vectorSearcher.Search(query, 5)
 	if err != nil {
 		return nil, err
@@ -232,6 +236,10 @@ func (cm *ContextManager) retrieveRelevantMemories(ctx context.Context, query st
 
 // retrieveFromNeuralClusters retrieves context from neural clusters
 func (cm *ContextManager) retrieveFromNeuralClusters(ctx context.Context, query string) ([]MemoryInfo, error) {
+	if cm.neuralRetriever == nil {
+		return nil, fmt.Errorf("neural retriever not initialized")
+	}
+
 	// Use neural cluster retrieval with semantic compression
 	opts := neural.RetrievalOptions{
 		MaxClusters: 5,
