@@ -1,0 +1,66 @@
+name: deploy-application
+description: Build, push, and deploy application
+version: 1.0.0
+author: myrai-team
+type: sequential
+
+steps:
+  - id: verify-dockerfile
+    name: Verify Dockerfile
+    description: Check if Dockerfile exists
+    tool: read_file
+    parameters:
+      path: "./Dockerfile"
+    on_failure: abort
+    
+  - id: build-image
+    name: Build Docker Image
+    description: Build the Docker image
+    tool: exec
+    parameters:
+      command: "docker build -t {{image_tag}} ."
+    depends_on: [verify-dockerfile]
+    timeout: 300s
+    retry_count: 1
+    
+  - id: verify-registry
+    name: Verify Registry Login
+    description: Check Docker Hub login status
+    tool: exec
+    parameters:
+      command: "docker info | grep Username"
+    depends_on: [build-image]
+    optional: true
+    
+  - id: push-image
+    name: Push to Registry
+    description: Push image to Docker registry
+    tool: exec
+    parameters:
+      command: "docker push {{image_tag}}"
+    depends_on: [build-image, verify-registry]
+    timeout: 180s
+    retry_count: 2
+    
+  - id: deploy-k8s
+    name: Deploy to Kubernetes
+    description: Apply Kubernetes manifests
+    tool: exec
+    parameters:
+      command: "kubectl apply -f k8s/"
+    depends_on: [push-image]
+    timeout: 120s
+    
+  - id: verify-deployment
+    name: Verify Deployment
+    description: Check deployment status
+    tool: exec
+    parameters:
+      command: "kubectl rollout status deployment/{{app_name}}"
+    depends_on: [deploy-k8s]
+    optional: true
+    timeout: 180s
+
+variables:
+  image_tag: "myapp:latest"
+  app_name: "myapp"

@@ -11,6 +11,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	_ "github.com/glebarez/go-sqlite" // Pure Go SQLite driver
 	"github.com/gmsas95/myrai-cli/internal/config"
+
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"

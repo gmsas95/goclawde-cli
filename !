@@ -1,0 +1,2 @@
+internal/cli/neural_commands.go:410:38: missing ',' in argument list
+internal/cli/neural_commands.go:410:51: missing ',' in argument list

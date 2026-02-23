@@ -185,8 +185,12 @@ func HandlePersonaCommand(args []string) {
 		}
 		fmt.Println(string(data))
 
+	case "proposals", "proposal", "history", "rollback", "analyze", "config":
+		// Evolution system commands
+		HandlePersonaEvolutionCommand(args)
+
 	default:
-		fmt.Println("Usage: myrai persona [edit|show]")
+		fmt.Println("Usage: myrai persona [edit|show|proposals|history|rollback|analyze]")
 	}
 }
 

@@ -1,6 +1,8 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -514,12 +516,11 @@ func validate(cfg *Config) error {
 }
 
 func generateRandomString(n int) string {
-	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, n)
-	for i := range b {
-		b[i] = letters[i%len(letters)]
+	if _, err := rand.Read(b); err != nil {
+		panic(fmt.Sprintf("failed to generate random string: %v", err))
 	}
-	return string(b)
+	return base64.URLEncoding.EncodeToString(b)
 }
 
 // GetProvider returns the provider configuration by name

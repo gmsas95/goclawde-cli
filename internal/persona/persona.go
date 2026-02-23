@@ -28,6 +28,13 @@ type PersonaManager struct {
 	projects       *ProjectManager
 	timeAwareness  *TimeAwareness
 
+	// Evolution system (Phase 3)
+	evolutionEngine *EvolutionEngine
+	proposalManager *ProposalManager
+	versionManager  *VersionManager
+	evolutionConfig EvolutionConfig
+	enableEvolution bool
+
 	// Caching
 	systemPromptCache string
 	cacheValid        bool
@@ -571,4 +578,253 @@ func parseUserProfile(data string) *UserProfile {
 	u.CommunicationStyle = strings.TrimSpace(u.CommunicationStyle)
 
 	return u
+}
+
+// ==================== Evolution System Methods (Phase 3) ====================
+
+// EnableEvolution enables the adaptive persona evolution system
+func (pm *PersonaManager) EnableEvolution(store interface{}) error {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+
+	pm.enableEvolution = true
+	pm.evolutionConfig = DefaultEvolutionConfig()
+
+	return nil
+}
+
+// SetEvolutionConfig sets the evolution configuration
+func (pm *PersonaManager) SetEvolutionConfig(config EvolutionConfig) {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+	pm.evolutionConfig = config
+}
+
+// GetEvolutionConfig returns the current evolution configuration
+func (pm *PersonaManager) GetEvolutionConfig() EvolutionConfig {
+	pm.mu.RLock()
+	defer pm.mu.RUnlock()
+	return pm.evolutionConfig
+}
+
+// IsEvolutionEnabled returns whether evolution is enabled
+func (pm *PersonaManager) IsEvolutionEnabled() bool {
+	pm.mu.RLock()
+	defer pm.mu.RUnlock()
+	return pm.enableEvolution
+}
+
+// GetEvolutionEngine returns the evolution engine
+func (pm *PersonaManager) GetEvolutionEngine() *EvolutionEngine {
+	pm.mu.RLock()
+	defer pm.mu.RUnlock()
+	return pm.evolutionEngine
+}
+
+// SetEvolutionEngine sets the evolution engine
+func (pm *PersonaManager) SetEvolutionEngine(engine *EvolutionEngine) {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+	pm.evolutionEngine = engine
+}
+
+// GetProposalManager returns the proposal manager
+func (pm *PersonaManager) GetProposalManager() *ProposalManager {
+	pm.mu.RLock()
+	defer pm.mu.RUnlock()
+	return pm.proposalManager
+}
+
+// SetProposalManager sets the proposal manager
+func (pm *PersonaManager) SetProposalManager(manager *ProposalManager) {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+	pm.proposalManager = manager
+}
+
+// GetVersionManager returns the version manager
+func (pm *PersonaManager) GetVersionManager() *VersionManager {
+	pm.mu.RLock()
+	defer pm.mu.RUnlock()
+	return pm.versionManager
+}
+
+// SetVersionManager sets the version manager
+func (pm *PersonaManager) SetVersionManager(manager *VersionManager) {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+	pm.versionManager = manager
+}
+
+// SaveVersion creates a version snapshot of the current persona state
+func (pm *PersonaManager) SaveVersion(changeType ChangeType, description string) (*PersonaVersion, error) {
+	pm.mu.RLock()
+	identity := pm.copyIdentity()
+	userProfile := pm.copyUserProfile()
+	pm.mu.RUnlock()
+
+	if pm.versionManager == nil {
+		return nil, fmt.Errorf("version manager not initialized")
+	}
+
+	version, err := pm.versionManager.SaveVersion(identity, userProfile, changeType, description, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	pm.logger.Info("Saved persona version",
+		zap.String("version_id", version.ID),
+		zap.String("change_type", string(changeType)),
+	)
+
+	return version, nil
+}
+
+// ApplyProposalChange applies an approved proposal to the persona
+func (pm *PersonaManager) ApplyProposalChange(proposal *EvolutionProposal) error {
+	if proposal.Change == nil {
+		return fmt.Errorf("proposal has no change defined")
+	}
+
+	// Save version before applying
+	if _, err := pm.SaveVersion(ChangeProposal, fmt.Sprintf("Apply proposal: %s", proposal.Title)); err != nil {
+		pm.logger.Warn("Failed to save version before applying proposal", zap.Error(err))
+	}
+
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+
+	change := proposal.Change
+	switch change.Field {
+	case "identity.expertise":
+		expertise, ok := change.Value.(string)
+		if !ok {
+			return fmt.Errorf("invalid expertise value type")
+		}
+
+		// Check if already exists
+		for _, e := range pm.identity.Expertise {
+			if strings.EqualFold(e, expertise) {
+				return nil // Already exists
+			}
+		}
+
+		pm.identity.Expertise = append(pm.identity.Expertise, expertise)
+		pm.InvalidateCache()
+
+		pm.logger.Info("Applied proposal - added expertise",
+			zap.String("proposal_id", proposal.ID),
+			zap.String("expertise", expertise),
+		)
+
+	case "identity.values":
+		value, ok := change.Value.(string)
+		if !ok {
+			return fmt.Errorf("invalid value type")
+		}
+
+		for _, v := range pm.identity.Values {
+			if strings.EqualFold(v, value) {
+				return nil // Already exists
+			}
+		}
+
+		pm.identity.Values = append(pm.identity.Values, value)
+		pm.InvalidateCache()
+
+		pm.logger.Info("Applied proposal - added value",
+			zap.String("proposal_id", proposal.ID),
+			zap.String("value", value),
+		)
+
+	case "identity.voice":
+		voice, ok := change.Value.(string)
+		if !ok {
+			return fmt.Errorf("invalid voice value type")
+		}
+
+		pm.identity.Voice = voice
+		pm.InvalidateCache()
+
+		pm.logger.Info("Applied proposal - updated voice",
+			zap.String("proposal_id", proposal.ID),
+		)
+
+	case "identity.personality":
+		personality, ok := change.Value.(string)
+		if !ok {
+			return fmt.Errorf("invalid personality value type")
+		}
+
+		pm.identity.Personality = personality
+		pm.InvalidateCache()
+
+		pm.logger.Info("Applied proposal - updated personality",
+			zap.String("proposal_id", proposal.ID),
+		)
+
+	default:
+		return fmt.Errorf("unknown field: %s", change.Field)
+	}
+
+	// Save to files
+	return pm.saveInternal()
+}
+
+// copyIdentity creates a deep copy of the current identity
+func (pm *PersonaManager) copyIdentity() *Identity {
+	if pm.identity == nil {
+		return nil
+	}
+
+	idCopy := &Identity{
+		Name:        pm.identity.Name,
+		Personality: pm.identity.Personality,
+		Voice:       pm.identity.Voice,
+	}
+
+	if pm.identity.Values != nil {
+		idCopy.Values = make([]string, len(pm.identity.Values))
+		copy(idCopy.Values, pm.identity.Values)
+	}
+
+	if pm.identity.Expertise != nil {
+		idCopy.Expertise = make([]string, len(pm.identity.Expertise))
+		copy(idCopy.Expertise, pm.identity.Expertise)
+	}
+
+	return idCopy
+}
+
+// copyUserProfile creates a deep copy of the current user profile
+func (pm *PersonaManager) copyUserProfile() *UserProfile {
+	if pm.user == nil {
+		return nil
+	}
+
+	upCopy := &UserProfile{
+		Name:               pm.user.Name,
+		CommunicationStyle: pm.user.CommunicationStyle,
+		CreatedAt:          pm.user.CreatedAt,
+		UpdatedAt:          pm.user.UpdatedAt,
+	}
+
+	if pm.user.Preferences != nil {
+		upCopy.Preferences = make(map[string]string)
+		for k, v := range pm.user.Preferences {
+			upCopy.Preferences[k] = v
+		}
+	}
+
+	if pm.user.Expertise != nil {
+		upCopy.Expertise = make([]string, len(pm.user.Expertise))
+		copy(upCopy.Expertise, pm.user.Expertise)
+	}
+
+	if pm.user.Goals != nil {
+		upCopy.Goals = make([]string, len(pm.user.Goals))
+		copy(upCopy.Goals, pm.user.Goals)
+	}
+
+	return upCopy
 }

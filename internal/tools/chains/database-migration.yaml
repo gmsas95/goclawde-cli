@@ -1,0 +1,47 @@
+name: database-migration
+description: Run database migrations safely
+version: 1.0.0
+author: myrai-team
+type: sequential
+
+steps:
+  - id: backup-database
+    name: Backup Database
+    description: Create database backup before migration
+    tool: exec
+    parameters:
+      command: "pg_dump {{database_url}} > backup_{{timestamp}}.sql"
+    timeout: 300s
+    on_failure: abort
+    
+  - id: check-pending
+    name: Check Pending Migrations
+    description: Check for pending migrations
+    tool: exec
+    parameters:
+      command: "{{migration_tool}} status"
+    depends_on: [backup-database]
+    
+  - id: run-migrations
+    name: Run Migrations
+    description: Execute pending migrations
+    tool: exec
+    parameters:
+      command: "{{migration_tool}} up"
+    depends_on: [check-pending]
+    timeout: 300s
+    retry_count: 1
+    
+  - id: verify-migrations
+    name: Verify Migrations
+    description: Verify migration success
+    tool: exec
+    parameters:
+      command: "{{migration_tool}} version"
+    depends_on: [run-migrations]
+    optional: true
+
+variables:
+  database_url: "postgres://localhost:5432/mydb"
+  migration_tool: "migrate"
+  timestamp: "backup"

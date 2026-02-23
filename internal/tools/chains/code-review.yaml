@@ -1,0 +1,46 @@
+name: code-review
+description: Automated code review workflow
+version: 1.0.0
+author: myrai-team
+type: parallel
+
+steps:
+  - id: lint
+    name: Run Linter
+    description: Run code linting
+    tool: exec
+    parameters:
+      command: "{{lint_command}}"
+    timeout: 120s
+    optional: true
+    
+  - id: test
+    name: Run Tests
+    description: Execute test suite
+    tool: exec
+    parameters:
+      command: "{{test_command}}"
+    timeout: 300s
+    optional: true
+    
+  - id: security-scan
+    name: Security Scan
+    description: Run security vulnerability scan
+    tool: exec
+    parameters:
+      command: "{{security_command}}"
+    timeout: 180s
+    optional: true
+    
+  - id: analyze-changes
+    name: Analyze Changes
+    description: Analyze git changes
+    tool: exec
+    parameters:
+      command: "git diff --stat HEAD~1"
+    timeout: 30s
+
+variables:
+  lint_command: "echo 'No linter configured'"
+  test_command: "echo 'No tests configured'"
+  security_command: "echo 'No security scanner configured'"

@@ -72,6 +72,21 @@ func main() {
 		case "doctor":
 			cli.HandleDoctorCommand()
 			return
+		case "memory":
+			cli.HandleNeuralCommand(os.Args[2:])
+			return
+		case "chain":
+			cli.HandleChainCommand(os.Args[2:])
+			return
+		case "tools":
+			cli.HandleToolsInventoryCommand(os.Args[2:])
+			return
+		case "intent":
+			cli.HandleIntentCommand(os.Args[2:])
+			return
+		case "marketplace":
+			cli.HandleMarketplaceCommand(os.Args[2:])
+			return
 		case "help", "--help", "-h":
 			cli.PrintExtendedHelp()
 			return

@@ -1,0 +1,52 @@
+name: setup-ci-cd
+description: Setup CI/CD pipeline configuration
+version: 1.0.0
+author: myrai-team
+type: sequential
+
+steps:
+  - id: analyze-project
+    name: Analyze Project
+    description: Analyze project structure to determine CI/CD needs
+    tool: list_dir
+    parameters:
+      path: "."
+      recursive: false
+    
+  - id: detect-language
+    name: Detect Language
+    description: Detect primary programming language
+    tool: exec
+    parameters:
+      command: "find . -maxdepth 1 -name '*.go' -o -name '*.py' -o -name '*.js' -o -name '*.ts' -o -name 'package.json' -o -name 'go.mod' | head -5"
+    depends_on: [analyze-project]
+    
+  - id: create-github-workflow
+    name: Create GitHub Workflow
+    description: Create GitHub Actions workflow
+    tool: write_file
+    parameters:
+      path: ".github/workflows/ci.yml"
+      content: |
+        name: CI
+        on: [push, pull_request]
+        jobs:
+          build:
+            runs-on: ubuntu-latest
+            steps:
+              - uses: actions/checkout@v3
+              - name: Build
+                run: echo "Build steps here"
+    depends_on: [detect-language]
+    
+  - id: verify-workflow
+    name: Verify Workflow
+    description: Verify workflow file syntax
+    tool: exec
+    parameters:
+      command: "cat .github/workflows/ci.yml"
+    depends_on: [create-github-workflow]
+    optional: true
+
+variables:
+  workflow_type: "github"

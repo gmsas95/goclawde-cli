@@ -25,6 +25,8 @@ func (s *Server) setupRoutes() {
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 		AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
 	}))
+	s.app.Use(s.securityHeadersMiddleware())
+	s.app.Use(s.requestSizeLimitMiddleware(10 * 1024 * 1024))
 
 	s.app.Get("/api/health", s.handleHealth)
 	s.app.Get("/metrics", s.handleMetrics)
@@ -32,7 +34,7 @@ func (s *Server) setupRoutes() {
 
 	api := s.app.Group("/api")
 
-	api.Post("/auth/login", s.handleLogin)
+	api.Post("/auth/login", s.rateLimitMiddleware(5, time.Minute), s.handleLogin)
 
 	protected := api.Use(s.authMiddleware())
 
@@ -42,8 +44,8 @@ func (s *Server) setupRoutes() {
 	protected.Delete("/conversations/:id", s.handleDeleteConversation)
 	protected.Get("/conversations/:id/messages", s.handleGetMessages)
 
-	protected.Post("/chat", s.handleChat)
-	protected.Post("/chat/stream", s.handleChatStream)
+	protected.Post("/chat", s.rateLimitMiddleware(60, time.Minute), s.handleChat)
+	protected.Post("/chat/stream", s.rateLimitMiddleware(60, time.Minute), s.handleChatStream)
 
 	protected.Get("/memories", s.handleListMemories)
 	protected.Post("/memories", s.handleCreateMemory)

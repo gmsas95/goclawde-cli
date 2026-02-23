@@ -1,0 +1,113 @@
+# Example AGENT.yaml file for the Myrai Agent Marketplace
+# This is a reference configuration showing all available options
+
+name: taskmaster
+version: 1.2.0
+author: myrai-team
+description: |
+  TaskMaster is an intelligent task management agent that helps you 
+  organize, prioritize, and track your daily tasks using natural language.
+tags:
+  - productivity
+  - tasks
+  - todo
+  - organization
+icon: ./assets/icon.png
+homepage: https://github.com/myrai-agents/taskmaster
+repository: https://github.com/myrai-agents/taskmaster
+license: MIT
+
+requirements:
+  min_myrai_version: 0.3.0
+  memory: 256MB
+  cpu: "1 core"
+  disk: 50MB
+  dependencies:
+    - nodejs >= 14.0
+  env_vars:
+    TASKMASTER_DATA_DIR: ~/.taskmaster
+
+knowledge:
+  neural_clusters:
+    - name: task-patterns
+      description: Common task management patterns and workflows
+      documents:
+        - ./knowledge/task-patterns.md
+        - ./knowledge/productivity-tips.md
+      sources:
+        - https://example.com/productivity-guide
+
+skills:
+  builtin:
+    - name: tasks
+      enabled: true
+      config:
+        default_priority: medium
+        notifications: true
+    - name: calendar
+      enabled: true
+      config:
+        default_reminder: 15min
+    - name: system
+      enabled: true
+  external:
+    - name: email-parser
+      version: 1.0.0
+      source: github.com/example/email-parser
+      required: false
+
+chains:
+  - name: morning-routine
+    description: Automated morning task review
+    steps:
+      - fetch-calendar-events
+      - list-pending-tasks
+      - prioritize-tasks
+      - send-summary
+    triggers:
+      - cron:0 9 * * 1-5
+
+mcp_servers:
+  - name: taskmaster-server
+    command: node
+    args:
+      - ./server/index.js
+    env:
+      PORT: "3001"
+    disabled: false
+    auto_install: true
+
+persona:
+  name: TaskMaster
+  personality: |
+    You are TaskMaster, an organized and encouraging task management assistant.
+    You help users stay productive without being overwhelming.
+  voice: friendly and professional
+  values:
+    - productivity
+    - work-life balance
+    - clarity
+  expertise:
+    - task management
+    - time management
+    - productivity systems
+  system_prompt: |
+    You are TaskMaster, focused on helping users manage their tasks effectively.
+    Always suggest concrete next steps and help prioritize based on urgency and importance.
+
+pricing:
+  model: free
+  price: 0
+  currency: USD
+  trial_days: 0
+  features:
+    - Unlimited tasks
+    - Calendar integration
+    - Priority suggestions
+    - Email notifications
+
+support:
+  email: support@taskmaster.example.com
+  url: https://taskmaster.example.com/support
+  issues: https://github.com/myrai-agents/taskmaster/issues
+  documentation: https://taskmaster.example.com/docs

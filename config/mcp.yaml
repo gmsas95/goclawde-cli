@@ -1,0 +1,182 @@
+# MCP Server Configuration
+# This file configures Model Context Protocol (MCP) servers for Myrai
+# MCP is an open protocol for AI assistants to communicate with external tools
+
+mcp:
+  # Global MCP settings
+  enabled: true
+  auto_start: true
+  health_check_interval: 30  # seconds
+  
+  # MCP Server Definitions
+  servers:
+    # Filesystem server - provides file operations
+    - name: filesystem
+      command: npx
+      args:
+        - "-y"
+        - "@modelcontextprotocol/server-filesystem"
+        - "/home/user"
+      enabled: true
+      transport: stdio
+      timeout: 30
+      description: "File system operations for reading, writing, and managing files"
+      
+      # Docker configuration for isolated execution
+      docker:
+        enabled: false
+        image: "node:18-alpine"
+        cpu_limit: "0.5"
+        memory_limit: "512m"
+        read_only_fs: true
+        volumes:
+          - source: "/home/user"
+            target: "/workspace"
+            read_only: false
+          - source: "/tmp"
+            target: "/tmp"
+            read_only: false
+    
+    # GitHub server - provides GitHub API access
+    - name: github
+      command: docker
+      args:
+        - "run"
+        - "-i"
+        - "--rm"
+        - "-e"
+        - "GITHUB_TOKEN"
+        - "mcp/github"
+      env:
+        GITHUB_TOKEN: "${GITHUB_TOKEN}"
+      enabled: true
+      transport: stdio
+      timeout: 60
+      description: "GitHub API operations for repository management, issues, and pull requests"
+      
+      docker:
+        enabled: true
+        image: "mcp/github"
+        cpu_limit: "0.25"
+        memory_limit: "256m"
+        read_only_fs: true
+        user: "1000:1000"
+        security_opts:
+          - "no-new-privileges:true"
+    
+    # Playwright server - provides browser automation
+    - name: playwright
+      command: npx
+      args:
+        - "-y"
+        - "@modelcontextprotocol/server-playwright"
+      enabled: false
+      transport: stdio
+      timeout: 120
+      description: "Browser automation and web scraping capabilities"
+      
+      docker:
+        enabled: false
+        image: "mcr.microsoft.com/playwright:v1.40.0-jammy"
+        cpu_limit: "1.0"
+        memory_limit: "1g"
+        read_only_fs: false
+        volumes:
+          - source: "/tmp/playwright"
+            target: "/tmp"
+            read_only: false
+    
+    # Brave Search server - provides web search
+    - name: brave-search
+      command: npx
+      args:
+        - "-y"
+        - "@modelcontextprotocol/server-brave-search"
+      env:
+        BRAVE_API_KEY: "${BRAVE_API_KEY}"
+      enabled: false
+      transport: stdio
+      timeout: 30
+      description: "Web search using Brave Search API"
+      
+      docker:
+        enabled: false
+        image: "node:18-alpine"
+        cpu_limit: "0.25"
+        memory_limit: "256m"
+        read_only_fs: true
+    
+    # SQLite server - provides database operations
+    - name: sqlite
+      command: npx
+      args:
+        - "-y"
+        - "@modelcontextprotocol/server-sqlite"
+        - "/path/to/database.db"
+      enabled: false
+      transport: stdio
+      timeout: 30
+      description: "SQLite database operations"
+      
+      docker:
+        enabled: false
+        image: "node:18-alpine"
+        cpu_limit: "0.25"
+        memory_limit: "256m"
+        volumes:
+          - source: "/path/to/database.db"
+            target: "/data/database.db"
+            read_only: false
+    
+    # PostgreSQL server - provides PostgreSQL database access
+    - name: postgres
+      command: npx
+      args:
+        - "-y"
+        - "@modelcontextprotocol/server-postgres"
+        - "postgresql://user:pass@localhost/mydb"
+      enabled: false
+      transport: stdio
+      timeout: 30
+      description: "PostgreSQL database operations"
+    
+    # Slack server - provides Slack integration
+    - name: slack
+      command: npx
+      args:
+        - "-y"
+        - "@modelcontextprotocol/server-slack"
+      env:
+        SLACK_BOT_TOKEN: "${SLACK_BOT_TOKEN}"
+        SLACK_TEAM_ID: "${SLACK_TEAM_ID}"
+      enabled: false
+      transport: stdio
+      timeout: 30
+      description: "Slack messaging and channel operations"
+    
+    # Memory server - provides persistent memory storage
+    - name: memory
+      command: npx
+      args:
+        - "-y"
+        - "@modelcontextprotocol/server-memory"
+      enabled: false
+      transport: stdio
+      timeout: 30
+      description: "Knowledge graph memory for persistent information storage"
+
+  # Default Docker security settings
+  docker_defaults:
+    cpu_limit: "0.5"
+    memory_limit: "512m"
+    read_only_fs: true
+    user: "1000:1000"
+    security_opts:
+      - "no-new-privileges:true"
+    network_mode: "bridge"
+    
+  # Network isolation settings
+  network:
+    create_isolated_network: true
+    network_name: "myrai-mcp-network"
+    internal_only: true  # No external internet access for MCP servers
