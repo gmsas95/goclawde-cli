@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/gmsas95/myrai-cli/internal/llm"
+	"github.com/gmsas95/myrai-cli/internal/neural"
 	"github.com/gmsas95/myrai-cli/internal/store"
 	"github.com/gmsas95/myrai-cli/internal/vector"
 	"go.uber.org/zap"
@@ -21,6 +22,9 @@ type ContextManager struct {
 	vectorSearcher *vector.Searcher
 	llmClient      *llm.Client
 	logger         *zap.Logger
+
+	// Neural cluster integration
+	neuralRetriever *neural.Retriever
 
 	// Configuration
 	maxTokens         int // Max tokens for context window
@@ -43,19 +47,25 @@ func NewContextManager(store *store.Store, vectorSearcher *vector.Searcher, llmC
 	}
 }
 
+// SetNeuralRetriever sets the neural cluster retriever for semantic context
+func (cm *ContextManager) SetNeuralRetriever(retriever *neural.Retriever) {
+	cm.neuralRetriever = retriever
+	cm.logger.Info("Neural cluster retriever integrated into context manager")
+}
+
 // ConversationContext represents the built context for a conversation
 type ConversationContext struct {
-	Messages       []llm.Message
-	Summary        string
+	Messages         []llm.Message
+	Summary          string
 	RelevantMemories []MemoryInfo
-	TotalTokens    int
+	TotalTokens      int
 }
 
 // MemoryInfo represents a relevant memory
 type MemoryInfo struct {
-	Content    string
-	Type       string
-	Relevance  float64
+	Content   string
+	Type      string
+	Relevance float64
 }
 
 // BuildContext builds optimized context for a conversation
@@ -194,7 +204,14 @@ func (cm *ContextManager) buildSummarizedContext(ctx context.Context, convID str
 }
 
 // retrieveRelevantMemories searches for memories relevant to the query
+// Uses neural clusters when available for semantic context compression
 func (cm *ContextManager) retrieveRelevantMemories(ctx context.Context, query string) ([]MemoryInfo, error) {
+	// Prefer neural cluster retrieval when available
+	if cm.neuralRetriever != nil {
+		return cm.retrieveFromNeuralClusters(ctx, query)
+	}
+
+	// Fall back to raw vector search
 	results, err := cm.vectorSearcher.Search(query, 5)
 	if err != nil {
 		return nil, err
@@ -208,6 +225,60 @@ func (cm *ContextManager) retrieveRelevantMemories(ctx context.Context, query st
 			Relevance: r.Similarity,
 		})
 	}
+
+	return memories, nil
+}
+
+// retrieveFromNeuralClusters retrieves context from neural clusters
+func (cm *ContextManager) retrieveFromNeuralClusters(ctx context.Context, query string) ([]MemoryInfo, error) {
+	// Use neural cluster retrieval with semantic compression
+	opts := neural.RetrievalOptions{
+		MaxClusters: 5,
+	}
+	result, err := cm.neuralRetriever.RetrieveContext(ctx, query, opts)
+	if err != nil {
+		cm.logger.Warn("Neural cluster retrieval failed, falling back", zap.Error(err))
+		// Fall back to raw vector search
+		return cm.retrieveRelevantMemories(ctx, query)
+	}
+
+	memories := make([]MemoryInfo, 0)
+
+	// Add cluster essences as high-level context
+	for _, cluster := range result.Clusters {
+		// Add the cluster essence as a memory
+		if cluster.Essence != "" {
+			memories = append(memories, MemoryInfo{
+				Content:   fmt.Sprintf("[Theme: %s] %s", cluster.Theme, cluster.Essence),
+				Type:      "cluster_essence",
+				Relevance: float64(cluster.ConfidenceScore),
+			})
+		}
+
+		// Also add the theme as context
+		if cluster.Theme != "" {
+			memories = append(memories, MemoryInfo{
+				Content:   fmt.Sprintf("Related topic: %s", cluster.Theme),
+				Type:      "cluster_theme",
+				Relevance: 0.85, // High relevance for matching clusters
+			})
+		}
+	}
+
+	// Add individual memories from clusters
+	for _, mem := range result.Memories {
+		memories = append(memories, MemoryInfo{
+			Content:   mem.Content,
+			Type:      "memory",
+			Relevance: mem.Similarity,
+		})
+	}
+
+	cm.logger.Debug("Retrieved context from neural clusters",
+		zap.Int("clusters", len(result.Clusters)),
+		zap.Int("memories", len(result.Memories)),
+		zap.Int("total_context_items", len(memories)),
+	)
 
 	return memories, nil
 }
@@ -287,7 +358,7 @@ Conversation:
 
 Provide a brief summary (2-4 sentences):`, convoText)
 
-	summary, err := cm.llmClient.SimpleChat(ctx, 
+	summary, err := cm.llmClient.SimpleChat(ctx,
 		"You are a helpful assistant that summarizes conversations accurately.",
 		prompt)
 	if err != nil {
