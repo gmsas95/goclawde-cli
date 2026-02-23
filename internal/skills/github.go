@@ -95,8 +95,12 @@ func (gi *GitHubInstaller) InstallFromGitHub(repo string) (*RuntimeSkill, error)
 
 	// Check minimum Myrai version
 	if manifest.MinMyraiVersion != "" {
-		// TODO: Implement version comparison
-		log.Printf("[GitHub] Required Myrai version: %s", manifest.MinMyraiVersion)
+		currentVersion := "2.0.0" // TODO: Get actual version from build
+		if !isVersionCompatible(currentVersion, manifest.MinMyraiVersion) {
+			return nil, fmt.Errorf("skill requires Myrai version %s or higher, current version is %s",
+				manifest.MinMyraiVersion, currentVersion)
+		}
+		log.Printf("[GitHub] Version check passed: required %s, current %s", manifest.MinMyraiVersion, currentVersion)
 	}
 
 	// Move files to final location
@@ -422,4 +426,57 @@ func (gi *GitHubInstaller) copyFile(src, dst string) error {
 	}
 
 	return os.Chmod(dst, info.Mode())
+}
+
+// compareVersions compares two semantic version strings
+// Returns -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
+func compareVersions(v1, v2 string) int {
+	parts1 := parseVersionParts(v1)
+	parts2 := parseVersionParts(v2)
+
+	for i := 0; i < 3; i++ {
+		if parts1[i] < parts2[i] {
+			return -1
+		}
+		if parts1[i] > parts2[i] {
+			return 1
+		}
+	}
+	return 0
+}
+
+// parseVersionParts parses a version string into [major, minor, patch]
+func parseVersionParts(version string) [3]int {
+	// Remove 'v' prefix if present
+	version = strings.TrimPrefix(version, "v")
+
+	parts := strings.Split(version, ".")
+	result := [3]int{0, 0, 0}
+
+	for i := 0; i < len(parts) && i < 3; i++ {
+		// Remove any pre-release or build metadata
+		part := strings.Split(parts[i], "-")[0]
+		part = strings.Split(part, "+")[0]
+
+		if val, err := parseVersionInt(part); err == nil {
+			result[i] = val
+		}
+	}
+
+	return result
+}
+
+// parseVersionInt parses a string to int for version comparison, returning 0 on error
+func parseVersionInt(s string) (int, error) {
+	var result int
+	_, err := fmt.Sscanf(s, "%d", &result)
+	return result, err
+}
+
+// isVersionCompatible checks if the current version meets the minimum requirement
+func isVersionCompatible(current, minRequired string) bool {
+	if minRequired == "" {
+		return true
+	}
+	return compareVersions(current, minRequired) >= 0
 }

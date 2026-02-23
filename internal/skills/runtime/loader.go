@@ -4,14 +4,18 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/gmsas95/myrai-cli/internal/errors"
 	"github.com/gmsas95/myrai-cli/internal/skills"
+	"gopkg.in/yaml.v3"
 )
 
 // SkillLoader handles loading skills from various sources and hot-reloading
@@ -372,7 +376,6 @@ func (sl *SkillLoader) downloadManifest(url string) (*SkillManifest, error) {
 
 func (sl *SkillLoader) parseManifest(data []byte) (*SkillManifest, error) {
 	// Parse YAML front matter from markdown
-	// Simple implementation - extract YAML between --- markers
 	content := string(data)
 
 	var yamlContent string
@@ -387,23 +390,10 @@ func (sl *SkillLoader) parseManifest(data []byte) (*SkillManifest, error) {
 		return nil, fmt.Errorf("no YAML front matter found")
 	}
 
-	// For now, use simple JSON parsing as placeholder
-	// In production, use gopkg.in/yaml.v3
+	// Parse YAML using proper YAML library
 	manifest := &SkillManifest{}
-
-	// Basic parsing - in production use proper YAML parser
-	lines := strings.Split(yamlContent, "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "name:") {
-			manifest.Name = strings.TrimSpace(strings.TrimPrefix(line, "name:"))
-		} else if strings.HasPrefix(line, "version:") {
-			manifest.Version = strings.TrimSpace(strings.TrimPrefix(line, "version:"))
-		} else if strings.HasPrefix(line, "description:") {
-			manifest.Description = strings.TrimSpace(strings.TrimPrefix(line, "description:"))
-		} else if strings.HasPrefix(line, "author:") {
-			manifest.Author = strings.TrimSpace(strings.TrimPrefix(line, "author:"))
-		}
+	if err := yaml.Unmarshal([]byte(yamlContent), manifest); err != nil {
+		return nil, fmt.Errorf("failed to parse YAML: %w", err)
 	}
 
 	return manifest, nil
@@ -470,8 +460,48 @@ func (s *RuntimeSkill) Tools() []skills.Tool {
 	return s.tools
 }
 
-// httpGet performs a simple HTTP GET request (placeholder for actual implementation)
+// httpGet performs an HTTP GET request with retries and timeouts
 func httpGet(url string) ([]byte, error) {
-	// In production, use proper HTTP client with context, timeouts, retries
-	return nil, fmt.Errorf("HTTP client not implemented")
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	var lastErr error
+	maxRetries := 3
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		if attempt > 0 {
+			time.Sleep(time.Duration(attempt) * time.Second)
+		}
+
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create request: %w", err)
+		}
+
+		req.Header.Set("User-Agent", "Myrai-Skill-Loader/1.0")
+
+		resp, err := client.Do(req)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read response body: %w", err)
+			}
+			return body, nil
+		}
+
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, fmt.Errorf("URL not found: %s", url)
+		}
+
+		lastErr = fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+	}
+
+	return nil, fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
 }

@@ -363,16 +363,16 @@ func handleConsolidateCommand(st *store.Store, args []string) {
 
 	fmt.Printf("Found %d redundancy groups\n", len(groups))
 
-	// TODO: Implement actual consolidation logic
-	// For now, just mark as consolidated
+	consolidatedCount := 0
 	for _, group := range groups {
-		now := time.Now()
-		group.Status = string(reflection.RedundancyStatusConsolidated)
-		group.ConsolidatedAt = &now
-		st.DB().Save(&group)
+		if err := consolidateRedundancyGroup(st, &group); err != nil {
+			fmt.Printf("Warning: Failed to consolidate group %s: %v\n", group.ID, err)
+			continue
+		}
+		consolidatedCount++
 	}
 
-	fmt.Printf("✓ Consolidated %d redundancy groups\n", len(groups))
+	fmt.Printf("✓ Consolidated %d/%d redundancy groups\n", consolidatedCount, len(groups))
 }
 
 // handleGapsCommand views knowledge gaps
@@ -484,4 +484,102 @@ func HandleNeuralCommand(args []string) {
 	default:
 		PrintMemoryHelp()
 	}
+}
+
+// consolidateRedundancyGroup consolidates a redundancy group by merging memories
+func consolidateRedundancyGroup(st *store.Store, group *reflection.RedundancyGroup) error {
+	if len(group.MemoryIDs) < 2 {
+		// Nothing to consolidate
+		group.Status = string(reflection.RedundancyStatusIgnored)
+		group.ConsolidatedAt = func() *time.Time { t := time.Now(); return &t }()
+		return st.DB().Save(group).Error
+	}
+
+	// Load all memories in the group
+	var memories []store.Memory
+	if err := st.DB().Where("id IN ?", group.MemoryIDs).Find(&memories).Error; err != nil {
+		return fmt.Errorf("failed to load memories: %w", err)
+	}
+
+	if len(memories) < 2 {
+		group.Status = string(reflection.RedundancyStatusIgnored)
+		return st.DB().Save(group).Error
+	}
+
+	// Create consolidated memory by combining content
+	consolidatedContent := consolidateMemoryContent(memories)
+
+	// Create new consolidated memory
+	consolidatedMem := store.Memory{
+		ID:      generateID("mem_cons"),
+		Content: consolidatedContent,
+		Type:    "consolidated",
+		// Copy metadata from the most recent memory
+	}
+
+	if len(memories) > 0 {
+		consolidatedMem.Importance = memories[0].Importance
+		consolidatedMem.Source = memories[0].Source
+	}
+
+	// Save consolidated memory
+	if err := st.DB().Create(&consolidatedMem).Error; err != nil {
+		return fmt.Errorf("failed to create consolidated memory: %w", err)
+	}
+
+	// Mark original memories as archived
+	for _, mem := range memories {
+		mem.Type = "archived"
+		if err := st.DB().Save(&mem).Error; err != nil {
+			// Log but continue
+			fmt.Printf("Warning: Failed to archive memory %s: %v\n", mem.ID, err)
+		}
+	}
+
+	// Update redundancy group status
+	now := time.Now()
+	group.Status = string(reflection.RedundancyStatusConsolidated)
+	group.ConsolidatedAt = &now
+
+	return st.DB().Save(group).Error
+}
+
+// consolidateMemoryContent combines multiple memory contents into one
+func consolidateMemoryContent(memories []store.Memory) string {
+	if len(memories) == 0 {
+		return ""
+	}
+	if len(memories) == 1 {
+		return memories[0].Content
+	}
+
+	// Combine all contents with separators
+	var parts []string
+	for _, mem := range memories {
+		if mem.Content != "" {
+			parts = append(parts, mem.Content)
+		}
+	}
+
+	if len(parts) == 0 {
+		return ""
+	}
+
+	// Remove duplicates while preserving order
+	seen := make(map[string]bool)
+	var uniqueParts []string
+	for _, part := range parts {
+		if !seen[part] {
+			seen[part] = true
+			uniqueParts = append(uniqueParts, part)
+		}
+	}
+
+	// Join with separator
+	return strings.Join(uniqueParts, "\n\n[Consolidated from multiple memories]\n\n")
+}
+
+// generateID generates a unique ID with the given prefix
+func generateID(prefix string) string {
+	return prefix + "_" + fmt.Sprintf("%d", time.Now().UnixNano())
 }

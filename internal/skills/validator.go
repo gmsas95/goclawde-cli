@@ -3,6 +3,7 @@ package skills
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"strings"
 	"sync"
 	"time"
@@ -204,13 +205,33 @@ func (v *Validator) ValidateMCPConnectivity(ctx context.Context, serverName, com
 	ctx, cancel := context.WithTimeout(ctx, v.timeout)
 	defer cancel()
 
-	// This is a placeholder - actual implementation would:
-	// 1. Start the MCP server process
-	// 2. Send initialization request
-	// 3. Check for proper response
-	// 4. Clean up
+	// Check if the command exists
+	if _, err := exec.LookPath(command); err != nil {
+		return fmt.Errorf("command not found: %s", command)
+	}
 
-	// For now, just return nil (assume success)
+	// Try to start the process with a short timeout
+	// We don't actually initialize the MCP protocol here to avoid
+	// complex dependencies, but we verify the command can execute
+	testCtx, testCancel := context.WithTimeout(ctx, 5*time.Second)
+	defer testCancel()
+
+	cmd := exec.CommandContext(testCtx, command, args...)
+
+	// Start the command
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start MCP server: %w", err)
+	}
+
+	// Kill the process immediately - we just wanted to verify it starts
+	if err := cmd.Process.Kill(); err != nil {
+		// Process might have already exited, that's ok
+		return nil
+	}
+
+	// Wait for process to exit
+	cmd.Wait()
+
 	return nil
 }
 

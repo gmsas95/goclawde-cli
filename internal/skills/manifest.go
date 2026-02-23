@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 // ParameterType represents valid parameter types
@@ -213,86 +215,11 @@ func ParseSkillMarkdown(content string) (*SkillManifest, string, error) {
 	return &manifest, docs, nil
 }
 
-// parseFrontmatter parses YAML frontmatter
+// parseFrontmatter parses YAML frontmatter using proper YAML parser
 func parseFrontmatter(content string, manifest *SkillManifest) error {
-	// This is a simple parser - in production, use a proper YAML library
-	// For now, we'll use basic string parsing
-	lines := strings.Split(content, "\n")
-
-	var currentTool *ManifestTool
-	var currentParam *ToolParameter
-	inMCP := false
-
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-
-		// Parse key-value pairs
-		if idx := strings.Index(line, ":"); idx > 0 {
-			key := strings.TrimSpace(line[:idx])
-			value := strings.TrimSpace(line[idx+1:])
-
-			switch key {
-			case "name":
-				manifest.Name = value
-			case "version":
-				manifest.Version = value
-			case "description":
-				manifest.Description = value
-			case "author":
-				manifest.Author = value
-			case "min_myrai_version":
-				manifest.MinMyraiVersion = value
-			case "tags":
-				// Parse array format: [tag1, tag2]
-				value = strings.Trim(value, "[]")
-				if value != "" {
-					manifest.Tags = parseStringArray(value)
-				}
-			case "tools":
-				inMCP = false
-				if strings.HasPrefix(value, "-") {
-					// New tool starting
-					currentTool = &ManifestTool{}
-					manifest.Tools = append(manifest.Tools, *currentTool)
-				}
-			case "mcp":
-				inMCP = true
-				manifest.MCP = &MCPServerConfig{}
-			case "required":
-				if currentParam != nil {
-					currentParam.Required = strings.ToLower(value) == "true"
-				} else if manifest.MCP != nil && inMCP {
-					manifest.MCP.Required = strings.ToLower(value) == "true"
-				}
-			case "type":
-				if currentParam != nil {
-					currentParam.Type = ParameterType(value)
-				}
-			case "default":
-				if currentParam != nil {
-					currentParam.Default = parseValue(value)
-				}
-			case "enum":
-				if currentParam != nil {
-					value = strings.Trim(value, "[]")
-					currentParam.Enum = parseStringArray(value)
-				}
-			case "command":
-				if manifest.MCP != nil && inMCP {
-					manifest.MCP.Command = value
-				}
-			case "args":
-				if manifest.MCP != nil && inMCP {
-					value = strings.Trim(value, "[]")
-					manifest.MCP.Args = parseStringArray(value)
-				}
-			}
-		}
+	if err := yaml.Unmarshal([]byte(content), manifest); err != nil {
+		return fmt.Errorf("failed to parse YAML frontmatter: %w", err)
 	}
-
 	return nil
 }
 
