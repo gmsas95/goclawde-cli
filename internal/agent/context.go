@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/gmsas95/myrai-cli/internal/llm"
 	"github.com/gmsas95/myrai-cli/internal/neural"
@@ -372,9 +373,32 @@ Provide a brief summary (2-4 sentences):`, convoText)
 }
 
 // storeSummary saves a conversation summary
-func (cm *ContextManager) storeSummary(convID string, summary string) {
-	// Store in BadgerDB with TTL or as conversation metadata
-	// This is a placeholder - implement based on your storage needs
+func (cm *ContextManager) storeSummary(convID string, summary string) error {
+	// Store summary in database
+	summaryRecord := map[string]interface{}{
+		"id":         fmt.Sprintf("summary_%s_%d", convID, time.Now().Unix()),
+		"conv_id":    convID,
+		"summary":    summary,
+		"created_at": time.Now(),
+	}
+
+	// Try to save to database
+	if cm.store != nil && cm.store.DB() != nil {
+		result := cm.store.DB().Table("conversation_summaries").Create(summaryRecord)
+		if result.Error != nil {
+			cm.logger.Warn("Failed to store conversation summary",
+				zap.String("conv_id", convID),
+				zap.Error(result.Error),
+			)
+			return result.Error
+		}
+		cm.logger.Debug("Stored conversation summary",
+			zap.String("conv_id", convID),
+			zap.Int("summary_length", len(summary)),
+		)
+	}
+
+	return nil
 }
 
 // ExtractAndStoreMemories extracts memories from a conversation turn
