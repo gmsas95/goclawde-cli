@@ -1,5 +1,17 @@
-# Build stage
-FROM golang:1.24-alpine AS builder
+# Build stage - Dashboard (Node.js)
+FROM node:20-alpine AS dashboard-builder
+
+WORKDIR /build
+
+# Copy dashboard source
+COPY web/dashboard/package*.json ./
+RUN npm install
+
+COPY web/dashboard/ ./
+RUN npm run build
+
+# Build stage - Go
+FROM golang:1.24-alpine AS go-builder
 
 RUN apk add --no-cache git gcc musl-dev sqlite-dev
 
@@ -10,7 +22,8 @@ RUN go mod download
 
 COPY . .
 
-RUN mkdir -p bin/web && cp web/index.html bin/web/ 2>/dev/null || mkdir -p bin/web
+# Copy built dashboard from previous stage
+COPY --from=dashboard-builder /build/dist ./web/dashboard/dist
 
 RUN CGO_ENABLED=1 GOOS=linux go build \
     -ldflags "-X main.version=$(git describe --tags --always 2>/dev/null || echo 'dev') -s -w" \
@@ -31,8 +44,8 @@ WORKDIR /app
 RUN addgroup -g 1000 myrai && \
     adduser -u 1000 -G myrai -s /bin/sh -D myrai
 
-COPY --from=builder /build/myrai /app/myrai
-COPY --from=builder /build/bin/web /app/web
+COPY --from=go-builder /build/myrai /app/myrai
+COPY --from=go-builder /build/web/dashboard/dist /app/web
 
 # Create data directory with proper permissions
 RUN mkdir -p /app/data && chown -R myrai:myrai /app/data
