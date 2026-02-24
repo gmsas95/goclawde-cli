@@ -1,5 +1,5 @@
 services:
-  app:
+  goclawde:
     build:
       context: .
       dockerfile: Dockerfile
