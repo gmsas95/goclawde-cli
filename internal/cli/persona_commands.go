@@ -374,7 +374,8 @@ func HandlePersonaEvolutionConfigShow() {
 	config := persona.DefaultEvolutionConfig()
 
 	fmt.Println("Adaptive Persona Configuration")
-	fmt.Println("==============================\n")
+	fmt.Println("==============================")
+	fmt.Println()
 
 	fmt.Printf("Enabled: %v\n", config.Enabled)
 	fmt.Printf("Notifications: %v\n", config.Notifications)

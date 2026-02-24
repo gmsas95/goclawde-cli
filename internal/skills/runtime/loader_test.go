@@ -5,67 +5,57 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gmsas95/myrai-cli/internal/skills"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
 
-func TestNewSkillLoader(t *testing.T) {
-	// Create a mock registry
-	registry := skills.NewRegistry(nil)
-	loader := NewSkillLoader(registry)
+func TestNewLoader(t *testing.T) {
+	logger := zap.NewNop()
+	loader := NewLoader(logger)
 
 	assert.NotNil(t, loader)
-	assert.NotNil(t, loader.registry)
-	assert.NotNil(t, loader.watchers)
-	assert.NotNil(t, loader.loaded)
-	assert.NotNil(t, loader.stopCh)
+	assert.NotNil(t, loader.skills)
+	assert.NotNil(t, loader.paths)
+	assert.NotNil(t, loader.logger)
 }
 
-func TestSkillSourceType(t *testing.T) {
-	assert.Equal(t, SkillSourceType("github"), SourceGitHub)
-	assert.Equal(t, SkillSourceType("local"), SourceLocal)
-	assert.Equal(t, SkillSourceType("builtin"), SourceBuiltIn)
-}
-
-func TestLoadedSkill(t *testing.T) {
-	skill := &LoadedSkill{
-		Name:        "test-skill",
-		Version:     "1.0.0",
-		Description: "Test skill",
-		Source:      "github.com/user/repo",
-		SourceType:  SourceGitHub,
-		Tools:       []skills.Tool{},
-		LoadedAt:    "2026-01-01T00:00:00Z",
+func TestSkillStatus(t *testing.T) {
+	tests := []struct {
+		status   SkillStatus
+		expected string
+	}{
+		{SkillStatusUnknown, "unknown"},
+		{SkillStatusLoading, "loading"},
+		{SkillStatusLoaded, "loaded"},
+		{SkillStatusValidating, "validating"},
+		{SkillStatusValidated, "validated"},
+		{SkillStatusError, "error"},
+		{SkillStatusDisabled, "disabled"},
+		{SkillStatus(100), "unknown"},
 	}
 
-	assert.Equal(t, "test-skill", skill.Name)
-	assert.Equal(t, "1.0.0", skill.Version)
-	assert.Equal(t, SourceGitHub, skill.SourceType)
+	for _, tt := range tests {
+		t.Run(tt.expected, func(t *testing.T) {
+			assert.Equal(t, tt.expected, tt.status.String())
+		})
+	}
 }
 
 func TestSkillManifest(t *testing.T) {
-	manifest := &SkillManifest{
-		Name:            "docker-helper",
-		Version:         "1.2.0",
-		Description:     "Docker helper skill",
-		Author:          "test-author",
-		Tags:            []string{"docker", "devops"},
-		MinMyraiVersion: "2.0.0",
-		MCP: &MCPConfig{
-			Server:   "docker",
-			Required: false,
-		},
-		Tools: []ManifestTool{
+	manifest := SkillManifest{
+		Name:        "docker-helper",
+		Version:     "1.2.0",
+		Description: "Docker helper skill",
+		Author:      "test-author",
+		Tags:        []string{"docker", "devops"},
+		Tools: []ToolDefinition{
 			{
 				Name:        "docker_ps",
 				Description: "List containers",
-				Parameters: []ManifestParameter{
-					{
-						Name:        "all",
-						Type:        "boolean",
-						Required:    false,
-						Default:     false,
-						Description: "Show all containers",
+				Parameters: map[string]interface{}{
+					"all": map[string]interface{}{
+						"type":        "boolean",
+						"description": "Show all containers",
 					},
 				},
 			},
@@ -74,58 +64,61 @@ func TestSkillManifest(t *testing.T) {
 
 	assert.Equal(t, "docker-helper", manifest.Name)
 	assert.Equal(t, "1.2.0", manifest.Version)
-	assert.NotNil(t, manifest.MCP)
-	assert.Equal(t, "docker", manifest.MCP.Server)
+	assert.NotNil(t, manifest.Tools)
 	assert.Len(t, manifest.Tools, 1)
+	assert.Equal(t, "docker_ps", manifest.Tools[0].Name)
 }
 
-func TestManifestParameter(t *testing.T) {
-	param := ManifestParameter{
-		Name:        "format",
-		Type:        "string",
-		Required:    false,
-		Default:     "table",
-		Description: "Output format",
-		Enum:        []string{"table", "json"},
+func TestSandboxConfig(t *testing.T) {
+	config := SandboxConfig{
+		Enabled:     true,
+		AllowFS:     true,
+		AllowNet:    false,
+		AllowExec:   false,
+		AllowedDirs: []string{"/tmp", "/data"},
 	}
 
-	assert.Equal(t, "format", param.Name)
-	assert.Equal(t, "string", param.Type)
-	assert.Equal(t, "table", param.Default)
-	assert.Len(t, param.Enum, 2)
+	assert.True(t, config.Enabled)
+	assert.True(t, config.AllowFS)
+	assert.False(t, config.AllowNet)
+	assert.Len(t, config.AllowedDirs, 2)
 }
 
-func TestListLoaded(t *testing.T) {
-	registry := skills.NewRegistry(nil)
-	loader := NewSkillLoader(registry)
+func TestLoaderAddPath(t *testing.T) {
+	logger := zap.NewNop()
+	loader := NewLoader(logger)
 
-	// Initially empty
-	skills := loader.ListLoaded()
-	assert.Empty(t, skills)
+	loader.AddPath("/test/path/1")
+	loader.AddPath("/test/path/2")
+
+	assert.Len(t, loader.paths, 2)
+}
+
+func TestLoadSkillNotFound(t *testing.T) {
+	logger := zap.NewNop()
+	loader := NewLoader(logger)
+
+	_, err := loader.LoadSkill("/nonexistent/path/SKILL.md")
+	assert.Error(t, err)
 }
 
 func TestGetSkillNotFound(t *testing.T) {
-	registry := skills.NewRegistry(nil)
-	loader := NewSkillLoader(registry)
+	logger := zap.NewNop()
+	loader := NewLoader(logger)
 
-	skill, ok := loader.GetSkill("nonexistent")
-	assert.False(t, ok)
+	skill := loader.GetSkill("nonexistent")
 	assert.Nil(t, skill)
 }
 
-func TestLoadFromLocalNotFound(t *testing.T) {
-	registry := skills.NewRegistry(nil)
-	loader := NewSkillLoader(registry)
+func TestListSkillsEmpty(t *testing.T) {
+	logger := zap.NewNop()
+	loader := NewLoader(logger)
 
-	_, err := loader.LoadFromLocal("/nonexistent/path")
-	assert.Error(t, err)
-	// Error message should indicate failure to read or path not found
-	assert.True(t, err != nil)
+	skills := loader.ListSkills()
+	assert.Empty(t, skills)
 }
 
-func TestParseManifestBasic(t *testing.T) {
-	loader := NewSkillLoader(nil)
-
+func TestParseFrontmatterBasic(t *testing.T) {
 	content := `---
 name: test-skill
 version: 1.0.0
@@ -138,43 +131,96 @@ author: test-author
 This is a test skill.
 `
 
-	manifest, err := loader.parseManifest([]byte(content))
+	manifest, rawManifest, err := parseFrontmatter(content)
 	assert.NoError(t, err)
 	assert.Equal(t, "test-skill", manifest.Name)
 	assert.Equal(t, "1.0.0", manifest.Version)
 	assert.Equal(t, "Test skill", manifest.Description)
 	assert.Equal(t, "test-author", manifest.Author)
+	assert.NotEmpty(t, rawManifest)
 }
 
-func TestParseManifestNoFrontMatter(t *testing.T) {
-	loader := NewSkillLoader(nil)
-
+func TestParseFrontmatterNoFrontMatter(t *testing.T) {
 	content := `# Just Markdown
 
 No YAML front matter here.
 `
 
-	_, err := loader.parseManifest([]byte(content))
+	_, _, err := parseFrontmatter(content)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "no YAML front matter")
+	assert.Contains(t, err.Error(), "no frontmatter")
 }
 
-func TestStopWatcher(t *testing.T) {
-	registry := skills.NewRegistry(nil)
-	loader := NewSkillLoader(registry)
+func TestParseFrontmatterInvalidYAML(t *testing.T) {
+	content := `---
+name: test-skill
+version: [
+---
 
-	// Create a temp directory to watch
-	tempDir := t.TempDir()
+# Test Skill
+`
 
-	// Start watching
-	err := loader.Watch(tempDir)
-	assert.NoError(t, err)
-
-	// Stop should not panic
-	loader.Stop()
+	_, _, err := parseFrontmatter(content)
+	assert.Error(t, err)
 }
 
-func TestCreateTempSkillFile(t *testing.T) {
+func TestValidateManifest(t *testing.T) {
+	tests := []struct {
+		name      string
+		manifest  SkillManifest
+		wantError bool
+	}{
+		{
+			name: "valid manifest",
+			manifest: SkillManifest{
+				Name:        "test-skill",
+				Version:     "1.0.0",
+				Description: "Test skill",
+			},
+			wantError: false,
+		},
+		{
+			name: "missing name",
+			manifest: SkillManifest{
+				Version:     "1.0.0",
+				Description: "Test skill",
+			},
+			wantError: true,
+		},
+		{
+			name: "missing version",
+			manifest: SkillManifest{
+				Name:        "test-skill",
+				Description: "Test skill",
+			},
+			wantError: true,
+		},
+		{
+			name: "missing description",
+			manifest: SkillManifest{
+				Name:    "test-skill",
+				Version: "1.0.0",
+			},
+			wantError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			skill := &Skill{
+				Manifest: tt.manifest,
+			}
+			err := ValidateManifest(skill)
+			if tt.wantError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestLoadSkillFromFile(t *testing.T) {
 	// Create a temporary skill file
 	tempDir := t.TempDir()
 	skillPath := filepath.Join(tempDir, "SKILL.md")
@@ -187,12 +233,108 @@ author: test
 ---
 
 # Temp Skill
+
+This is a temporary test skill.
 `
 
 	err := os.WriteFile(skillPath, []byte(content), 0644)
 	assert.NoError(t, err)
 
-	// Verify file exists
-	_, err = os.Stat(skillPath)
+	// Load the skill
+	logger := zap.NewNop()
+	loader := NewLoader(logger)
+	skill, err := loader.LoadSkill(skillPath)
+
 	assert.NoError(t, err)
+	assert.NotNil(t, skill)
+	assert.Equal(t, "temp-skill", skill.Manifest.Name)
+	assert.Equal(t, "0.1.0", skill.Manifest.Version)
+	assert.Equal(t, skillPath, skill.Path)
+}
+
+func TestSkillStruct(t *testing.T) {
+	skill := &Skill{
+		Manifest: SkillManifest{
+			Name:        "test",
+			Version:     "1.0.0",
+			Description: "Test skill",
+		},
+		Path:        "/test/path",
+		Content:     "Test content",
+		RawManifest: "raw manifest",
+		Status:      SkillStatusLoading,
+	}
+
+	assert.Equal(t, "test", skill.Manifest.Name)
+	assert.Equal(t, SkillStatusLoading, skill.Status)
+	assert.Equal(t, "/test/path", skill.Path)
+}
+
+func TestToolDefinition(t *testing.T) {
+	tool := ToolDefinition{
+		Name:        "test_tool",
+		Description: "A test tool",
+		Parameters: map[string]interface{}{
+			"param1": map[string]interface{}{
+				"type": "string",
+			},
+		},
+	}
+
+	assert.Equal(t, "test_tool", tool.Name)
+	assert.Equal(t, "A test tool", tool.Description)
+	assert.NotNil(t, tool.Parameters)
+}
+
+func TestGetSkillAfterLoad(t *testing.T) {
+	// Create a temporary skill file
+	tempDir := t.TempDir()
+	skillPath := filepath.Join(tempDir, "SKILL.md")
+
+	content := `---
+name: get-test-skill
+version: 1.0.0
+description: Test get skill
+---
+
+# Get Test Skill
+`
+
+	err := os.WriteFile(skillPath, []byte(content), 0644)
+	assert.NoError(t, err)
+
+	// Load and then get
+	logger := zap.NewNop()
+	loader := NewLoader(logger)
+	loader.LoadSkill(skillPath)
+
+	// Get by path
+	skill := loader.GetSkill(skillPath)
+	assert.NotNil(t, skill)
+	assert.Equal(t, "get-test-skill", skill.Manifest.Name)
+}
+
+func TestListSkillsAfterLoad(t *testing.T) {
+	// Create temporary skill files
+	tempDir := t.TempDir()
+
+	for i := 0; i < 3; i++ {
+		skillPath := filepath.Join(tempDir, "SKILL"+string(rune('0'+i))+".md")
+		content := `---
+name: skill-` + string(rune('0'+i)) + `
+version: 1.0.0
+description: Test skill
+---
+
+# Test Skill
+`
+		os.WriteFile(skillPath, []byte(content), 0644)
+
+		logger := zap.NewNop()
+		loader := NewLoader(logger)
+		loader.LoadSkill(skillPath)
+
+		skills := loader.ListSkills()
+		assert.GreaterOrEqual(t, len(skills), 1)
+	}
 }

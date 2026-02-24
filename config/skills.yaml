@@ -1,0 +1,82 @@
+# Myrai 2.0 Skills Configuration
+# This file configures skill sources and MCP servers
+
+# Skill search paths
+skill_paths:
+  - ./skills
+  - ~/.myrai/skills
+  - /usr/share/myrai/skills
+
+# MCP Server configurations
+mcp_servers:
+  # Example filesystem MCP server
+  - name: filesystem
+    transport: stdio
+    command: npx
+    args:
+      - "-y"
+      - "@modelcontextprotocol/server-filesystem"
+      - "/home/user/documents"
+    timeout: 30s
+    max_retries: 3
+
+  # Example GitHub MCP server
+  - name: github
+    transport: stdio
+    command: npx
+    args:
+      - "-y"
+      - "@modelcontextprotocol/server-github"
+    env:
+      GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN}
+    timeout: 60s
+    max_retries: 3
+
+  # Example PostgreSQL MCP server
+  - name: postgres
+    transport: stdio
+    command: npx
+    args:
+      - "-y"
+      - "@modelcontextprotocol/server-postgres"
+      - "postgresql://localhost/mydb"
+    timeout: 30s
+    max_retries: 3
+
+  # Example SSE-based MCP server
+  - name: remote-api
+    transport: sse
+    url: http://localhost:3000/mcp
+    timeout: 30s
+    max_retries: 3
+
+# Sandbox configuration
+sandbox_enabled: true
+
+# LLM Provider for inline skills
+llm_provider: default
+
+# Scheduler configuration
+enable_scheduler: true
+
+# Circuit breaker settings
+circuit_breaker:
+  max_requests: 100
+  interval: 30s
+  timeout: 60s
+  consecutive_failures_threshold: 5
+
+# Skill-specific configuration
+skills:
+  # Example skill configuration
+  example-skill:
+    enabled: true
+    config:
+      api_key: ${EXAMPLE_API_KEY}
+      endpoint: https://api.example.com
+
+# Dependency resolution
+dependency_resolution:
+  auto_resolve: true
+  allow_circular: false
+  max_depth: 10

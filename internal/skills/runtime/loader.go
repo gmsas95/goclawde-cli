@@ -1,507 +1,434 @@
-// Package runtime provides skill loading and hot-reload functionality
+// Package runtime provides the skill runtime engine for loading and executing skills
 package runtime
 
 import (
-	"context"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
-	"github.com/gmsas95/myrai-cli/internal/errors"
 	"github.com/gmsas95/myrai-cli/internal/skills"
+	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 )
 
-// SkillLoader handles loading skills from various sources and hot-reloading
-type SkillLoader struct {
-	registry *skills.Registry
-	watchers map[string]*fsnotify.Watcher
-	mu       sync.RWMutex
-	loaded   map[string]*LoadedSkill
-	stopCh   chan struct{}
+// SkillManifest represents the frontmatter in SKILL.md
+type SkillManifest struct {
+	Name         string                 `yaml:"name"`
+	Version      string                 `yaml:"version"`
+	Description  string                 `yaml:"description"`
+	Author       string                 `yaml:"author"`
+	Tags         []string               `yaml:"tags,omitempty"`
+	Dependencies []string               `yaml:"dependencies,omitempty"`
+	Tools        []ToolDefinition       `yaml:"tools,omitempty"`
+	Config       map[string]interface{} `yaml:"config,omitempty"`
+	EntryPoint   string                 `yaml:"entry_point,omitempty"`
+	Sandbox      SandboxConfig          `yaml:"sandbox,omitempty"`
+	CreatedAt    time.Time              `yaml:"created_at,omitempty"`
+	UpdatedAt    time.Time              `yaml:"updated_at,omitempty"`
 }
 
-// LoadedSkill represents a skill loaded into the runtime
-type LoadedSkill struct {
-	Name        string          `json:"name"`
-	Version     string          `json:"version"`
-	Description string          `json:"description"`
-	Source      string          `json:"source"`
-	SourceType  SkillSourceType `json:"source_type"`
-	Path        string          `json:"path,omitempty"`
-	Tools       []skills.Tool   `json:"tools"`
-	Manifest    *SkillManifest  `json:"manifest,omitempty"`
-	LoadedAt    string          `json:"loaded_at"`
-	LastUpdated string          `json:"last_updated"`
+// ToolDefinition defines a tool provided by a skill
+type ToolDefinition struct {
+	Name        string                 `yaml:"name"`
+	Description string                 `yaml:"description"`
+	Parameters  map[string]interface{} `yaml:"parameters"`
 }
 
-// SkillSourceType represents the source of a skill
-type SkillSourceType string
+// SandboxConfig defines sandbox settings for a skill
+type SandboxConfig struct {
+	Enabled     bool     `yaml:"enabled"`
+	AllowFS     bool     `yaml:"allow_fs,omitempty"`
+	AllowNet    bool     `yaml:"allow_net,omitempty"`
+	AllowExec   bool     `yaml:"allow_exec,omitempty"`
+	AllowedDirs []string `yaml:"allowed_dirs,omitempty"`
+}
+
+// Skill represents a loaded skill with its manifest and runtime state
+type Skill struct {
+	Manifest    SkillManifest
+	Path        string
+	Content     string
+	RawManifest string
+	Status      SkillStatus
+	LoadedAt    time.Time
+	LastError   error
+}
+
+// SkillStatus represents the current status of a skill
+type SkillStatus int
 
 const (
-	SourceGitHub  SkillSourceType = "github"
-	SourceLocal   SkillSourceType = "local"
-	SourceBuiltIn SkillSourceType = "builtin"
+	SkillStatusUnknown SkillStatus = iota
+	SkillStatusLoading
+	SkillStatusLoaded
+	SkillStatusValidating
+	SkillStatusValidated
+	SkillStatusError
+	SkillStatusDisabled
 )
 
-// SkillManifest represents the SKILL.md manifest structure
-type SkillManifest struct {
-	Name            string         `yaml:"name" json:"name"`
-	Version         string         `yaml:"version" json:"version"`
-	Description     string         `yaml:"description" json:"description"`
-	Author          string         `yaml:"author" json:"author"`
-	Tags            []string       `yaml:"tags" json:"tags"`
-	MinMyraiVersion string         `yaml:"min_myrai_version" json:"min_myrai_version"`
-	MCP             *MCPConfig     `yaml:"mcp,omitempty" json:"mcp,omitempty"`
-	Tools           []ManifestTool `yaml:"tools" json:"tools"`
-}
-
-// MCPConfig represents MCP server requirements
-type MCPConfig struct {
-	Server   string `yaml:"server" json:"server"`
-	Required bool   `yaml:"required" json:"required"`
-}
-
-// ManifestTool represents a tool definition in the manifest
-type ManifestTool struct {
-	Name        string              `yaml:"name" json:"name"`
-	Description string              `yaml:"description" json:"description"`
-	Parameters  []ManifestParameter `yaml:"parameters" json:"parameters"`
-}
-
-// ManifestParameter represents a parameter definition
-type ManifestParameter struct {
-	Name        string      `yaml:"name" json:"name"`
-	Type        string      `yaml:"type" json:"type"`
-	Required    bool        `yaml:"required" json:"required"`
-	Default     interface{} `yaml:"default,omitempty" json:"default,omitempty"`
-	Description string      `yaml:"description" json:"description"`
-	Enum        []string    `yaml:"enum,omitempty" json:"enum,omitempty"`
-}
-
-// NewSkillLoader creates a new skill loader
-func NewSkillLoader(registry *skills.Registry) *SkillLoader {
-	return &SkillLoader{
-		registry: registry,
-		watchers: make(map[string]*fsnotify.Watcher),
-		loaded:   make(map[string]*LoadedSkill),
-		stopCh:   make(chan struct{}),
+func (s SkillStatus) String() string {
+	switch s {
+	case SkillStatusLoading:
+		return "loading"
+	case SkillStatusLoaded:
+		return "loaded"
+	case SkillStatusValidating:
+		return "validating"
+	case SkillStatusValidated:
+		return "validated"
+	case SkillStatusError:
+		return "error"
+	case SkillStatusDisabled:
+		return "disabled"
+	default:
+		return "unknown"
 	}
 }
 
-// LoadFromGitHub loads a skill from a GitHub repository
-func (sl *SkillLoader) LoadFromGitHub(repo string) (*LoadedSkill, error) {
-	// Parse repository string (e.g., "github.com/user/repo" or "user/repo")
-	repo = strings.TrimPrefix(repo, "github.com/")
-	parts := strings.Split(repo, "/")
-	if len(parts) != 2 {
-		return nil, errors.New("SKILL_001", fmt.Sprintf("invalid GitHub repository format: %s", repo))
+// Loader manages loading skills from the filesystem
+type Loader struct {
+	skills map[string]*Skill
+	paths  []string
+	logger *zap.Logger
+	mu     sync.RWMutex
+}
+
+// NewLoader creates a new skill loader
+func NewLoader(logger *zap.Logger) *Loader {
+	return &Loader{
+		skills: make(map[string]*Skill),
+		paths:  []string{},
+		logger: logger,
+	}
+}
+
+// AddPath adds a search path for skills
+func (l *Loader) AddPath(path string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.paths = append(l.paths, path)
+}
+
+// LoadSkill loads a skill from a manifest file path
+func (l *Loader) LoadSkill(manifestPath string) (*Skill, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	// Check if already loaded
+	if skill, exists := l.skills[manifestPath]; exists {
+		return skill, nil
 	}
 
-	owner, repoName := parts[0], parts[1]
+	skill := &Skill{
+		Path:     manifestPath,
+		Status:   SkillStatusLoading,
+		LoadedAt: time.Now(),
+	}
 
-	// Construct raw URL for SKILL.md
-	rawURL := fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/main/SKILL.md", owner, repoName)
+	l.logger.Info("Loading skill", zap.String("path", manifestPath))
 
-	// Download manifest
-	manifest, err := sl.downloadManifest(rawURL)
+	// Read the SKILL.md file
+	content, err := os.ReadFile(manifestPath)
 	if err != nil {
-		// Try master branch as fallback
-		rawURL = fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/master/SKILL.md", owner, repoName)
-		manifest, err = sl.downloadManifest(rawURL)
-		if err != nil {
-			return nil, errors.Wrap(err, "SKILL_002", fmt.Sprintf("failed to load skill from GitHub: %s", repo))
-		}
+		skill.Status = SkillStatusError
+		skill.LastError = fmt.Errorf("failed to read skill file: %w", err)
+		return nil, skill.LastError
 	}
 
-	skill := &LoadedSkill{
-		Name:        manifest.Name,
-		Version:     manifest.Version,
-		Description: manifest.Description,
-		Source:      repo,
-		SourceType:  SourceGitHub,
-		Manifest:    manifest,
-		Tools:       sl.convertManifestTools(manifest),
+	skill.Content = string(content)
+
+	// Parse frontmatter
+	manifest, rawManifest, err := parseFrontmatter(skill.Content)
+	if err != nil {
+		skill.Status = SkillStatusError
+		skill.LastError = fmt.Errorf("failed to parse frontmatter: %w", err)
+		return nil, skill.LastError
 	}
 
-	if err := sl.registerSkill(skill); err != nil {
-		return nil, err
-	}
+	skill.Manifest = *manifest
+	skill.RawManifest = rawManifest
+	skill.Status = SkillStatusLoaded
+
+	// Store in cache
+	l.skills[manifestPath] = skill
+	l.skills[manifest.Name] = skill
+
+	l.logger.Info("Skill loaded successfully",
+		zap.String("name", manifest.Name),
+		zap.String("version", manifest.Version),
+	)
 
 	return skill, nil
 }
 
-// LoadFromLocal loads a skill from a local directory
-func (sl *SkillLoader) LoadFromLocal(path string) (*LoadedSkill, error) {
-	// Validate path exists
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, errors.Wrap(err, "SKILL_003", fmt.Sprintf("skill path not found: %s", path))
-	}
-
-	var manifestPath string
-	if info.IsDir() {
-		manifestPath = filepath.Join(path, "SKILL.md")
-	} else {
-		manifestPath = path
-		path = filepath.Dir(path)
-	}
-
-	// Read manifest
-	data, err := os.ReadFile(manifestPath)
-	if err != nil {
-		return nil, errors.Wrap(err, "SKILL_004", fmt.Sprintf("failed to read SKILL.md: %s", manifestPath))
-	}
-
-	manifest, err := sl.parseManifest(data)
-	if err != nil {
-		return nil, errors.Wrap(err, "SKILL_005", "failed to parse skill manifest")
-	}
-
-	skill := &LoadedSkill{
-		Name:        manifest.Name,
-		Version:     manifest.Version,
-		Description: manifest.Description,
-		Source:      path,
-		SourceType:  SourceLocal,
-		Path:        path,
-		Manifest:    manifest,
-		Tools:       sl.convertManifestTools(manifest),
-	}
-
-	if err := sl.registerSkill(skill); err != nil {
-		return nil, err
-	}
-
-	return skill, nil
+// LoadSkillFromDir loads a skill from a directory containing SKILL.md
+func (l *Loader) LoadSkillFromDir(dirPath string) (*Skill, error) {
+	manifestPath := filepath.Join(dirPath, "SKILL.md")
+	return l.LoadSkill(manifestPath)
 }
 
-// Watch starts watching a directory for skill changes
-func (sl *SkillLoader) Watch(path string) error {
-	sl.mu.Lock()
-	defer sl.mu.Unlock()
-
-	// Check if already watching this path
-	if _, exists := sl.watchers[path]; exists {
-		return nil
+// parseFrontmatter extracts YAML frontmatter from SKILL.md content
+func parseFrontmatter(content string) (*SkillManifest, string, error) {
+	lines := strings.Split(content, "\n")
+	if len(lines) == 0 {
+		return nil, "", fmt.Errorf("empty skill file")
 	}
 
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		return errors.Wrap(err, "SKILL_006", "failed to create file watcher")
+	// Check for frontmatter delimiter
+	if !strings.HasPrefix(lines[0], "---") {
+		return nil, "", fmt.Errorf("no frontmatter found")
 	}
 
-	// Add the directory and all subdirectories
-	err = filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
+	// Find end of frontmatter
+	var endIdx int
+	for i := 1; i < len(lines); i++ {
+		if strings.HasPrefix(lines[i], "---") {
+			endIdx = i
+			break
 		}
-		if info.IsDir() {
-			return watcher.Add(p)
-		}
-		return nil
-	})
-
-	if err != nil {
-		watcher.Close()
-		return errors.Wrap(err, "SKILL_007", "failed to watch directory")
 	}
 
-	sl.watchers[path] = watcher
+	if endIdx == 0 {
+		return nil, "", fmt.Errorf("unclosed frontmatter")
+	}
 
-	// Start watching in a goroutine
-	go sl.watchLoop(watcher, path)
+	// Extract YAML content
+	yamlContent := strings.Join(lines[1:endIdx], "\n")
 
+	var manifest SkillManifest
+	if err := yaml.Unmarshal([]byte(yamlContent), &manifest); err != nil {
+		return nil, "", fmt.Errorf("failed to parse YAML frontmatter: %w", err)
+	}
+
+	return &manifest, yamlContent, nil
+}
+
+// ValidateManifest validates a skill manifest
+func ValidateManifest(skill *Skill) error {
+	if skill == nil {
+		return fmt.Errorf("skill is nil")
+	}
+
+	skill.Status = SkillStatusValidating
+
+	// Required fields
+	if strings.TrimSpace(skill.Manifest.Name) == "" {
+		skill.Status = SkillStatusError
+		skill.LastError = fmt.Errorf("skill name is required")
+		return skill.LastError
+	}
+
+	if strings.TrimSpace(skill.Manifest.Version) == "" {
+		skill.Status = SkillStatusError
+		skill.LastError = fmt.Errorf("skill version is required")
+		return skill.LastError
+	}
+
+	if strings.TrimSpace(skill.Manifest.Description) == "" {
+		skill.Status = SkillStatusError
+		skill.LastError = fmt.Errorf("skill description is required")
+		return skill.LastError
+	}
+
+	// Validate version format (semantic versioning)
+	if !isValidVersion(skill.Manifest.Version) {
+		skill.Status = SkillStatusError
+		skill.LastError = fmt.Errorf("invalid version format: %s", skill.Manifest.Version)
+		return skill.LastError
+	}
+
+	// Validate tool definitions
+	for _, tool := range skill.Manifest.Tools {
+		if strings.TrimSpace(tool.Name) == "" {
+			skill.Status = SkillStatusError
+			skill.LastError = fmt.Errorf("tool name cannot be empty")
+			return skill.LastError
+		}
+	}
+
+	skill.Status = SkillStatusValidated
 	return nil
 }
 
-// Stop stops all watchers and cleans up
-func (sl *SkillLoader) Stop() {
-	close(sl.stopCh)
-
-	sl.mu.Lock()
-	defer sl.mu.Unlock()
-
-	for path, watcher := range sl.watchers {
-		watcher.Close()
-		delete(sl.watchers, path)
+// isValidVersion checks if a version string follows semantic versioning
+func isValidVersion(version string) bool {
+	// Basic semver check: x.y.z
+	parts := strings.Split(version, ".")
+	if len(parts) != 3 {
+		return false
 	}
+
+	for _, part := range parts {
+		if part == "" {
+			return false
+		}
+		// Check if numeric
+		for _, c := range part {
+			if c < '0' || c > '9' {
+				return false
+			}
+		}
+	}
+
+	return true
 }
 
-// HotReload reloads a specific skill by name
-func (sl *SkillLoader) HotReload(skillName string) error {
-	sl.mu.RLock()
-	skill, exists := sl.loaded[skillName]
-	sl.mu.RUnlock()
-
-	if !exists {
-		return errors.New("SKILL_008", fmt.Sprintf("skill not found: %s", skillName))
-	}
-
-	switch skill.SourceType {
-	case SourceLocal:
-		_, err := sl.LoadFromLocal(skill.Path)
-		return err
-	case SourceGitHub:
-		_, err := sl.LoadFromGitHub(skill.Source)
-		return err
-	default:
-		return errors.New("SKILL_009", fmt.Sprintf("cannot hot-reload skill from source: %s", skill.SourceType))
-	}
+// GetSkill retrieves a loaded skill by name or path
+func (l *Loader) GetSkill(name string) *Skill {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return l.skills[name]
 }
 
-// ListLoaded returns all loaded skills
-func (sl *SkillLoader) ListLoaded() []*LoadedSkill {
-	sl.mu.RLock()
-	defer sl.mu.RUnlock()
+// ListSkills returns all loaded skills
+func (l *Loader) ListSkills() []*Skill {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 
-	skills := make([]*LoadedSkill, 0, len(sl.loaded))
-	for _, skill := range sl.loaded {
-		skills = append(skills, skill)
+	skills := make([]*Skill, 0, len(l.skills))
+	seen := make(map[string]bool)
+
+	for _, skill := range l.skills {
+		if !seen[skill.Manifest.Name] {
+			skills = append(skills, skill)
+			seen[skill.Manifest.Name] = true
+		}
 	}
+
 	return skills
 }
 
-// GetSkill returns a loaded skill by name
-func (sl *SkillLoader) GetSkill(name string) (*LoadedSkill, bool) {
-	sl.mu.RLock()
-	defer sl.mu.RUnlock()
-	skill, ok := sl.loaded[name]
-	return skill, ok
-}
+// ListSkillsByStatus returns skills filtered by status
+func (l *Loader) ListSkillsByStatus(status SkillStatus) []*Skill {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 
-// ============ Private Methods ============
+	skills := make([]*Skill, 0)
+	seen := make(map[string]bool)
 
-func (sl *SkillLoader) watchLoop(watcher *fsnotify.Watcher, basePath string) {
-	for {
-		select {
-		case event, ok := <-watcher.Events:
-			if !ok {
-				return
-			}
-			sl.handleEvent(event)
-
-		case err, ok := <-watcher.Errors:
-			if !ok {
-				return
-			}
-			// Log error
-			_ = err
-
-		case <-sl.stopCh:
-			return
+	for _, skill := range l.skills {
+		if skill.Status == status && !seen[skill.Manifest.Name] {
+			skills = append(skills, skill)
+			seen[skill.Manifest.Name] = true
 		}
 	}
+
+	return skills
 }
 
-func (sl *SkillLoader) handleEvent(event fsnotify.Event) {
-	// Only care about SKILL.md files
-	if !strings.HasSuffix(event.Name, "SKILL.md") {
-		return
+// UnloadSkill removes a skill from the loader
+func (l *Loader) UnloadSkill(name string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	if skill, exists := l.skills[name]; exists {
+		delete(l.skills, name)
+		delete(l.skills, skill.Path)
+		return true
 	}
-
-	switch event.Op {
-	case fsnotify.Write:
-		// Reload the skill
-		sl.mu.RLock()
-		for name, skill := range sl.loaded {
-			if skill.Path == filepath.Dir(event.Name) || skill.Path == event.Name {
-				sl.mu.RUnlock()
-				sl.HotReload(name)
-				return
-			}
-		}
-		sl.mu.RUnlock()
-
-	case fsnotify.Create:
-		// Load new skill
-		sl.LoadFromLocal(event.Name)
-
-	case fsnotify.Remove:
-		// Unregister skill
-		sl.mu.Lock()
-		for name, skill := range sl.loaded {
-			if skill.Path == filepath.Dir(event.Name) || skill.Path == event.Name {
-				delete(sl.loaded, name)
-				break
-			}
-		}
-		sl.mu.Unlock()
-	}
+	return false
 }
 
-func (sl *SkillLoader) registerSkill(skill *LoadedSkill) error {
-	sl.mu.Lock()
-	defer sl.mu.Unlock()
+// ScanDirectory scans a directory for SKILL.md files and loads them
+func (l *Loader) ScanDirectory(root string) error {
+	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 
-	// Unregister existing skill if present
-	if existing, ok := sl.loaded[skill.Name]; ok {
-		// TODO: Unregister from skills.Registry
-		_ = existing
+		if info.IsDir() {
+			return nil
+		}
+
+		if strings.ToLower(info.Name()) == "skill.md" {
+			_, err := l.LoadSkill(path)
+			if err != nil {
+				l.logger.Warn("Failed to load skill",
+					zap.String("path", path),
+					zap.Error(err),
+				)
+			}
+		}
+
+		return nil
+	})
+}
+
+// ScanDirectories scans all configured paths for skills
+func (l *Loader) ScanDirectories() error {
+	l.mu.RLock()
+	paths := make([]string, len(l.paths))
+	copy(paths, l.paths)
+	l.mu.RUnlock()
+
+	for _, path := range paths {
+		if err := l.ScanDirectory(path); err != nil {
+			l.logger.Error("Failed to scan directory",
+				zap.String("path", path),
+				zap.Error(err),
+			)
+		}
 	}
 
-	// Register with skills registry
-	skillImpl := &RuntimeSkill{
-		BaseSkill: skills.NewBaseSkill(skill.Name, skill.Description, skill.Version),
-		tools:     skill.Tools,
-	}
-
-	for _, tool := range skill.Tools {
-		skillImpl.AddTool(tool)
-	}
-
-	if err := sl.registry.Register(skillImpl); err != nil {
-		return errors.Wrap(err, "SKILL_010", fmt.Sprintf("failed to register skill: %s", skill.Name))
-	}
-
-	sl.loaded[skill.Name] = skill
 	return nil
 }
 
-func (sl *SkillLoader) downloadManifest(url string) (*SkillManifest, error) {
-	// Simple HTTP GET (in production, use proper HTTP client with retries)
-	resp, err := httpGet(url)
+// ParseSkillContent parses SKILL.md content without loading from file
+func ParseSkillContent(content string) (*Skill, error) {
+	manifest, rawManifest, err := parseFrontmatter(content)
 	if err != nil {
 		return nil, err
 	}
 
-	return sl.parseManifest(resp)
+	skill := &Skill{
+		Manifest:    *manifest,
+		Content:     content,
+		RawManifest: rawManifest,
+		Status:      SkillStatusLoaded,
+		LoadedAt:    time.Now(),
+	}
+
+	return skill, nil
 }
 
-func (sl *SkillLoader) parseManifest(data []byte) (*SkillManifest, error) {
-	// Parse YAML front matter from markdown
-	content := string(data)
-
-	var yamlContent string
-	if strings.HasPrefix(content, "---") {
-		parts := strings.SplitN(content, "---", 3)
-		if len(parts) >= 3 {
-			yamlContent = strings.TrimSpace(parts[1])
+// ToRegistrySkill converts a runtime.Skill to a skills.Skill for registry compatibility
+func (s *Skill) ToRegistrySkill(handler skills.ToolHandler) skills.Skill {
+	tools := make([]skills.Tool, len(s.Manifest.Tools))
+	for i, tool := range s.Manifest.Tools {
+		tools[i] = skills.Tool{
+			Name:        tool.Name,
+			Description: tool.Description,
+			Parameters:  tool.Parameters,
+			Handler:     handler,
 		}
 	}
 
-	if yamlContent == "" {
-		return nil, fmt.Errorf("no YAML front matter found")
+	return &runtimeSkill{
+		name:        s.Manifest.Name,
+		description: s.Manifest.Description,
+		version:     s.Manifest.Version,
+		tools:       tools,
+		enabled:     s.Status == SkillStatusValidated,
 	}
-
-	// Parse YAML using proper YAML library
-	manifest := &SkillManifest{}
-	if err := yaml.Unmarshal([]byte(yamlContent), manifest); err != nil {
-		return nil, fmt.Errorf("failed to parse YAML: %w", err)
-	}
-
-	return manifest, nil
 }
 
-func (sl *SkillLoader) convertManifestTools(manifest *SkillManifest) []skills.Tool {
-	tools := make([]skills.Tool, 0, len(manifest.Tools))
-
-	for _, mt := range manifest.Tools {
-		params := make(map[string]interface{})
-
-		if len(mt.Parameters) > 0 {
-			properties := make(map[string]interface{})
-			required := make([]string, 0)
-
-			for _, p := range mt.Parameters {
-				prop := map[string]interface{}{
-					"type":        p.Type,
-					"description": p.Description,
-				}
-				if len(p.Enum) > 0 {
-					prop["enum"] = p.Enum
-				}
-				if p.Default != nil {
-					prop["default"] = p.Default
-				}
-				properties[p.Name] = prop
-
-				if p.Required {
-					required = append(required, p.Name)
-				}
-			}
-
-			params["type"] = "object"
-			params["properties"] = properties
-			params["required"] = required
-		}
-
-		tool := skills.Tool{
-			Name:        mt.Name,
-			Description: mt.Description,
-			Parameters:  params,
-			Handler: func(ctx context.Context, args map[string]interface{}) (interface{}, error) {
-				// In production, this would call the actual skill implementation
-				return map[string]string{
-					"status": "executed",
-					"tool":   mt.Name,
-				}, nil
-			},
-		}
-		tools = append(tools, tool)
-	}
-
-	return tools
+// runtimeSkill implements skills.Skill interface
+type runtimeSkill struct {
+	name        string
+	description string
+	version     string
+	tools       []skills.Tool
+	enabled     bool
 }
 
-// RuntimeSkill implements the skills.Skill interface for runtime-loaded skills
-type RuntimeSkill struct {
-	*skills.BaseSkill
-	tools []skills.Tool
-}
-
-func (s *RuntimeSkill) Tools() []skills.Tool {
-	return s.tools
-}
-
-// httpGet performs an HTTP GET request with retries and timeouts
-func httpGet(url string) ([]byte, error) {
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
-
-	var lastErr error
-	maxRetries := 3
-
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		if attempt > 0 {
-			time.Sleep(time.Duration(attempt) * time.Second)
-		}
-
-		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create request: %w", err)
-		}
-
-		req.Header.Set("User-Agent", "Myrai-Skill-Loader/1.0")
-
-		resp, err := client.Do(req)
-		if err != nil {
-			lastErr = err
-			continue
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode == http.StatusOK {
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return nil, fmt.Errorf("failed to read response body: %w", err)
-			}
-			return body, nil
-		}
-
-		if resp.StatusCode == http.StatusNotFound {
-			return nil, fmt.Errorf("URL not found: %s", url)
-		}
-
-		lastErr = fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
-	}
-
-	return nil, fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
-}
+func (r *runtimeSkill) Name() string         { return r.name }
+func (r *runtimeSkill) Description() string  { return r.description }
+func (r *runtimeSkill) Version() string      { return r.version }
+func (r *runtimeSkill) Tools() []skills.Tool { return r.tools }
+func (r *runtimeSkill) IsEnabled() bool      { return r.enabled }
+func (r *runtimeSkill) Enable() error        { r.enabled = true; return nil }
+func (r *runtimeSkill) Disable() error       { r.enabled = false; return nil }
