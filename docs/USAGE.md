@@ -1,372 +1,580 @@
 # Myrai Usage Guide
 
+Complete guide to using Myrai 2.0.
+
+---
+
 ## Table of Contents
+
 - [Quick Start](#quick-start)
+- [CLI Commands](#cli-commands)
 - [Configuration](#configuration)
 - [Web UI](#web-ui)
-- [CLI Mode](#cli-mode)
-- [Tools](#tools)
-- [API Reference](#api-reference)
+- [Skills](#skills)
+- [MCP Integration](#mcp-integration)
+- [Persona System](#persona-system)
+- [Memory](#memory)
 - [Troubleshooting](#troubleshooting)
+
+---
 
 ## Quick Start
 
-### 1. Installation
-
 ```bash
-# Download binary
-curl -L https://github.com/YOUR_USERNAME/jimmy.ai/releases/latest/download/jimmy-linux-amd64 -o jimmy
-chmod +x jimmy
+# 1. Run onboarding
+./myrai onboard
 
-# Or build from source
-git clone https://github.com/YOUR_USERNAME/jimmy.ai.git
-cd jimmy.ai
-make build
+# 2. Start server
+./myrai server
+
+# 3. Open http://localhost:8080
 ```
 
-### 2. First Run
+---
+
+## CLI Commands
+
+### Core Commands
 
 ```bash
-# Set your LLM API key
-export JIMMY_LLM_PROVIDERS_KIMI_API_KEY="your-api-key"
+# Interactive chat
+myrai --cli
 
-# Run the server
-./jimmy
+# One-shot message
+myrai -m "Explain quantum computing"
 
-# Open http://localhost:8080 in your browser
+# Pipe input
+cat file.txt | myrai
+
+# Start server
+myrai server
+myrai server --port 3000 --verbose
+
+# System health check
+myrai doctor
+
+# Show version
+myrai version
 ```
+
+### Skills Commands
+
+```bash
+# List installed skills
+myrai skills list
+
+# Install skill from GitHub
+myrai skills install github.com/user/skill-name
+myrai skills install github.com/user/skill-name@v1.2.0
+
+# Enable/disable skill
+myrai skills enable skill-name
+myrai skills disable skill-name
+
+# Uninstall skill
+myrai skills uninstall skill-name
+
+# Watch directory for hot-reload
+myrai skills watch ./my-skills/
+
+# Validate SKILL.md
+myrai skills validate ./SKILL.md
+
+# Search for skills
+myrai skills search docker
+
+# Show skill statistics
+myrai skills stats
+```
+
+### MCP Commands
+
+```bash
+# Discover available MCP servers
+myrai mcp discover
+
+# List configured servers
+myrai mcp list
+
+# Add a discovered server
+myrai mcp discover-add filesystem
+
+# Start/stop MCP server
+myrai mcp start filesystem
+myrai mcp stop filesystem
+
+# Remove server
+myrai mcp remove filesystem
+
+# List available tools
+myrai mcp tools
+```
+
+### Persona Commands
+
+```bash
+# View current persona
+myrai persona
+
+# Edit persona manually
+myrai persona edit
+
+# View evolution proposals
+myrai persona proposals
+myrai persona proposals --pending
+
+# Apply/reject proposals
+myrai persona apply <proposal-id>
+myrai persona reject <proposal-id>
+
+# View persona history
+myrai persona history
+
+# Rollback to previous version
+myrai persona rollback <version-id>
+
+# Show evolution configuration
+myrai persona config
+```
+
+### Memory Commands
+
+```bash
+# Search memories
+myrai memory search "python projects"
+myrai memory search --type fact --limit 10
+
+# Add memory
+myrai memory add "I prefer dark mode in all apps"
+myrai memory add --type preference "My favorite color is blue"
+
+# View memory health
+myrai memory health
+
+# List recent memories
+myrai memory list --limit 20
+```
+
+### Configuration Commands
+
+```bash
+# Get config value
+myrai config get server.port
+myrai config get llm.default_provider
+
+# Set config value
+myrai config set server.port 3000
+myrai config set llm.default_provider anthropic
+
+# Edit config file directly
+myrai config edit
+
+# Show all config
+myrai config list
+```
+
+---
 
 ## Configuration
 
 ### Environment Variables
 
-All config options can be set via environment variables:
+All configuration can be set via environment variables:
 
 ```bash
 # Server
-export JIMMY_SERVER_PORT=8080
+export MYRAI_SERVER_PORT=8080
+export MYRAI_SERVER_ADDRESS=0.0.0.0
 
-# LLM Provider
-export JIMMY_LLM_PROVIDERS_KIMI_API_KEY="sk-..."
-export JIMMY_LLM_PROVIDERS_KIMI_MODEL="kimi-k2.5"
+# LLM Providers (pick one or more)
+export OPENAI_API_KEY=sk-...
+export ANTHROPIC_API_KEY=sk-...
+export GROQ_API_KEY=gsk-...
+export DEEPSEEK_API_KEY=sk-...
+export GOOGLE_API_KEY=...
 
-# OpenRouter alternative
-export JIMMY_LLM_PROVIDERS_OPENROUTER_API_KEY="sk-or-..."
-export JIMMY_LLM_DEFAULT_PROVIDER="openrouter"
+# Default provider
+export MYRAI_LLM_DEFAULT_PROVIDER=openai
 
-# Data directory
-export JIMMY_STORAGE_DATA_DIR="/path/to/data"
+# Web Search
+export BRAVE_API_KEY=...
+
+# Channels
+export TELEGRAM_BOT_TOKEN=...
+export DISCORD_BOT_TOKEN=...
+
+# Storage
+export MYRAI_STORAGE_DATA_DIR=/path/to/data
 ```
 
 ### Configuration File
 
-Create `~/.local/share/jimmy/jimmy.yaml`:
+Location: `~/.myrai/myrai.yaml`
 
 ```yaml
 server:
   port: 8080
+  address: 0.0.0.0
 
 llm:
-  default_provider: kimi
+  default_provider: openai
   providers:
-    kimi:
-      api_key: "your-key"
-      model: "kimi-k2.5"
+    openai:
+      api_key: "${OPENAI_API_KEY}"
+      model: gpt-4
+      max_tokens: 4096
+      timeout: 60
+    anthropic:
+      api_key: "${ANTHROPIC_API_KEY}"
+      model: claude-3-opus-4-6
+      max_tokens: 4096
+    groq:
+      api_key: "${GROQ_API_KEY}"
+      model: llama-3.1-70b
+
+channels:
+  telegram:
+    enabled: true
+    bot_token: "${TELEGRAM_BOT_TOKEN}"
+  discord:
+    enabled: true
+    token: "${DISCORD_BOT_TOKEN}"
+
+search:
+  enabled: true
+  provider: brave
+  api_key: "${BRAVE_API_KEY}"
+
+storage:
+  data_dir: ~/.myrai
+
+persona:
+  auto_evolve: true
+  evolution_threshold: 0.7
 ```
+
+---
 
 ## Web UI
 
-The web interface is available at `http://localhost:8080` when the server is running.
+The web interface is available at `http://localhost:8080`.
 
 ### Features
-- **Chat Interface**: Send messages and receive streaming responses
-- **Conversation History**: View and manage past conversations
-- **File Uploads**: Attach files to conversations
-- **Memory**: View and manage stored memories
+
+- **Chat Interface**: Send messages with streaming responses
+- **Conversation History**: View and search past conversations
+- **File Uploads**: Attach documents, images, PDFs
+- **Memory Viewer**: Browse and search stored memories
+- **Skills Panel**: View installed skills and their status
+- **Settings**: Configure providers, channels, and preferences
 
 ### Keyboard Shortcuts
+
 - `Enter` - Send message
-- `Shift + Enter` - New line
+- `Shift + Enter` - New line in message
+- `Ctrl + K` - Search conversations
 - `Ctrl + N` - New conversation
+- `Ctrl + /` - Show keyboard shortcuts
 
-## CLI Mode
+---
 
-### One-Shot Mode
+## Skills
 
-Send a single message and get a response:
+### Built-in Skills
+
+Myrai includes 18 built-in skills:
+
+**Productivity:**
+- `tasks` - Todo management
+- `calendar` - Event scheduling
+- `notes` - Note taking
+- `documents` - PDF/image processing
+
+**Personal:**
+- `health` - Health tracking
+- `shopping` - Shopping lists
+- `expenses` - Budget tracking
+
+**Development:**
+- `github` - Repository management
+- `browser` - Web automation
+- `agentic` - Git automation
+
+**Information:**
+- `search` - Web search
+- `weather` - Weather forecasts
+- `knowledge` - Knowledge base
+- `intelligence` - Smart suggestions
+
+**System:**
+- `voice` - STT/TTS
+- `vision` - Image analysis
+- `system` - System commands
+
+### Using Skills
 
 ```bash
-./jimmy -m "Explain quantum computing"
+# In CLI mode
+myrai --cli
+You: "Add task: Buy groceries"
+Myrai: *uses tasks skill* "Added task: Buy groceries"
 
-# With file input
-./jimmy -m "Summarize this" < document.txt
-
-# In pipelines
-git diff | ./jimmy -m "Review these changes"
+# Or directly
+myrai -m "What's the weather in Tokyo?"
 ```
 
-### Interactive Mode
+### Creating Custom Skills
+
+Create a `SKILL.md` file:
+
+```yaml
+---
+name: my-skill
+version: 1.0.0
+description: Does something awesome
+author: your-name
+tags: [utility, automation]
+tools:
+  - name: do_thing
+    description: Perform the action
+    parameters:
+      - name: input
+        type: string
+        required: true
+        description: Input to process
+---
+
+# My Skill
+
+This skill does awesome things.
+
+## Usage
+
+Ask me to "do something awesome" and I'll use this skill.
+```
+
+---
+
+## MCP Integration
+
+Model Context Protocol (MCP) allows connecting external tools.
+
+### Auto-Discovery
 
 ```bash
-./jimmy --cli
+# Discover available MCP servers
+myrai mcp discover
 
 # Output:
-# 🤖 Myrai - Interactive Mode
-# Type 'exit' or 'quit' to exit, 'help' for commands
-#
-# 👤 You: _
+# Available MCP servers:
+# - filesystem: File system operations
+# - github: GitHub integration
+# - postgres: PostgreSQL database
+# - brave-search: Web search
 ```
 
-### CLI Commands
-
-| Command | Description |
-|---------|-------------|
-| `help`, `h` | Show help |
-| `new`, `n` | Start new conversation |
-| `clear`, `cls` | Clear screen |
-| `exit`, `quit` | Exit the program |
-
-## Tools
-
-Myrai comes with built-in tools that the AI can use:
-
-### File Operations
-
-**read_file** - Read file contents
-```
-Myrai: Read the contents of /etc/hosts
-→ Uses read_file tool
-```
-
-**write_file** - Write to files
-```
-Myrai: Create a file hello.txt with "Hello World"
-→ Uses write_file tool
-```
-
-**list_dir** - List directory contents
-```
-Myrai: What's in the current directory?
-→ Uses list_dir tool
-```
-
-### System Operations
-
-**exec_command** - Execute shell commands (configurable allowlist)
-```
-Myrai: Show me the disk usage
-→ Uses exec_command with "df -h"
-```
-
-### Web Operations
-
-**web_search** - Search the web (requires search API config)
-```
-Myrai: Search for recent Go programming news
-→ Uses web_search tool
-```
-
-**fetch_url** - Fetch and extract webpage content
-```
-Myrai: Summarize https://example.com/article
-→ Uses fetch_url tool
-```
-
-### Utility
-
-**thinking** - Chain-of-thought reasoning
-```
-Myrai uses thinking tool to show step-by-step reasoning before responding
-```
-
-## API Reference
-
-### Authentication
-
-All API endpoints except `/api/health` and `/api/auth/login` require authentication.
+### Adding MCP Servers
 
 ```bash
-# Login
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"password": ""}'
+# Add from discovery
+myrai mcp discover-add filesystem
 
-# Use the returned token
-curl http://localhost:8080/api/conversations \
-  -H "Authorization: Bearer <token>"
+# Or manually add
+myrai mcp add --name my-server --url http://localhost:3000
 ```
 
-### Endpoints
+### Using MCP Tools
 
-#### Conversations
+Once added, MCP tools appear in `myrai mcp tools` and can be used by the AI:
 
-**List conversations**
+```
+You: "List files in /tmp"
+Myrai: *uses filesystem tool* "Files in /tmp: ..."
+```
+
+---
+
+## Persona System
+
+Myrai's personality is defined in markdown files.
+
+### Persona Files
+
+Located in `~/.myrai/`:
+
+- **IDENTITY.md** - AI personality, voice, values
+- **USER.md** - Your preferences and profile
+- **TOOLS.md** - Tool descriptions and usage
+- **AGENTS.md** - Agent behavior guidelines
+
+### Evolution
+
+Myrai can evolve its persona based on interactions:
+
 ```bash
-GET /api/conversations?limit=20&offset=0
+# View pending proposals
+myrai persona proposals
+
+# Example proposal:
+# ID: prop-123
+# Type: communication_style
+# Description: User prefers concise responses
+# Confidence: 85%
+
+# Apply proposal
+myrai persona apply prop-123
+
+# Or reject
+myrai persona reject prop-123
 ```
 
-**Create conversation**
+---
+
+## Memory
+
+Myrai has three types of memory:
+
+### 1. Facts
+Important information about you:
+- "I work as a software engineer"
+- "My favorite programming language is Go"
+
+### 2. Preferences
+Your likes/dislikes:
+- "I prefer dark mode"
+- "I like concise responses"
+
+### 3. Tasks
+Active and completed tasks:
+- "Buy groceries (due tomorrow)"
+- "Submit report (completed)"
+
+### Managing Memory
+
 ```bash
-POST /api/conversations
-Content-Type: application/json
+# Search
+myrai memory search "project"
 
-{
-  "title": "My Chat",
-  "model": "kimi-k2.5"
-}
+# Add
+myrai memory add "I'm allergic to peanuts"
+
+# View health
+myrai memory health
 ```
 
-**Get conversation**
-```bash
-GET /api/conversations/:id
-```
-
-**Delete conversation**
-```bash
-DELETE /api/conversations/:id
-```
-
-**Get messages**
-```bash
-GET /api/conversations/:id/messages?limit=50
-```
-
-#### Chat
-
-**Send message (non-streaming)**
-```bash
-POST /api/chat
-Content-Type: application/json
-
-{
-  "conversation_id": "conv_xxx",
-  "message": "Hello!",
-  "system_prompt": "You are a helpful assistant."
-}
-```
-
-**Send message (streaming)**
-```bash
-POST /api/chat/stream
-Content-Type: application/json
-
-{
-  "conversation_id": "conv_xxx",
-  "message": "Hello!"
-}
-
-# Response: text/event-stream
-```
-
-#### Memories
-
-**List memories**
-```bash
-GET /api/memories
-```
-
-**Create memory**
-```bash
-POST /api/memories
-Content-Type: application/json
-
-{
-  "content": "User likes dark mode",
-  "type": "preference",
-  "importance": 8
-}
-```
-
-**Delete memory**
-```bash
-DELETE /api/memories/:id
-```
-
-#### Tools
-
-**List tools**
-```bash
-GET /api/tools
-```
-
-**Execute tool**
-```bash
-POST /api/tools/execute
-Content-Type: application/json
-
-{
-  "name": "read_file",
-  "args": {
-    "path": "/etc/hosts"
-  }
-}
-```
-
-#### WebSocket
-
-Connect to `/ws` for real-time chat:
-
-```javascript
-const ws = new WebSocket('ws://localhost:8080/ws');
-
-ws.onopen = () => {
-  ws.send(JSON.stringify({
-    conversation_id: "conv_xxx",
-    message: "Hello!"
-  }));
-};
-
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  // data.type: 'chunk' | 'done' | 'error'
-  // data.content: string
-};
-```
+---
 
 ## Troubleshooting
 
-### Common Issues
+### "No API key configured"
 
-**"Failed to load config"**
-- Check that your API key is set
-- Verify the config file syntax
+Run `./myrai onboard` to configure your LLM provider and API key.
 
-**"LLM error"**
-- Verify your API key is valid
-- Check your internet connection
-- Ensure you have API credits
+### "Connection refused" to LLM provider
 
-**"Port already in use"**
+Check:
+1. API key is correct
+2. Provider service is up
+3. Network connectivity
+4. Try a different provider
+
+### Web search not working
+
+1. Get free key from [Brave Search](https://api.search.brave.com)
+2. Run `./myrai onboard` and enable web search
+3. Or set: `export BRAVE_API_KEY=your_key`
+
+### High API costs
+
+- Use **Ollama** for free local inference
+- Switch to cheaper providers (Groq, DeepSeek)
+- Set spending limits in provider dashboard
+- Enable caching in config
+
+### Skills not loading
+
+Check skill manifest:
 ```bash
-# Change port
-export JIMMY_SERVER_PORT=8081
-./jimmy
+myrai skills validate ./path/to/SKILL.md
 ```
 
-**"Permission denied"**
+### Memory/search not working
+
+Check vector storage:
 ```bash
-chmod +x jimmy
+myrai doctor
 ```
 
-### Data Location
+### Telegram/Discord not responding
 
-Myrai stores data in:
-- **Linux/macOS**: `~/.local/share/jimmy/`
-- **Windows**: `%APPDATA%/jimmy/`
-- **Custom**: Set `JIMMY_STORAGE_DATA_DIR`
+1. Verify bot tokens are correct
+2. Check bot is added to channel/DM
+3. Check channel configuration in `myrai.yaml`
+4. Restart server
 
-### Logs
-
-Enable debug logging:
-```bash
-export JIMMY_LOG_LEVEL=debug
-./jimmy
-```
-
-### Reset Everything
+### Getting Help
 
 ```bash
-# Stop Myrai
-rm -rf ~/.local/share/jimmy/
-# Restart and reconfigure
+# Run diagnostics
+myrai doctor
+
+# Show help
+myrai --help
+myrai skills --help
+myrai mcp --help
 ```
+
+Or [open an issue](https://github.com/gmsas95/goclawde-cli/issues).
+
+---
+
+## Advanced Usage
+
+### Multiple LLM Providers
+
+Configure multiple providers and switch between them:
+
+```yaml
+llm:
+  default_provider: openai
+  providers:
+    openai:
+      api_key: "${OPENAI_API_KEY}"
+      model: gpt-4
+    anthropic:
+      api_key: "${ANTHROPIC_API_KEY}"
+      model: claude-3-opus-4-6
+```
+
+Switch at runtime:
+```
+You: "Use Claude for this conversation"
+```
+
+### Custom Skills Directory
+
+```bash
+# Create skills directory
+mkdir -p ~/.myrai/custom-skills
+
+# Watch for changes
+myrai skills watch ~/.myrai/custom-skills
+```
+
+### Backup and Restore
+
+```bash
+# Backup
+rsync -av ~/.myrai ~/myrai-backup
+
+# Restore
+rsync -av ~/myrai-backup ~/.myrai
+```
+
+---
+
+## Support
+
+- 🐛 [Bug reports](https://github.com/gmsas95/goclawde-cli/issues)
+- 💬 [Discussions](https://github.com/gmsas95/goclawde-cli/discussions)
+- ⭐ [Star the repo](https://github.com/gmsas95/goclawde-cli)
