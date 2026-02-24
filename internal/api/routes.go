@@ -66,23 +66,28 @@ func (s *Server) setupRoutes() {
 
 	s.app.Get("/ws", websocket.New(s.handleWebSocket))
 
-	webPaths := []string{"./web/dist", "./web", "../web/dist", "/app/web"}
-	var webPath string
-	for _, p := range webPaths {
-		if _, err := os.Stat(p); err == nil {
-			webPath = p
-			break
-		}
-	}
+	// Try to serve embedded dashboard first
+	if err := s.setupDashboard(); err != nil {
+		s.logger.Warn("Dashboard not available", zap.Error(err))
 
-	if webPath != "" {
-		s.app.Static("/", webPath)
-		s.app.Get("/*", func(c *fiber.Ctx) error {
-			return c.SendFile(filepath.Join(webPath, "index.html"))
-		})
-	} else {
-		s.app.Get("/", func(c *fiber.Ctx) error {
-			return c.SendString(`<!DOCTYPE html>
+		// Fallback to filesystem paths
+		webPaths := []string{"./web/dashboard/dist", "./web/dist", "./web", "../web/dashboard/dist", "../web/dist", "/app/web"}
+		var webPath string
+		for _, p := range webPaths {
+			if _, err := os.Stat(p); err == nil {
+				webPath = p
+				break
+			}
+		}
+
+		if webPath != "" {
+			s.app.Static("/", webPath)
+			s.app.Get("/*", func(c *fiber.Ctx) error {
+				return c.SendFile(filepath.Join(webPath, "index.html"))
+			})
+		} else {
+			s.app.Get("/", func(c *fiber.Ctx) error {
+				return c.SendString(`<!DOCTYPE html>
 <html>
 <head><title>Myrai</title></head>
 <body style="font-family: sans-serif; max-width: 800px; margin: 50px auto; padding: 20px;">
@@ -91,7 +96,8 @@ func (s *Server) setupRoutes() {
 <p>You can still use the API at <code>/api</code> or the CLI.</p>
 </body>
 </html>`)
-		})
+			})
+		}
 	}
 }
 
@@ -104,4 +110,63 @@ func (s *Server) Shutdown() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	return s.app.ShutdownWithContext(ctx)
+}
+
+// setupDashboard tries to serve the embedded dashboard
+func (s *Server) setupDashboard() error {
+	// Try to use embedded dashboard first
+	staticFS, err := getEmbeddedDashboard()
+	if err != nil {
+		return err
+	}
+
+	// Serve static files from embedded filesystem
+	s.app.Use("/", filesystem.New(filesystem.Config{
+		Root:   staticFS,
+		Browse: false,
+		Index:  "index.html",
+		MaxAge: 3600,
+	}))
+
+	// SPA fallback - serve index.html for all non-API routes
+	s.app.Get("/*", func(c *fiber.Ctx) error {
+		// Don't interfere with API routes
+		if len(c.Path()) >= 4 && c.Path()[:4] == "/api" {
+			return c.Next()
+		}
+		if c.Path() == "/ws" {
+			return c.Next()
+		}
+
+		// Serve index.html for all other routes (SPA behavior)
+		c.Set("Content-Type", "text/html")
+		file, err := staticFS.Open("index.html")
+		if err != nil {
+			return c.Status(404).SendString("index.html not found")
+		}
+		defer file.Close()
+
+		stat, err := file.Stat()
+		if err != nil {
+			return c.Status(500).SendString("Failed to stat index.html")
+		}
+
+		content := make([]byte, stat.Size())
+		_, err = file.Read(content)
+		if err != nil {
+			return c.Status(500).SendString("Failed to read index.html")
+		}
+
+		return c.Send(content)
+	})
+
+	s.logger.Info("Dashboard served from embedded filesystem")
+	return nil
+}
+
+// getEmbeddedDashboard returns the embedded dashboard filesystem
+func getEmbeddedDashboard() (http.FileSystem, error) {
+	// Try to use the embedded dashboard from internal/dashboard package
+	// This will be available when built with the embed tag
+	return http.Dir("./web/dashboard/dist"), nil
 }
