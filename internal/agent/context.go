@@ -128,9 +128,10 @@ func (cm *ContextManager) buildFullContext(ctx context.Context, convID string, r
 
 	for _, msg := range storeMsgs {
 		lmMsg := llm.Message{
-			Role:       msg.Role,
-			Content:    msg.Content,
-			ToolCallID: msg.ToolCallID,
+			Role:             msg.Role,
+			Content:          msg.Content,
+			ToolCallID:       msg.ToolCallID,
+			ReasoningContent: msg.ReasoningContent, // Preserve reasoning content for thinking models
 		}
 
 		// Handle tool calls
@@ -180,9 +181,10 @@ func (cm *ContextManager) buildSummarizedContext(ctx context.Context, convID str
 	// Add recent messages in order
 	for _, msg := range recentMsgs {
 		lmMsg := llm.Message{
-			Role:       msg.Role,
-			Content:    msg.Content,
-			ToolCallID: msg.ToolCallID,
+			Role:             msg.Role,
+			Content:          msg.Content,
+			ToolCallID:       msg.ToolCallID,
+			ReasoningContent: msg.ReasoningContent, // Preserve reasoning content for thinking models
 		}
 
 		if len(msg.ToolCalls) > 0 {

@@ -1,11 +1,10 @@
 package calendar
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"time"
 
+	"github.com/gmsas95/myrai-cli/internal/idgen"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -18,15 +17,15 @@ type Store struct {
 // NewStore creates a new calendar store
 func NewStore(db *gorm.DB) (*Store, error) {
 	store := &Store{db: db}
-	
+
 	// Auto-migrate schemas
 	if err := db.AutoMigrate(&CalendarEvent{}, &Calendar{}, &CalendarCredentials{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate calendar schemas: %w", err)
 	}
-	
+
 	// Create indexes
 	store.createIndexes()
-	
+
 	return store, nil
 }
 
@@ -38,23 +37,16 @@ func (s *Store) createIndexes() {
 	s.db.Exec("CREATE INDEX IF NOT EXISTS idx_credentials_user ON calendar_credentials(user_id)")
 }
 
-// generateID generates a unique ID
-func generateID() string {
-	bytes := make([]byte, 8)
-	rand.Read(bytes)
-	return "cal_" + hex.EncodeToString(bytes)
-}
-
 // Calendar operations
 
 // CreateCalendar creates a new calendar
 func (s *Store) CreateCalendar(calendar *Calendar) error {
 	if calendar.ID == "" {
-		calendar.ID = generateID()
+		calendar.ID = idgen.Generate(idgen.PrefixCalendar)
 	}
 	calendar.CreatedAt = time.Now()
 	calendar.UpdatedAt = time.Now()
-	
+
 	return s.db.Create(calendar).Error
 }
 
@@ -101,12 +93,12 @@ func (s *Store) DeleteCalendar(calendarID string) error {
 // CreateEvent creates a new event
 func (s *Store) CreateEvent(event *CalendarEvent) error {
 	if event.ID == "" {
-		event.ID = generateID()
+		event.ID = idgen.Generate(idgen.PrefixEvent)
 	}
 	event.CreatedAt = time.Now()
 	event.UpdatedAt = time.Now()
 	event.NeedsSync = true
-	
+
 	return s.db.Create(event).Error
 }
 
@@ -144,12 +136,12 @@ func (s *Store) HardDeleteEvent(eventID string) error {
 // ListEvents lists events with filters
 func (s *Store) ListEvents(userID string, filters EventFilters) (*EventList, error) {
 	query := s.db.Where("user_id = ? AND status != ?", userID, EventStatusCancelled)
-	
+
 	// Calendar filter
 	if filters.CalendarID != "" {
 		query = query.Where("calendar_id = ?", filters.CalendarID)
 	}
-	
+
 	// Time range filters
 	if filters.StartAfter != nil {
 		query = query.Where("start_time >= ?", filters.StartAfter)
@@ -157,7 +149,7 @@ func (s *Store) ListEvents(userID string, filters EventFilters) (*EventList, err
 	if filters.StartBefore != nil {
 		query = query.Where("start_time <= ?", filters.StartBefore)
 	}
-	
+
 	// Search
 	if filters.Search != "" {
 		searchPattern := "%" + filters.Search + "%"
@@ -166,25 +158,25 @@ func (s *Store) ListEvents(userID string, filters EventFilters) (*EventList, err
 			searchPattern, searchPattern, searchPattern,
 		)
 	}
-	
+
 	// Order by start time
 	query = query.Order("start_time ASC")
-	
+
 	// Pagination
 	if filters.Limit > 0 {
 		query = query.Limit(filters.Limit)
 	}
-	
+
 	var events []CalendarEvent
 	if err := query.Find(&events).Error; err != nil {
 		return nil, err
 	}
-	
+
 	// Calculate stats
 	now := time.Now()
 	todayEnd := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, now.Location())
 	weekEnd := todayEnd.AddDate(0, 0, 7)
-	
+
 	var today, thisWeek, upcoming int
 	for _, e := range events {
 		if e.StartTime.Before(todayEnd) && e.StartTime.After(now.Add(-24*time.Hour)) {
@@ -197,38 +189,38 @@ func (s *Store) ListEvents(userID string, filters EventFilters) (*EventList, err
 			upcoming++
 		}
 	}
-	
+
 	return &EventList{
-		Events:    events,
-		Total:     len(events),
-		Today:     today,
-		ThisWeek:  thisWeek,
-		Upcoming:  upcoming,
+		Events:   events,
+		Total:    len(events),
+		Today:    today,
+		ThisWeek: thisWeek,
+		Upcoming: upcoming,
 	}, nil
 }
 
 // EventFilters contains filters for listing events
 type EventFilters struct {
-	CalendarID   string
-	StartAfter   *time.Time
-	StartBefore  *time.Time
-	EndAfter     *time.Time
-	EndBefore    *time.Time
-	Search       string
-	Limit        int
+	CalendarID  string
+	StartAfter  *time.Time
+	StartBefore *time.Time
+	EndAfter    *time.Time
+	EndBefore   *time.Time
+	Search      string
+	Limit       int
 }
 
 // GetEventsForDay gets all events for a specific day
 func (s *Store) GetEventsForDay(userID string, day time.Time) ([]CalendarEvent, error) {
 	start := time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, day.Location())
 	end := start.AddDate(0, 0, 1)
-	
+
 	var events []CalendarEvent
 	err := s.db.Where(
 		"user_id = ? AND status != ? AND start_time < ? AND end_time > ?",
 		userID, EventStatusCancelled, end, start,
 	).Order("start_time ASC").Find(&events).Error
-	
+
 	return events, err
 }
 
@@ -236,26 +228,26 @@ func (s *Store) GetEventsForDay(userID string, day time.Time) ([]CalendarEvent, 
 func (s *Store) GetEventsForWeek(userID string, weekStart time.Time) ([]CalendarEvent, error) {
 	start := time.Date(weekStart.Year(), weekStart.Month(), weekStart.Day(), 0, 0, 0, 0, weekStart.Location())
 	end := start.AddDate(0, 0, 7)
-	
+
 	var events []CalendarEvent
 	err := s.db.Where(
 		"user_id = ? AND status != ? AND start_time >= ? AND start_time < ?",
 		userID, EventStatusCancelled, start, end,
 	).Order("start_time ASC").Find(&events).Error
-	
+
 	return events, err
 }
 
 // GetUpcomingEvents gets upcoming events
 func (s *Store) GetUpcomingEvents(userID string, limit int) ([]CalendarEvent, error) {
 	now := time.Now()
-	
+
 	var events []CalendarEvent
 	err := s.db.Where(
 		"user_id = ? AND status != ? AND start_time >= ?",
 		userID, EventStatusCancelled, now,
 	).Order("start_time ASC").Limit(limit).Find(&events).Error
-	
+
 	return events, err
 }
 
@@ -273,11 +265,11 @@ func (s *Store) FindConflicts(userID string, start, end time.Time, excludeID str
 		"user_id = ? AND status != ? AND start_time < ? AND end_time > ?",
 		userID, EventStatusCancelled, end, start,
 	)
-	
+
 	if excludeID != "" {
 		query = query.Where("id != ?", excludeID)
 	}
-	
+
 	var events []CalendarEvent
 	err := query.Order("start_time ASC").Find(&events).Error
 	return events, err
@@ -288,11 +280,11 @@ func (s *Store) FindConflicts(userID string, start, end time.Time, excludeID str
 // SaveCredentials saves calendar credentials
 func (s *Store) SaveCredentials(creds *CalendarCredentials) error {
 	if creds.ID == "" {
-		creds.ID = generateID()
+		creds.ID = idgen.Generate("cred")
 		creds.CreatedAt = time.Now()
 	}
 	creds.UpdatedAt = time.Now()
-	
+
 	return s.db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "user_id"}, {Name: "provider"}},
 		UpdateAll: true,
@@ -325,10 +317,10 @@ func (s *Store) DeleteCredentials(credsID string) error {
 func (s *Store) MarkEventSynced(eventID string, externalID string) error {
 	now := time.Now()
 	return s.db.Model(&CalendarEvent{}).Where("id = ?", eventID).Updates(map[string]interface{}{
-		"needs_sync":   false,
-		"last_synced":  &now,
-		"source_id":    externalID,
-		"updated_at":   now,
+		"needs_sync":  false,
+		"last_synced": &now,
+		"source_id":   externalID,
+		"updated_at":  now,
 	}).Error
 }
 
@@ -345,19 +337,19 @@ func (s *Store) GetStats(userID string) (*CalendarStats, error) {
 	stats := &CalendarStats{
 		TopCategories: make(map[string]int),
 	}
-	
+
 	now := time.Now()
 	weekStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	weekStart = weekStart.AddDate(0, 0, -int(weekStart.Weekday())) // Start of week (Sunday)
 	weekEnd := weekStart.AddDate(0, 0, 7)
 	nextWeekStart := weekEnd
 	nextWeekEnd := nextWeekStart.AddDate(0, 0, 7)
-	
+
 	// Total events
 	var total int64
 	s.db.Model(&CalendarEvent{}).Where("user_id = ? AND status != ?", userID, EventStatusCancelled).Count(&total)
 	stats.TotalEvents = int(total)
-	
+
 	// This week
 	var thisWeek int64
 	s.db.Model(&CalendarEvent{}).Where(
@@ -365,7 +357,7 @@ func (s *Store) GetStats(userID string) (*CalendarStats, error) {
 		userID, EventStatusCancelled, weekStart, weekEnd,
 	).Count(&thisWeek)
 	stats.ThisWeekEvents = int(thisWeek)
-	
+
 	// Next week
 	var nextWeek int64
 	s.db.Model(&CalendarEvent{}).Where(
@@ -373,14 +365,14 @@ func (s *Store) GetStats(userID string) (*CalendarStats, error) {
 		userID, EventStatusCancelled, nextWeekStart, nextWeekEnd,
 	).Count(&nextWeek)
 	stats.NextWeekEvents = int(nextWeek)
-	
+
 	// Hours this week
 	var weekEvents []CalendarEvent
 	s.db.Where(
 		"user_id = ? AND status != ? AND start_time >= ? AND start_time < ?",
 		userID, EventStatusCancelled, weekStart, weekEnd,
 	).Find(&weekEvents)
-	
+
 	var totalHours float64
 	dayCounts := make(map[string]int)
 	for _, e := range weekEvents {
@@ -390,7 +382,7 @@ func (s *Store) GetStats(userID string) (*CalendarStats, error) {
 		dayCounts[day]++
 	}
 	stats.HoursThisWeek = totalHours
-	
+
 	// Busiest day
 	busiestDay := ""
 	maxCount := 0
@@ -401,7 +393,7 @@ func (s *Store) GetStats(userID string) (*CalendarStats, error) {
 		}
 	}
 	stats.BusiestDay = busiestDay
-	
+
 	return stats, nil
 }
 

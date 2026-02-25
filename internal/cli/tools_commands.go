@@ -7,10 +7,10 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/gmsas95/myrai-cli/internal/config"
+	"github.com/gmsas95/myrai-cli/internal/editor"
 	"github.com/gmsas95/myrai-cli/internal/llm"
 	"github.com/gmsas95/myrai-cli/internal/store"
 	"github.com/gmsas95/myrai-cli/internal/tools"
@@ -216,13 +216,11 @@ variables:
 			os.Exit(1)
 		}
 
-		editor := os.Getenv("EDITOR")
-		if editor == "" {
-			editor = "nano"
+		fmt.Printf("Opening %s in editor...\n", chainName)
+		if err := editor.Open(chainPath); err != nil {
+			fmt.Printf("Error opening editor: %v\n", err)
+			os.Exit(1)
 		}
-
-		fmt.Printf("Opening %s in %s...\n", chainName, editor)
-		syscall.Exec(editor, []string{editor, chainPath}, os.Environ())
 
 	case "list":
 		chains := chainExecutor.ListChains()

@@ -1,11 +1,10 @@
 package shopping
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"time"
 
+	"github.com/gmsas95/myrai-cli/internal/idgen"
 	"gorm.io/gorm"
 )
 
@@ -17,25 +16,19 @@ type Store struct {
 // NewStore creates a new shopping store
 func NewStore(db *gorm.DB) (*Store, error) {
 	store := &Store{db: db}
-	
+
 	if err := db.AutoMigrate(&ShoppingList{}, &ShoppingItem{}, &StoreLocation{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate shopping schemas: %w", err)
 	}
-	
-	return store, nil
-}
 
-func generateID() string {
-	bytes := make([]byte, 8)
-	rand.Read(bytes)
-	return "shop_" + hex.EncodeToString(bytes)
+	return store, nil
 }
 
 // List operations
 
 func (s *Store) CreateList(list *ShoppingList) error {
 	if list.ID == "" {
-		list.ID = generateID()
+		list.ID = idgen.Generate(idgen.PrefixShopping)
 	}
 	// Default IsActive to true if not explicitly set
 	// Note: There's no way to distinguish between "explicitly set to false" and "not set"
@@ -73,7 +66,7 @@ func (s *Store) ListLists(userID string, activeOnly bool) ([]ShoppingList, error
 	if activeOnly {
 		query = query.Where("is_active = ? AND completed_at IS NULL", true)
 	}
-	
+
 	var lists []ShoppingList
 	err := query.Order("created_at DESC").Find(&lists).Error
 	return lists, err
@@ -83,7 +76,7 @@ func (s *Store) ListLists(userID string, activeOnly bool) ([]ShoppingList, error
 
 func (s *Store) CreateItem(item *ShoppingItem) error {
 	if item.ID == "" {
-		item.ID = generateID()
+		item.ID = idgen.Generate(idgen.PrefixShopping)
 	}
 	item.CreatedAt = time.Now()
 	item.UpdatedAt = time.Now()
@@ -148,9 +141,9 @@ func (s *Store) GetStats(userID string) (*ShoppingStats, error) {
 	stats := &ShoppingStats{
 		ByCategory: make(map[string]int),
 	}
-	
+
 	var count int64
-	
+
 	// Count lists
 	s.db.Model(&ShoppingList{}).Where("user_id = ?", userID).Count(&count)
 	stats.TotalLists = int(count)
@@ -158,7 +151,7 @@ func (s *Store) GetStats(userID string) (*ShoppingStats, error) {
 	stats.ActiveLists = int(count)
 	s.db.Model(&ShoppingList{}).Where("user_id = ? AND completed_at IS NOT NULL", userID).Count(&count)
 	stats.CompletedLists = int(count)
-	
+
 	// Count items
 	s.db.Model(&ShoppingItem{}).Where("user_id = ?", userID).Count(&count)
 	stats.TotalItems = int(count)
@@ -166,12 +159,12 @@ func (s *Store) GetStats(userID string) (*ShoppingStats, error) {
 	stats.CheckedItems = int(count)
 	s.db.Model(&ShoppingItem{}).Where("user_id = ? AND is_checked = ?", userID, false).Count(&count)
 	stats.UncheckedItems = int(count)
-	
+
 	// Completion rate
 	if stats.TotalItems > 0 {
 		stats.CompletionRate = float64(stats.CheckedItems) / float64(stats.TotalItems) * 100
 	}
-	
+
 	// Items by category
 	var catCounts []struct {
 		Category string
@@ -181,7 +174,7 @@ func (s *Store) GetStats(userID string) (*ShoppingStats, error) {
 	for _, c := range catCounts {
 		stats.ByCategory[c.Category] = c.Count
 	}
-	
+
 	return stats, nil
 }
 
@@ -206,7 +199,7 @@ func (s *Store) CopyList(sourceListID, newName string) (*ShoppingList, error) {
 	if source == nil {
 		return nil, fmt.Errorf("source list not found")
 	}
-	
+
 	// Create new list
 	newList := &ShoppingList{
 		UserID:      source.UserID,
@@ -216,17 +209,17 @@ func (s *Store) CopyList(sourceListID, newName string) (*ShoppingList, error) {
 		Tags:        source.Tags,
 		IsActive:    true,
 	}
-	
+
 	if err := s.CreateList(newList); err != nil {
 		return nil, err
 	}
-	
+
 	// Copy items
 	items, err := s.GetItemsByList(sourceListID)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	for _, item := range items {
 		newItem := &ShoppingItem{
 			ListID:         newList.ID,
@@ -246,6 +239,6 @@ func (s *Store) CopyList(sourceListID, newName string) (*ShoppingList, error) {
 		}
 		s.CreateItem(newItem)
 	}
-	
+
 	return newList, nil
 }

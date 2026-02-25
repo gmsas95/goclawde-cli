@@ -6,10 +6,10 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"syscall"
 
 	"github.com/gmsas95/myrai-cli/internal/app"
 	"github.com/gmsas95/myrai-cli/internal/config"
+	"github.com/gmsas95/myrai-cli/internal/editor"
 	"github.com/gmsas95/myrai-cli/internal/onboarding"
 	"github.com/gmsas95/myrai-cli/internal/persona"
 	"github.com/gmsas95/myrai-cli/internal/skills"
@@ -169,12 +169,10 @@ func HandlePersonaCommand(args []string) {
 		workspace := onboarding.GetWorkspacePath()
 		identityPath := workspace + "/IDENTITY.md"
 
-		editor := os.Getenv("EDITOR")
-		if editor == "" {
-			editor = "nano"
+		if err := editor.Open(identityPath); err != nil {
+			fmt.Printf("Error opening editor: %v\n", err)
+			os.Exit(1)
 		}
-
-		syscall.Exec(editor, []string{editor, identityPath}, os.Environ())
 
 	case "show":
 		workspace := onboarding.GetWorkspacePath()
@@ -217,12 +215,10 @@ func HandleUserCommand(args []string) {
 		workspace := onboarding.GetWorkspacePath()
 		userPath := workspace + "/USER.md"
 
-		editor := os.Getenv("EDITOR")
-		if editor == "" {
-			editor = "nano"
+		if err := editor.Open(userPath); err != nil {
+			fmt.Printf("Error opening editor: %v\n", err)
+			os.Exit(1)
 		}
-
-		syscall.Exec(editor, []string{editor, userPath}, os.Environ())
 
 	case "show":
 		workspace := onboarding.GetWorkspacePath()
@@ -274,12 +270,11 @@ func HandleConfigCommand(args []string) {
 		fmt.Printf("Config location: %s\n", configPath)
 
 	case "edit":
-		editor := os.Getenv("EDITOR")
-		if editor == "" {
-			editor = "nano"
+		fmt.Printf("Opening %s in editor...\n", configPath)
+		if err := editor.Open(configPath); err != nil {
+			fmt.Printf("Error opening editor: %v\n", err)
+			os.Exit(1)
 		}
-		fmt.Printf("Opening %s in %s...\n", configPath, editor)
-		syscall.Exec(editor, []string{editor, configPath}, os.Environ())
 
 	case "path":
 		fmt.Println(configPath)

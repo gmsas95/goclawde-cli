@@ -1,11 +1,10 @@
 package expenses
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"time"
 
+	"github.com/gmsas95/myrai-cli/internal/idgen"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -18,15 +17,15 @@ type Store struct {
 // NewStore creates a new expense store
 func NewStore(db *gorm.DB) (*Store, error) {
 	store := &Store{db: db}
-	
+
 	// Auto-migrate schemas
 	if err := db.AutoMigrate(&Expense{}, &Budget{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate expense schemas: %w", err)
 	}
-	
+
 	// Create indexes
 	store.createIndexes()
-	
+
 	return store, nil
 }
 
@@ -37,19 +36,12 @@ func (s *Store) createIndexes() {
 	s.db.Exec("CREATE INDEX IF NOT EXISTS idx_budgets_user ON budgets(user_id)")
 }
 
-// generateID generates a unique ID
-func generateID() string {
-	bytes := make([]byte, 8)
-	rand.Read(bytes)
-	return "exp_" + hex.EncodeToString(bytes)
-}
-
 // Expense operations
 
 // CreateExpense creates a new expense
 func (s *Store) CreateExpense(expense *Expense) error {
 	if expense.ID == "" {
-		expense.ID = generateID()
+		expense.ID = idgen.Generate(idgen.PrefixExpense)
 	}
 	if expense.Currency == "" {
 		expense.Currency = "USD"
@@ -59,7 +51,7 @@ func (s *Store) CreateExpense(expense *Expense) error {
 	}
 	expense.CreatedAt = time.Now()
 	expense.UpdatedAt = time.Now()
-	
+
 	return s.db.Create(expense).Error
 }
 
@@ -87,7 +79,7 @@ func (s *Store) DeleteExpense(expenseID string) error {
 // ListExpenses lists expenses with filters
 func (s *Store) ListExpenses(userID string, filters ExpenseFilters) (*ExpenseList, error) {
 	query := s.db.Where("user_id = ?", userID)
-	
+
 	// Apply filters
 	if filters.Category != "" {
 		query = query.Where("category = ?", filters.Category)
@@ -119,10 +111,10 @@ func (s *Store) ListExpenses(userID string, filters ExpenseFilters) (*ExpenseLis
 	if filters.MaxAmount > 0 {
 		query = query.Where("amount <= ?", filters.MaxAmount)
 	}
-	
+
 	// Order by date desc
 	query = query.Order("date DESC, created_at DESC")
-	
+
 	// Pagination
 	if filters.Limit > 0 {
 		query = query.Limit(filters.Limit)
@@ -130,16 +122,16 @@ func (s *Store) ListExpenses(userID string, filters ExpenseFilters) (*ExpenseLis
 	if filters.Offset > 0 {
 		query = query.Offset(filters.Offset)
 	}
-	
+
 	var expenses []Expense
 	if err := query.Find(&expenses).Error; err != nil {
 		return nil, err
 	}
-	
+
 	// Calculate total amount
 	var totalAmount float64
 	s.db.Model(&Expense{}).Where("user_id = ?", userID).Select("COALESCE(SUM(amount), 0)").Scan(&totalAmount)
-	
+
 	return &ExpenseList{
 		Expenses:    expenses,
 		Total:       len(expenses),
@@ -177,22 +169,22 @@ func (s *Store) GetCategoryTotals(userID string, start, end time.Time) (map[stri
 		Category string
 		Total    float64
 	}
-	
+
 	err := s.db.Model(&Expense{}).
 		Select("category, COALESCE(SUM(amount), 0) as total").
 		Where("user_id = ? AND date >= ? AND date <= ? AND amount > 0", userID, start, end).
 		Group("category").
 		Scan(&results).Error
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	totals := make(map[string]float64)
 	for _, r := range results {
 		totals[r.Category] = r.Total
 	}
-	
+
 	return totals, nil
 }
 
@@ -201,7 +193,7 @@ func (s *Store) GetCategoryTotals(userID string, start, end time.Time) (map[stri
 // CreateBudget creates a new budget
 func (s *Store) CreateBudget(budget *Budget) error {
 	if budget.ID == "" {
-		budget.ID = generateID()
+		budget.ID = idgen.Generate(idgen.PrefixExpense)
 	}
 	if budget.Currency == "" {
 		budget.Currency = "USD"
@@ -211,7 +203,7 @@ func (s *Store) CreateBudget(budget *Budget) error {
 	}
 	budget.CreatedAt = time.Now()
 	budget.UpdatedAt = time.Now()
-	
+
 	return s.db.Create(budget).Error
 }
 
@@ -231,7 +223,7 @@ func (s *Store) GetBudgets(userID string, activeOnly bool) ([]Budget, error) {
 	if activeOnly {
 		query = query.Where("is_active = ?", true)
 	}
-	
+
 	var budgets []Budget
 	err := query.Order("category ASC").Find(&budgets).Error
 	return budgets, err
@@ -251,17 +243,17 @@ func (s *Store) DeleteBudget(budgetID string) error {
 // GetBudgetStatus calculates the current status of a budget
 func (s *Store) GetBudgetStatus(budget *Budget) (*BudgetStatus, error) {
 	start, end := budget.GetPeriodRange()
-	
+
 	var spent float64
 	err := s.db.Model(&Expense{}).
 		Select("COALESCE(SUM(amount), 0)").
 		Where("user_id = ? AND date >= ? AND date <= ? AND amount > 0", budget.UserID, start, end).
 		Scan(&spent).Error
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Filter by category if specified
 	if budget.Category != "" {
 		err = s.db.Model(&Expense{}).
@@ -273,18 +265,18 @@ func (s *Store) GetBudgetStatus(budget *Budget) (*BudgetStatus, error) {
 			return nil, err
 		}
 	}
-	
+
 	remaining := budget.Amount - spent
 	percentUsed := 0.0
 	if budget.Amount > 0 {
 		percentUsed = (spent / budget.Amount) * 100
 	}
-	
+
 	daysRemaining := int(end.Sub(time.Now()).Hours() / 24)
 	if daysRemaining < 0 {
 		daysRemaining = 0
 	}
-	
+
 	return &BudgetStatus{
 		BudgetID:        budget.ID,
 		Name:            budget.Name,
@@ -305,7 +297,7 @@ func (s *Store) GetAllBudgetStatuses(userID string) ([]BudgetStatus, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	statuses := make([]BudgetStatus, len(budgets))
 	for i, budget := range budgets {
 		status, err := s.GetBudgetStatus(&budget)
@@ -314,7 +306,7 @@ func (s *Store) GetAllBudgetStatuses(userID string) ([]BudgetStatus, error) {
 		}
 		statuses[i] = *status
 	}
-	
+
 	return statuses, nil
 }
 
@@ -329,13 +321,13 @@ func (s *Store) GetSummary(userID string, start, end time.Time) (*ExpenseSummary
 		ByCategory: make(map[string]float64),
 		ByDay:      make(map[string]float64),
 	}
-	
+
 	// Get all expenses in range
 	expenses, err := s.GetExpensesByDateRange(userID, start, end)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Calculate totals
 	for _, e := range expenses {
 		if e.Amount > 0 {
@@ -347,9 +339,9 @@ func (s *Store) GetSummary(userID string, start, end time.Time) (*ExpenseSummary
 			summary.TotalIncome += -e.Amount
 		}
 	}
-	
+
 	summary.NetAmount = summary.TotalIncome - summary.TotalSpent
-	
+
 	// Get top 5 expenses
 	if len(expenses) > 0 {
 		topExpenses := make([]Expense, 0, 5)
@@ -361,13 +353,13 @@ func (s *Store) GetSummary(userID string, start, end time.Time) (*ExpenseSummary
 		}
 		summary.TopExpenses = topExpenses
 	}
-	
+
 	// Get budget statuses
 	budgets, err := s.GetAllBudgetStatuses(userID)
 	if err == nil {
 		summary.Budgets = budgets
 	}
-	
+
 	return summary, nil
 }
 

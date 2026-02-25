@@ -1,11 +1,10 @@
 package knowledge
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"time"
 
+	"github.com/gmsas95/myrai-cli/internal/idgen"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -18,15 +17,15 @@ type Store struct {
 // NewStore creates a new knowledge store
 func NewStore(db *gorm.DB) (*Store, error) {
 	store := &Store{db: db}
-	
+
 	// Auto-migrate schemas
 	if err := db.AutoMigrate(&Entity{}, &Relationship{}, &Memory{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate knowledge schemas: %w", err)
 	}
-	
+
 	// Create indexes for performance
 	store.createIndexes()
-	
+
 	return store, nil
 }
 
@@ -35,22 +34,15 @@ func (s *Store) createIndexes() {
 	// Entity indexes
 	s.db.Exec("CREATE INDEX IF NOT EXISTS idx_entities_user_type ON entities(user_id, type)")
 	s.db.Exec("CREATE INDEX IF NOT EXISTS idx_entities_user_name ON entities(user_id, name)")
-	
+
 	// Relationship indexes
 	s.db.Exec("CREATE INDEX IF NOT EXISTS idx_relationships_source ON relationships(source_id)")
 	s.db.Exec("CREATE INDEX IF NOT EXISTS idx_relationships_target ON relationships(target_id)")
 	s.db.Exec("CREATE INDEX IF NOT EXISTS idx_relationships_type ON relationships(type)")
-	
+
 	// Memory indexes
 	s.db.Exec("CREATE INDEX IF NOT EXISTS idx_memories_user_type ON memories(user_id, type)")
 	s.db.Exec("CREATE INDEX IF NOT EXISTS idx_memories_timestamp ON memories(timestamp)")
-}
-
-// generateID generates a unique ID
-func generateID(prefix string) string {
-	bytes := make([]byte, 8)
-	rand.Read(bytes)
-	return prefix + "_" + hex.EncodeToString(bytes)
 }
 
 // Entity operations
@@ -58,11 +50,11 @@ func generateID(prefix string) string {
 // CreateEntity creates a new entity
 func (s *Store) CreateEntity(entity *Entity) error {
 	if entity.ID == "" {
-		entity.ID = generateID("ent")
+		entity.ID = idgen.Generate(idgen.PrefixKnowledge)
 	}
 	entity.CreatedAt = time.Now()
 	entity.UpdatedAt = time.Now()
-	
+
 	return s.db.Create(entity).Error
 }
 
@@ -107,7 +99,7 @@ func (s *Store) FindOrCreateEntity(userID string, name, entityType string) (*Ent
 		}
 		return entity, nil
 	}
-	
+
 	// Create new entity
 	entity = &Entity{
 		UserID: userID,
@@ -115,11 +107,11 @@ func (s *Store) FindOrCreateEntity(userID string, name, entityType string) (*Ent
 		Type:   entityType,
 	}
 	entity.IncrementMention()
-	
+
 	if err := s.CreateEntity(entity); err != nil {
 		return nil, err
 	}
-	
+
 	return entity, nil
 }
 
@@ -127,15 +119,15 @@ func (s *Store) FindOrCreateEntity(userID string, name, entityType string) (*Ent
 func (s *Store) SearchEntities(userID, query string, limit int) ([]Entity, error) {
 	var entities []Entity
 	searchPattern := "%" + query + "%"
-	
+
 	err := s.db.Where(
 		"user_id = ? AND (name LIKE ? OR aliases LIKE ?)",
 		userID, searchPattern, searchPattern,
 	).
-	Order("mention_count DESC, updated_at DESC").
-	Limit(limit).
-	Find(&entities).Error
-	
+		Order("mention_count DESC, updated_at DESC").
+		Limit(limit).
+		Find(&entities).Error
+
 	return entities, err
 }
 
@@ -164,11 +156,11 @@ func (s *Store) GetRecentEntities(userID string, since time.Time, limit int) ([]
 // CreateRelationship creates a new relationship
 func (s *Store) CreateRelationship(rel *Relationship) error {
 	if rel.ID == "" {
-		rel.ID = generateID("rel")
+		rel.ID = idgen.Generate(idgen.PrefixKnowledge)
 	}
 	rel.CreatedAt = time.Now()
 	rel.UpdatedAt = time.Now()
-	
+
 	return s.db.Create(rel).Error
 }
 
@@ -180,7 +172,7 @@ func (s *Store) FindOrCreateRelationship(userID, sourceID, targetID, relType str
 		"user_id = ? AND source_id = ? AND target_id = ? AND type = ?",
 		userID, sourceID, targetID, relType,
 	).First(&rel).Error
-	
+
 	if err == nil {
 		// Update existing relationship
 		rel.MentionCount++
@@ -192,27 +184,27 @@ func (s *Store) FindOrCreateRelationship(userID, sourceID, targetID, relType str
 		}
 		return &rel, nil
 	}
-	
+
 	if err != gorm.ErrRecordNotFound {
 		return nil, err
 	}
-	
+
 	// Create new relationship
 	rel = Relationship{
-		UserID:      userID,
-		SourceID:    sourceID,
-		TargetID:    targetID,
-		Type:        relType,
+		UserID:       userID,
+		SourceID:     sourceID,
+		TargetID:     targetID,
+		Type:         relType,
 		MentionCount: 1,
 	}
 	now := time.Now()
 	rel.FirstMentioned = &now
 	rel.LastMentioned = &now
-	
+
 	if err := s.CreateRelationship(&rel); err != nil {
 		return nil, err
 	}
-	
+
 	return &rel, nil
 }
 
@@ -225,12 +217,12 @@ func (s *Store) GetRelationships(entityID string) ([]RelationshipWithContext, er
 	if err != nil {
 		return nil, err
 	}
-	
+
 	result := make([]RelationshipWithContext, len(rels))
 	for i, rel := range rels {
 		source, _ := s.GetEntity(rel.SourceID)
 		target, _ := s.GetEntity(rel.TargetID)
-		
+
 		if source != nil && target != nil {
 			result[i] = RelationshipWithContext{
 				Relationship: rel,
@@ -239,7 +231,7 @@ func (s *Store) GetRelationships(entityID string) ([]RelationshipWithContext, er
 			}
 		}
 	}
-	
+
 	return result, nil
 }
 
@@ -251,7 +243,7 @@ func (s *Store) GetRelatedEntities(entityID string) ([]Entity, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Collect related entity IDs
 	entityIDs := make([]string, 0, len(rels))
 	for _, rel := range rels {
@@ -261,11 +253,11 @@ func (s *Store) GetRelatedEntities(entityID string) ([]Entity, error) {
 			entityIDs = append(entityIDs, rel.SourceID)
 		}
 	}
-	
+
 	if len(entityIDs) == 0 {
 		return []Entity{}, nil
 	}
-	
+
 	// Fetch entities
 	var entities []Entity
 	err = s.db.Where("id IN ?", entityIDs).Find(&entities).Error
@@ -277,11 +269,11 @@ func (s *Store) GetRelatedEntities(entityID string) ([]Entity, error) {
 // CreateMemory creates a new memory
 func (s *Store) CreateMemory(memory *Memory) error {
 	if memory.ID == "" {
-		memory.ID = generateID("mem")
+		memory.ID = idgen.Generate(idgen.PrefixKnowledge)
 	}
 	memory.CreatedAt = time.Now()
 	memory.UpdatedAt = time.Now()
-	
+
 	return s.db.Create(memory).Error
 }
 
@@ -304,7 +296,7 @@ func (s *Store) UpdateMemory(memory *Memory) error {
 // GetMemories retrieves memories with optional filters
 func (s *Store) GetMemories(userID string, filters MemoryFilters) ([]Memory, error) {
 	query := s.db.Where("user_id = ?", userID)
-	
+
 	if filters.Type != "" {
 		query = query.Where("type = ?", filters.Type)
 	}
@@ -324,14 +316,14 @@ func (s *Store) GetMemories(userID string, filters MemoryFilters) ([]Memory, err
 		searchPattern := "%" + filters.Search + "%"
 		query = query.Where("content LIKE ? OR summary LIKE ?", searchPattern, searchPattern)
 	}
-	
+
 	// Order by importance and recency
 	query = query.Order("importance DESC, timestamp DESC")
-	
+
 	if filters.Limit > 0 {
 		query = query.Limit(filters.Limit)
 	}
-	
+
 	var memories []Memory
 	err := query.Find(&memories).Error
 	return memories, err
@@ -375,9 +367,9 @@ func (s *Store) GetUnaccessedMemories(userID string, since time.Time, limit int)
 		"user_id = ? AND (last_accessed IS NULL OR last_accessed < ?)",
 		userID, since,
 	).
-	Order("importance ASC, created_at ASC").
-	Limit(limit).
-	Find(&memories).Error
+		Order("importance ASC, created_at ASC").
+		Limit(limit).
+		Find(&memories).Error
 	return memories, err
 }
 
@@ -395,22 +387,22 @@ func (s *Store) GetStats(userID string) (*GraphStats, error) {
 		RelationshipTypes: make(map[string]int),
 		MemoryTypes:       make(map[string]int),
 	}
-	
+
 	// Count entities
 	var entityCount int64
 	s.db.Model(&Entity{}).Where("user_id = ?", userID).Count(&entityCount)
 	stats.TotalEntities = int(entityCount)
-	
+
 	// Count relationships
 	var relCount int64
 	s.db.Model(&Relationship{}).Where("user_id = ?", userID).Count(&relCount)
 	stats.TotalRelationships = int(relCount)
-	
+
 	// Count memories
 	var memCount int64
 	s.db.Model(&Memory{}).Where("user_id = ?", userID).Count(&memCount)
 	stats.TotalMemories = int(memCount)
-	
+
 	// Entity types
 	var entityTypes []struct {
 		Type  string
@@ -420,7 +412,7 @@ func (s *Store) GetStats(userID string) (*GraphStats, error) {
 	for _, et := range entityTypes {
 		stats.EntityTypes[et.Type] = int(et.Count)
 	}
-	
+
 	// Relationship types
 	var relTypes []struct {
 		Type  string
@@ -430,7 +422,7 @@ func (s *Store) GetStats(userID string) (*GraphStats, error) {
 	for _, rt := range relTypes {
 		stats.RelationshipTypes[rt.Type] = int(rt.Count)
 	}
-	
+
 	// Memory types
 	var memTypes []struct {
 		Type  string
@@ -440,13 +432,13 @@ func (s *Store) GetStats(userID string) (*GraphStats, error) {
 	for _, mt := range memTypes {
 		stats.MemoryTypes[mt.Type] = int(mt.Count)
 	}
-	
+
 	// Recent mentions (last 30 days)
 	recent := time.Now().AddDate(0, 0, -30)
 	var recentCount int64
 	s.db.Model(&Entity{}).Where("user_id = ? AND last_mentioned >= ?", userID, recent).Count(&recentCount)
 	stats.RecentMentions = int(recentCount)
-	
+
 	return stats, nil
 }
 
@@ -455,11 +447,11 @@ func (s *Store) GetStats(userID string) (*GraphStats, error) {
 // MarkMemoryCompressed marks a memory as compressed
 func (s *Store) MarkMemoryCompressed(memoryID, compressedFrom string, summary string) error {
 	return s.db.Model(&Memory{}).Where("id = ?", memoryID).Updates(map[string]interface{}{
-		"is_compressed":    true,
-		"compressed_from":  compressedFrom,
-		"summary":          summary,
-		"content":          summary,
-		"updated_at":       time.Now(),
+		"is_compressed":   true,
+		"compressed_from": compressedFrom,
+		"summary":         summary,
+		"content":         summary,
+		"updated_at":      time.Now(),
 	}).Error
 }
 

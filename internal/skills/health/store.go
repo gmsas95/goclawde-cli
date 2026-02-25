@@ -1,12 +1,11 @@
 package health
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/gmsas95/myrai-cli/internal/idgen"
 	"gorm.io/gorm"
 )
 
@@ -18,27 +17,21 @@ type Store struct {
 // NewStore creates a new health store
 func NewStore(db *gorm.DB) (*Store, error) {
 	store := &Store{db: db}
-	
+
 	if err := db.AutoMigrate(&Medication{}, &MedicationLog{}, &HealthMetric{}, &HealthAppointment{}, &HealthGoal{}, &HealthInsight{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate health schemas: %w", err)
 	}
-	
-	return store, nil
-}
 
-func generateID() string {
-	bytes := make([]byte, 8)
-	rand.Read(bytes)
-	return "hlth_" + hex.EncodeToString(bytes)
+	return store, nil
 }
 
 // Medication operations
 
 func (s *Store) CreateMedication(med *Medication) error {
 	if med.ID == "" {
-		med.ID = generateID()
+		med.ID = idgen.Generate(idgen.PrefixHealth)
 	}
-	
+
 	// Serialize arrays
 	if len(med.Times) > 0 {
 		timesJSON, _ := json.Marshal(med.Times)
@@ -48,7 +41,7 @@ func (s *Store) CreateMedication(med *Medication) error {
 		daysJSON, _ := json.Marshal(med.DaysOfWeek)
 		med.DaysJSON = string(daysJSON)
 	}
-	
+
 	med.CreatedAt = time.Now()
 	med.UpdatedAt = time.Now()
 	return s.db.Create(med).Error
@@ -60,7 +53,7 @@ func (s *Store) GetMedication(id string) (*Medication, error) {
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil
 	}
-	
+
 	// Deserialize arrays
 	if med.TimesJSON != "" {
 		json.Unmarshal([]byte(med.TimesJSON), &med.Times)
@@ -68,7 +61,7 @@ func (s *Store) GetMedication(id string) (*Medication, error) {
 	if med.DaysJSON != "" {
 		json.Unmarshal([]byte(med.DaysJSON), &med.DaysOfWeek)
 	}
-	
+
 	return &med, err
 }
 
@@ -82,7 +75,7 @@ func (s *Store) UpdateMedication(med *Medication) error {
 		daysJSON, _ := json.Marshal(med.DaysOfWeek)
 		med.DaysJSON = string(daysJSON)
 	}
-	
+
 	med.UpdatedAt = time.Now()
 	return s.db.Save(med).Error
 }
@@ -96,10 +89,10 @@ func (s *Store) ListMedications(userID string, activeOnly bool) ([]Medication, e
 	if activeOnly {
 		query = query.Where("enabled = ?", true)
 	}
-	
+
 	var meds []Medication
 	err := query.Order("created_at DESC").Find(&meds).Error
-	
+
 	// Deserialize arrays
 	for i := range meds {
 		if meds[i].TimesJSON != "" {
@@ -109,7 +102,7 @@ func (s *Store) ListMedications(userID string, activeOnly bool) ([]Medication, e
 			json.Unmarshal([]byte(meds[i].DaysJSON), &meds[i].DaysOfWeek)
 		}
 	}
-	
+
 	return meds, err
 }
 
@@ -117,7 +110,7 @@ func (s *Store) ListMedications(userID string, activeOnly bool) ([]Medication, e
 
 func (s *Store) CreateMedicationLog(log *MedicationLog) error {
 	if log.ID == "" {
-		log.ID = generateID()
+		log.ID = idgen.Generate(idgen.PrefixHealth)
 	}
 	log.CreatedAt = time.Now()
 	return s.db.Create(log).Error
@@ -138,7 +131,7 @@ func (s *Store) UpdateMedicationLog(log *MedicationLog) error {
 
 func (s *Store) GetMedicationLogs(userID, medicationID string, start, end time.Time) ([]MedicationLog, error) {
 	query := s.db.Where("user_id = ?", userID)
-	
+
 	if medicationID != "" {
 		query = query.Where("medication_id = ?", medicationID)
 	}
@@ -148,7 +141,7 @@ func (s *Store) GetMedicationLogs(userID, medicationID string, start, end time.T
 	if !end.IsZero() {
 		query = query.Where("scheduled_time <= ?", end)
 	}
-	
+
 	var logs []MedicationLog
 	err := query.Order("scheduled_time DESC").Find(&logs).Error
 	return logs, err
@@ -158,7 +151,7 @@ func (s *Store) GetTodayLogs(userID string) ([]MedicationLog, error) {
 	now := time.Now()
 	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	endOfDay := startOfDay.Add(24 * time.Hour)
-	
+
 	return s.GetMedicationLogs(userID, "", startOfDay, endOfDay)
 }
 
@@ -166,7 +159,7 @@ func (s *Store) GetTodayLogs(userID string) ([]MedicationLog, error) {
 
 func (s *Store) CreateMetric(metric *HealthMetric) error {
 	if metric.ID == "" {
-		metric.ID = generateID()
+		metric.ID = idgen.Generate(idgen.PrefixHealth)
 	}
 	metric.CreatedAt = time.Now()
 	metric.UpdatedAt = time.Now()
@@ -193,7 +186,7 @@ func (s *Store) DeleteMetric(id string) error {
 
 func (s *Store) GetMetrics(userID, metricType string, start, end time.Time, limit int) ([]HealthMetric, error) {
 	query := s.db.Where("user_id = ?", userID)
-	
+
 	if metricType != "" {
 		query = query.Where("type = ?", metricType)
 	}
@@ -206,7 +199,7 @@ func (s *Store) GetMetrics(userID, metricType string, start, end time.Time, limi
 	if limit > 0 {
 		query = query.Limit(limit)
 	}
-	
+
 	var metrics []HealthMetric
 	err := query.Order("measured_at DESC").Find(&metrics).Error
 	return metrics, err
@@ -217,7 +210,7 @@ func (s *Store) GetLatestMetric(userID, metricType string) (*HealthMetric, error
 	err := s.db.Where("user_id = ? AND type = ?", userID, metricType).
 		Order("measured_at DESC").
 		First(&metric).Error
-	
+
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil
 	}
@@ -228,7 +221,7 @@ func (s *Store) GetLatestMetric(userID, metricType string) (*HealthMetric, error
 
 func (s *Store) CreateAppointment(appt *HealthAppointment) error {
 	if appt.ID == "" {
-		appt.ID = generateID()
+		appt.ID = idgen.Generate(idgen.PrefixHealth)
 	}
 	appt.CreatedAt = time.Now()
 	appt.UpdatedAt = time.Now()
@@ -255,14 +248,14 @@ func (s *Store) DeleteAppointment(id string) error {
 
 func (s *Store) GetUpcomingAppointments(userID string, limit int) ([]HealthAppointment, error) {
 	now := time.Now()
-	
-	query := s.db.Where("user_id = ? AND date_time >= ? AND status IN ?", 
+
+	query := s.db.Where("user_id = ? AND date_time >= ? AND status IN ?",
 		userID, now, []string{"scheduled", "confirmed"})
-	
+
 	if limit > 0 {
 		query = query.Limit(limit)
 	}
-	
+
 	var appts []HealthAppointment
 	err := query.Order("date_time ASC").Find(&appts).Error
 	return appts, err
@@ -270,14 +263,14 @@ func (s *Store) GetUpcomingAppointments(userID string, limit int) ([]HealthAppoi
 
 func (s *Store) GetAppointments(userID string, start, end time.Time) ([]HealthAppointment, error) {
 	query := s.db.Where("user_id = ?", userID)
-	
+
 	if !start.IsZero() {
 		query = query.Where("date_time >= ?", start)
 	}
 	if !end.IsZero() {
 		query = query.Where("date_time <= ?", end)
 	}
-	
+
 	var appts []HealthAppointment
 	err := query.Order("date_time DESC").Find(&appts).Error
 	return appts, err
@@ -287,7 +280,7 @@ func (s *Store) GetAppointments(userID string, start, end time.Time) ([]HealthAp
 
 func (s *Store) CreateGoal(goal *HealthGoal) error {
 	if goal.ID == "" {
-		goal.ID = generateID()
+		goal.ID = idgen.Generate(idgen.PrefixHealth)
 	}
 	goal.CreatedAt = time.Now()
 	goal.UpdatedAt = time.Now()
@@ -314,11 +307,11 @@ func (s *Store) DeleteGoal(id string) error {
 
 func (s *Store) ListGoals(userID string, status string) ([]HealthGoal, error) {
 	query := s.db.Where("user_id = ?", userID)
-	
+
 	if status != "" && status != "all" {
 		query = query.Where("status = ?", status)
 	}
-	
+
 	var goals []HealthGoal
 	err := query.Order("created_at DESC").Find(&goals).Error
 	return goals, err
@@ -328,7 +321,7 @@ func (s *Store) ListGoals(userID string, status string) ([]HealthGoal, error) {
 
 func (s *Store) CreateInsight(insight *HealthInsight) error {
 	if insight.ID == "" {
-		insight.ID = generateID()
+		insight.ID = idgen.Generate(idgen.PrefixHealth)
 	}
 	insight.CreatedAt = time.Now()
 	return s.db.Create(insight).Error
@@ -336,11 +329,11 @@ func (s *Store) CreateInsight(insight *HealthInsight) error {
 
 func (s *Store) GetInsights(userID string, dismissed bool, limit int) ([]HealthInsight, error) {
 	query := s.db.Where("user_id = ? AND dismissed = ?", userID, dismissed)
-	
+
 	if limit > 0 {
 		query = query.Limit(limit)
 	}
-	
+
 	var insights []HealthInsight
 	err := query.Order("created_at DESC").Find(&insights).Error
 	return insights, err
@@ -361,43 +354,43 @@ func (s *Store) GetStats(userID string) (*HealthStats, error) {
 		MetricsTracked: []string{},
 		LatestMetrics:  make(map[string]interface{}),
 	}
-	
+
 	var count int64
-	
+
 	// Medications
 	s.db.Model(&Medication{}).Where("user_id = ?", userID).Count(&count)
 	stats.TotalMedications = int(count)
 	s.db.Model(&Medication{}).Where("user_id = ? AND enabled = ?", userID, true).Count(&count)
 	stats.ActiveMedications = int(count)
-	
+
 	// Today's logs
 	now := time.Now()
 	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	
-	s.db.Model(&MedicationLog{}).Where("user_id = ? AND scheduled_time >= ? AND status = ?", 
+
+	s.db.Model(&MedicationLog{}).Where("user_id = ? AND scheduled_time >= ? AND status = ?",
 		userID, startOfDay, "taken").Count(&count)
 	stats.DosesTakenToday = int(count)
-	
-	s.db.Model(&MedicationLog{}).Where("user_id = ? AND scheduled_time >= ? AND status = ?", 
+
+	s.db.Model(&MedicationLog{}).Where("user_id = ? AND scheduled_time >= ? AND status = ?",
 		userID, startOfDay, "missed").Count(&count)
 	stats.DosesMissedToday = int(count)
-	
+
 	// Upcoming appointments
 	s.db.Model(&HealthAppointment{}).Where("user_id = ? AND date_time >= ? AND status IN ?",
 		userID, now, []string{"scheduled", "confirmed"}).Count(&count)
 	stats.UpcomingAppointments = int(count)
-	
+
 	// Goals
 	s.db.Model(&HealthGoal{}).Where("user_id = ? AND status = ?", userID, "active").Count(&count)
 	stats.ActiveGoals = int(count)
 	s.db.Model(&HealthGoal{}).Where("user_id = ? AND status = ?", userID, "completed").Count(&count)
 	stats.CompletedGoals = int(count)
-	
+
 	// Tracked metrics
 	var metricTypes []string
 	s.db.Model(&HealthMetric{}).Where("user_id = ?", userID).Distinct().Pluck("type", &metricTypes)
 	stats.MetricsTracked = metricTypes
-	
+
 	// Latest metrics
 	for _, mType := range metricTypes {
 		metric, _ := s.GetLatestMetric(userID, mType)
@@ -409,6 +402,6 @@ func (s *Store) GetStats(userID string) (*HealthStats, error) {
 			}
 		}
 	}
-	
+
 	return stats, nil
 }
