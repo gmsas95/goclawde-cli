@@ -3,12 +3,12 @@ package api
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/gmsas95/myrai-cli/internal/dashboard"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
@@ -69,6 +69,10 @@ func (s *Server) setupRoutes() {
 
 	s.app.Get("/ws", websocket.New(s.handleWebSocket))
 
+	// Register dashboard API routes
+	dashboardHandler := dashboard.NewHandler(s.config, s.skillsRegistry, s.logger)
+	dashboardHandler.RegisterRoutes(s.app)
+
 	// Try to serve embedded dashboard first
 	if err := s.setupDashboard(); err != nil {
 		s.logger.Warn("Dashboard not available", zap.Error(err))
@@ -115,10 +119,10 @@ func (s *Server) Shutdown() error {
 	return s.app.ShutdownWithContext(ctx)
 }
 
-// setupDashboard tries to serve the embedded dashboard
+// setupDashboard tries to serve the dashboard
 func (s *Server) setupDashboard() error {
-	// Try to use embedded dashboard first
-	staticFS, err := getEmbeddedDashboard()
+	// Try to get dashboard filesystem
+	staticFS, err := dashboard.GetStaticFS()
 	if err != nil {
 		return err
 	}
@@ -163,13 +167,6 @@ func (s *Server) setupDashboard() error {
 		return c.Send(content)
 	})
 
-	s.logger.Info("Dashboard served from embedded filesystem")
+	s.logger.Info("Dashboard served successfully")
 	return nil
-}
-
-// getEmbeddedDashboard returns the embedded dashboard filesystem
-func getEmbeddedDashboard() (http.FileSystem, error) {
-	// Try to use the embedded dashboard from internal/dashboard package
-	// This will be available when built with the embed tag
-	return http.Dir("./web/dashboard/dist"), nil
 }

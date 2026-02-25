@@ -45,7 +45,7 @@ RUN addgroup -g 1000 myrai && \
     adduser -u 1000 -G myrai -s /bin/sh -D myrai
 
 COPY --from=go-builder /build/myrai /app/myrai
-COPY --from=go-builder /build/web/dashboard/dist /app/web
+COPY --from=go-builder /build/web/dashboard/dist /app/web/dashboard/dist
 
 # Create data directory with proper permissions
 RUN mkdir -p /app/data && chown -R myrai:myrai /app/data

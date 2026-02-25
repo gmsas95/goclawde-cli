@@ -1,27 +1,30 @@
-//go:build embed
-// +build embed
-
 package dashboard
 
 import (
-	"embed"
-	"io/fs"
 	"net/http"
+	"os"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 )
 
-//go:embed all:dist
-var distFS embed.FS
-
-// GetStaticFS returns the embedded filesystem for the dashboard
+// GetStaticFS returns the dashboard filesystem from disk
+// Note: Files are expected to be at web/dashboard/dist relative to working directory
 func GetStaticFS() (http.FileSystem, error) {
-	staticFS, err := fs.Sub(distFS, "dist")
-	if err != nil {
-		return nil, err
+	paths := []string{
+		"./web/dashboard/dist",
+		"./web/dist",
+		"/app/web/dashboard/dist",
+		"/app/web",
 	}
-	return http.FS(staticFS), nil
+
+	for _, path := range paths {
+		if stat, err := os.Stat(path); err == nil && stat.IsDir() {
+			return http.Dir(path), nil
+		}
+	}
+
+	return nil, os.ErrNotExist
 }
 
 // RegisterStatic registers the static file serving middleware
