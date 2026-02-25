@@ -14,6 +14,7 @@ import (
 	"github.com/gmsas95/myrai-cli/internal/skills/search"
 	"github.com/gmsas95/myrai-cli/internal/skills/shopping"
 	"github.com/gmsas95/myrai-cli/internal/skills/system"
+	"github.com/gmsas95/myrai-cli/internal/skills/threads"
 	"github.com/gmsas95/myrai-cli/internal/skills/vision"
 	"github.com/gmsas95/myrai-cli/internal/skills/voice"
 	"github.com/gmsas95/myrai-cli/internal/skills/weather"
@@ -110,5 +111,19 @@ func RegisterSkills(cfg *config.Config, st *store.Store, registry *skills.Regist
 		logger.Warn("Vision skill NOT registered",
 			zap.Bool("enabled", cfg.Skills.Vision.Enabled),
 			zap.Bool("has_llm_client", llmClient != nil))
+	}
+
+	// Register Threads skill
+	threadsSkill := threads.NewThreadsSkill(threads.Config{
+		Enabled:       cfg.Skills.Threads.Enabled,
+		AccessToken:   cfg.Skills.Threads.AccessToken,
+		TimeoutSecs:   cfg.Skills.Threads.TimeoutSecs,
+		MaxTextLength: cfg.Skills.Threads.MaxTextLength,
+	})
+	if threadsSkill.IsEnabled() {
+		registry.Register(threadsSkill)
+		logger.Info("Threads skill registered")
+	} else {
+		logger.Warn("Threads skill NOT registered - missing access token or disabled")
 	}
 }

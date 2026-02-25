@@ -100,6 +100,7 @@ type SkillsConfig struct {
 	Brave   BraveSkillConfig   `mapstructure:"brave"`
 	Search  SearchSkillConfig  `mapstructure:"search"`
 	Vision  VisionSkillConfig  `mapstructure:"vision"`
+	Threads ThreadsSkillConfig `mapstructure:"threads"`
 }
 
 type GitHubSkillConfig struct {
@@ -131,6 +132,13 @@ type SearchSkillConfig struct {
 type VisionSkillConfig struct {
 	Enabled     bool   `mapstructure:"enabled"`
 	VisionModel string `mapstructure:"vision_model"` // gpt-4o, claude-3-opus, gemini-pro-vision
+}
+
+type ThreadsSkillConfig struct {
+	Enabled       bool   `mapstructure:"enabled"`
+	AccessToken   string `mapstructure:"access_token"`
+	TimeoutSecs   int    `mapstructure:"timeout_seconds"`
+	MaxTextLength int    `mapstructure:"max_text_length"`
 }
 
 // MCPConfig holds MCP server configuration
@@ -334,6 +342,11 @@ func loadStandardEnvVars(cfg *Config) {
 	if provider := ResolveEnvWithAliases("MYRAI_SKILLS_SEARCH_PROVIDER"); provider != "" {
 		cfg.Skills.Search.Provider = provider
 	}
+
+	if token := ResolveEnvWithAliases("MYRAI_SKILLS_THREADS_ACCESS_TOKEN"); token != "" {
+		cfg.Skills.Threads.AccessToken = token
+		cfg.Skills.Threads.Enabled = true
+	}
 }
 
 func loadProviderFromEnv(cfg *Config, name, envKey, defaultBaseURL, defaultModel string) {
@@ -408,6 +421,11 @@ func setDefaults(v *viper.Viper) {
 	// Vision defaults
 	v.SetDefault("vision.enabled", true)
 	v.SetDefault("vision.vision_model", "gpt-4o")
+
+	// Threads defaults
+	v.SetDefault("skills.threads.enabled", false)
+	v.SetDefault("skills.threads.timeout_seconds", 30)
+	v.SetDefault("skills.threads.max_text_length", 500)
 }
 
 func getDefaultDataDir() string {
