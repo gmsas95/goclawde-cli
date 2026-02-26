@@ -90,6 +90,7 @@ Complete guide to deploying Myrai 2.0 on Dokploy VPS.
 | `GITHUB_TOKEN` | GitHub Personal Access Token | [github.com/settings/tokens](https://github.com/settings/tokens) |
 | `BRAVE_API_KEY` | Brave Search API (2,000 queries/month free) | [api.search.brave.com](https://api.search.brave.com) |
 | `WEATHER_API_KEY` | Weather API (optional, wttr.in used by default) | [openweathermap.org](https://openweathermap.org) |
+| `DAUN_API_KEY` | Daun.me API for posting to social media | Create app at daun.me settings |
 
 ### Optional: Voice & Media
 

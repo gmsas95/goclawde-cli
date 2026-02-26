@@ -62,6 +62,11 @@ func (a *Agent) SetSkillsRegistry(registry *skills.Registry) {
 	a.skillsRegistry = registry
 }
 
+// GetSkillsRegistry returns the skills registry
+func (a *Agent) GetSkillsRegistry() *skills.Registry {
+	return a.skillsRegistry
+}
+
 // ChatRequest represents a chat request
 type ChatRequest struct {
 	ConversationID string

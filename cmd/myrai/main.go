@@ -23,6 +23,7 @@ import (
 	"github.com/gmsas95/myrai-cli/internal/persona"
 	"github.com/gmsas95/myrai-cli/internal/skills"
 	"github.com/gmsas95/myrai-cli/internal/store"
+	"github.com/gmsas95/myrai-cli/internal/tui"
 	"go.uber.org/zap"
 )
 
@@ -30,6 +31,7 @@ var (
 	configPath = flag.String("config", "", "Path to config file")
 	dataDir    = flag.String("data", "", "Path to data directory")
 	cliMode    = flag.Bool("cli", false, "Run in CLI mode (one-shot or interactive)")
+	tuiMode    = flag.Bool("tui", false, "Run in beautiful TUI mode")
 	message    = flag.String("m", "", "Message to send (CLI mode)")
 	serverMode = flag.Bool("server", false, "Run in server mode")
 	onboard    = flag.Bool("onboard", false, "Run onboarding wizard")
@@ -138,6 +140,20 @@ func main() {
 	}
 
 	appCtx := initAppWithGracefulShutdown()
+
+	if *tuiMode {
+		// Run beautiful TUI mode
+		agentInstance, err := appCtx.App.CreateAgent()
+		if err != nil {
+			appCtx.Logger.Fatal("Failed to create agent", zap.Error(err))
+		}
+
+		if err := tui.Run(agentInstance); err != nil {
+			appCtx.Logger.Fatal("TUI error", zap.Error(err))
+		}
+		shutdown(appCtx)
+		return
+	}
 
 	if *cliMode || *message != "" {
 		appCtx.App.RunCLI(*message)

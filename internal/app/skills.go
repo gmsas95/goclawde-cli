@@ -6,6 +6,7 @@ import (
 	"github.com/gmsas95/myrai-cli/internal/skills"
 	"github.com/gmsas95/myrai-cli/internal/skills/agentic"
 	"github.com/gmsas95/myrai-cli/internal/skills/browser"
+	"github.com/gmsas95/myrai-cli/internal/skills/daun"
 	"github.com/gmsas95/myrai-cli/internal/skills/documents"
 	"github.com/gmsas95/myrai-cli/internal/skills/github"
 	"github.com/gmsas95/myrai-cli/internal/skills/health"
@@ -125,5 +126,14 @@ func RegisterSkills(cfg *config.Config, st *store.Store, registry *skills.Regist
 		logger.Info("Threads skill registered")
 	} else {
 		logger.Warn("Threads skill NOT registered - missing access token or disabled")
+	}
+
+	// Register Daun skill
+	daunSkill := daun.NewDaunSkill(cfg.Skills.Daun.APIKey)
+	if cfg.Skills.Daun.APIKey != "" {
+		registry.Register(daunSkill)
+		logger.Info("Daun skill registered")
+	} else {
+		logger.Warn("Daun skill NOT registered - missing API key")
 	}
 }

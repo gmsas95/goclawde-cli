@@ -8,6 +8,7 @@ func PrintExtendedHelp() {
 	fmt.Println("Usage:")
 	fmt.Println("  myrai                          Run in server mode (default)")
 	fmt.Println("  myrai --server                 Run in server mode")
+	fmt.Println("  myrai --tui                    Run beautiful TUI mode")
 	fmt.Println("  myrai --cli                    Run interactive CLI mode")
 	fmt.Println("  myrai -m 'message'             Send one-shot message")
 	fmt.Println()

@@ -101,6 +101,7 @@ type SkillsConfig struct {
 	Search  SearchSkillConfig  `mapstructure:"search"`
 	Vision  VisionSkillConfig  `mapstructure:"vision"`
 	Threads ThreadsSkillConfig `mapstructure:"threads"`
+	Daun    DaunSkillConfig    `mapstructure:"daun"`
 }
 
 type GitHubSkillConfig struct {
@@ -139,6 +140,10 @@ type ThreadsSkillConfig struct {
 	AccessToken   string `mapstructure:"access_token"`
 	TimeoutSecs   int    `mapstructure:"timeout_seconds"`
 	MaxTextLength int    `mapstructure:"max_text_length"`
+}
+
+type DaunSkillConfig struct {
+	APIKey string `mapstructure:"api_key"`
 }
 
 // MCPConfig holds MCP server configuration
@@ -232,6 +237,16 @@ func Load(configPath, dataDir string) (*Config, error) {
 	v.SetEnvPrefix("MYRAI")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
+
+	// IMPORTANT: Force sqlite_path to be inside data directory
+	// This ensures database is persisted when using Docker volumes
+	// Only override if not explicitly set via environment variable
+	if os.Getenv("MYRAI_STORAGE_SQLITE_PATH") == "" {
+		v.Set("storage.sqlite_path", filepath.Join(dataDir, "myrai.db"))
+	}
+	if os.Getenv("MYRAI_STORAGE_BADGER_PATH") == "" {
+		v.Set("storage.badger_path", filepath.Join(dataDir, "badger"))
+	}
 
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
@@ -496,6 +511,7 @@ func loadEnvOverrides(cfg *Config) {
 
 	cfg.Skills.GitHub.Token = ResolveEnvWithAliases("MYRAI_SKILLS_GITHUB_TOKEN")
 	cfg.Skills.Weather.APIKey = ResolveEnvWithAliases("MYRAI_SKILLS_WEATHER_API_KEY")
+	cfg.Skills.Daun.APIKey = ResolveEnvWithAliases("MYRAI_SKILLS_DAUN_API_KEY")
 
 	cfg.Channels.Telegram.BotToken = ResolveEnvWithAliases("MYRAI_CHANNELS_TELEGRAM_BOT_TOKEN")
 	cfg.Channels.Discord.Token = ResolveEnvWithAliases("MYRAI_CHANNELS_DISCORD_TOKEN")

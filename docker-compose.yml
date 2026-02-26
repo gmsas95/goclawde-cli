@@ -29,6 +29,7 @@ services:
       # Skills (optional)
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
       - BRAVE_API_KEY=${BRAVE_API_KEY:-}
+      - DAUN_API_KEY=${DAUN_API_KEY:-}
       
       # Security
       - MYRAI_JWT_SECRET=${MYRAI_JWT_SECRET:-}

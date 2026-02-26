@@ -193,6 +193,7 @@ Just send me a message!`)
 /history - Show conversation history
 /resume <number> - Resume a previous conversation
 /documents - Show all uploaded documents
+/skills - Show all available skills
 /status - Show bot status
 
 *Features:*
@@ -239,6 +240,9 @@ Just chat naturally or ask me to:
 
 	case "documents":
 		return b.handleDocumentsCommand(chatID)
+
+	case "skills":
+		return b.handleSkillsCommand(chatID)
 
 	default:
 		_, err := b.sendMessage(chatID, "❓ Unknown command. Use /help for available commands.")
@@ -378,6 +382,50 @@ func (b *Bot) handleDocumentsCommand(chatID int64) error {
 	}
 
 	_, err = b.sendMessage(chatID, sb.String())
+	return err
+}
+
+// handleSkillsCommand shows all registered skills
+func (b *Bot) handleSkillsCommand(chatID int64) error {
+	if b.agent == nil {
+		_, err := b.sendMessage(chatID, "❌ Skills information not available - agent not initialized.")
+		return err
+	}
+
+	skillsRegistry := b.agent.GetSkillsRegistry()
+	if skillsRegistry == nil {
+		_, err := b.sendMessage(chatID, "❌ Skills registry not available.")
+		return err
+	}
+
+	skills := skillsRegistry.ListSkills()
+	if len(skills) == 0 {
+		_, err := b.sendMessage(chatID, "📭 No skills registered.")
+		return err
+	}
+
+	var sb strings.Builder
+	sb.WriteString("🛠️ *Available Skills*\n\n")
+
+	for _, skill := range skills {
+		status := "✅"
+		if !skill.IsEnabled() {
+			status = "❌"
+		}
+		sb.WriteString(fmt.Sprintf("%s *%s*\n", status, skill.Name()))
+		sb.WriteString(fmt.Sprintf("   %s\n", skill.Description()))
+
+		// List tools for this skill
+		tools := skill.Tools()
+		if len(tools) > 0 {
+			sb.WriteString(fmt.Sprintf("   _Tools: %d_\n", len(tools)))
+		}
+		sb.WriteString("\n")
+	}
+
+	sb.WriteString(fmt.Sprintf("*Total: %d skills*", len(skills)))
+
+	_, err := b.sendMessage(chatID, sb.String())
 	return err
 }
 

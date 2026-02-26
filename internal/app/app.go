@@ -252,6 +252,7 @@ func OneShot(agentInstance *agent.Agent, msg string) {
 func Interactive(agentInstance *agent.Agent) {
 	fmt.Println("🤖 Myrai - Interactive Mode")
 	fmt.Println("Type 'exit' or 'quit' to exit, 'help' for commands")
+	fmt.Println("Use slash commands like /skills to see available skills")
 	fmt.Println()
 
 	reader := bufio.NewReader(os.Stdin)
@@ -285,6 +286,14 @@ func Interactive(agentInstance *agent.Agent) {
 			continue
 		}
 
+		// Handle slash commands
+		if strings.HasPrefix(input, "/") {
+			handled := handleSlashCommand(agentInstance, input)
+			if handled {
+				continue
+			}
+		}
+
 		fmt.Println()
 		fmt.Print("🤖 Myrai: ")
 
@@ -309,6 +318,87 @@ func Interactive(agentInstance *agent.Agent) {
 		fmt.Printf("\n⏱️  Response time: %v | Tokens: %d\n", time.Since(start), resp.TokensUsed)
 		fmt.Println()
 	}
+}
+
+// handleSlashCommand handles slash commands in interactive mode
+// Returns true if command was handled, false to pass to AI
+func handleSlashCommand(agentInstance *agent.Agent, input string) bool {
+	parts := strings.Fields(input)
+	if len(parts) == 0 {
+		return false
+	}
+
+	command := strings.ToLower(parts[0])
+
+	switch command {
+	case "/skills":
+		return handleSkillsCommand(agentInstance)
+	case "/help":
+		PrintSlashCommandsHelp()
+		return true
+	default:
+		fmt.Printf("❓ Unknown slash command: %s\n", command)
+		fmt.Println("Type /help for available slash commands")
+		return true
+	}
+}
+
+// handleSkillsCommand lists all available skills
+func handleSkillsCommand(agentInstance *agent.Agent) bool {
+	if agentInstance == nil {
+		fmt.Println("❌ Agent not initialized")
+		return true
+	}
+
+	skillsRegistry := agentInstance.GetSkillsRegistry()
+	if skillsRegistry == nil {
+		fmt.Println("❌ Skills registry not available")
+		return true
+	}
+
+	skills := skillsRegistry.ListSkills()
+	if len(skills) == 0 {
+		fmt.Println("📭 No skills registered")
+		return true
+	}
+
+	fmt.Println()
+	fmt.Println("🛠️  Available Skills:")
+	fmt.Println(strings.Repeat("-", 60))
+
+	for _, skill := range skills {
+		enabled := "✅"
+		if !skill.IsEnabled() {
+			enabled = "❌"
+		}
+		fmt.Printf("  %s %-20s %s\n", enabled, skill.Name(), skill.Description())
+
+		// List tools for this skill
+		tools := skill.Tools()
+		if len(tools) > 0 {
+			fmt.Printf("     Tools (%d): ", len(tools))
+			toolNames := make([]string, 0, len(tools))
+			for _, tool := range tools {
+				toolNames = append(toolNames, tool.Name)
+			}
+			fmt.Println(strings.Join(toolNames, ", "))
+		}
+	}
+
+	fmt.Println()
+	fmt.Printf("Total: %d skills\n", len(skills))
+	fmt.Println()
+	return true
+}
+
+// PrintSlashCommandsHelp shows available slash commands
+func PrintSlashCommandsHelp() {
+	fmt.Println()
+	fmt.Println("Slash Commands:")
+	fmt.Println("  /skills     - List all available skills and their tools")
+	fmt.Println("  /help       - Show this help")
+	fmt.Println()
+	PrintInteractiveHelp()
 }
 
 func PrintInteractiveHelp() {

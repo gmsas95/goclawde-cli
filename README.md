@@ -49,6 +49,7 @@ Not just a chatbot. Not just a CLI tool. **A life assistant that learns and evol
 | 🧠 **Neural Memory** | Semantic clustering for intelligent context management |
 | 🎭 **Adaptive Persona** | AI personality that evolves with you |
 | 🛠️ **18+ Skills** | Tasks, Calendar, Health, Shopping, Documents, GitHub, Browser, Voice |
+| 💎 **Beautiful TUI** | Bubble Tea-based terminal UI with markdown rendering |
 | 🔌 **MCP Protocol** | Native Model Context Protocol for tool integration |
 | 💬 **Multi-Channel** | CLI, Web UI, Telegram, Discord |
 | 🌐 **Real-time Search** | Brave Search, DuckDuckGo integration |
@@ -121,6 +122,9 @@ go build -o myrai ./cmd/myrai
 
 # Start the server (Web UI + API + Channels)
 ./myrai server
+
+# Or use the beautiful TUI mode (recommended for local use)
+./myrai --tui
 
 # Or use CLI mode
 ./myrai --cli
