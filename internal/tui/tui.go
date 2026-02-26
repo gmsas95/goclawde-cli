@@ -31,6 +31,7 @@ type Model struct {
 	spinner        spinner.Model
 	messages       []Message
 	isLoading      bool
+	executingTool  string // Name of tool currently being executed
 	width          int
 	height         int
 	renderer       *glamour.TermRenderer
@@ -246,7 +247,11 @@ func (m Model) View() string {
 
 	// Loading indicator
 	if m.isLoading {
-		sb.WriteString(fmt.Sprintf("\n  %s Thinking...\n", m.spinner.View()))
+		if m.executingTool != "" {
+			sb.WriteString(fmt.Sprintf("\n  %s Using tool: %s...\n", m.spinner.View(), m.executingTool))
+		} else {
+			sb.WriteString(fmt.Sprintf("\n  %s Thinking...\n", m.spinner.View()))
+		}
 	}
 
 	// Input area
@@ -443,6 +448,10 @@ func (m Model) sendToAgent(message string) tea.Cmd {
 			Message:        message,
 			ConversationID: m.conversationID,
 			Stream:         false,
+			OnToolExecuting: func(toolName string) {
+				// This runs in a different goroutine, so we can't directly update the model
+				// The tool execution will be shown in the response
+			},
 		})
 		if err != nil {
 			return errMsg{err: err}

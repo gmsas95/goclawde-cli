@@ -17,14 +17,15 @@ import (
 
 // Agent handles conversation and tool execution
 type Agent struct {
-	llmClient      *llm.Client
-	tools          *tools.Registry
-	skillsRegistry *skills.Registry
-	store          *store.Store
-	logger         *zap.Logger
-	personaManager *persona.PersonaManager
-	contextManager *ContextManager
-	agentLoop      *AgentLoop
+	llmClient       *llm.Client
+	tools           *tools.Registry
+	skillsRegistry  *skills.Registry
+	store           *store.Store
+	logger          *zap.Logger
+	personaManager  *persona.PersonaManager
+	contextManager  *ContextManager
+	agentLoop       *AgentLoop
+	onToolExecuting func(toolName string) // Callback for tool execution feedback
 }
 
 // New creates a new Agent
@@ -69,11 +70,12 @@ func (a *Agent) GetSkillsRegistry() *skills.Registry {
 
 // ChatRequest represents a chat request
 type ChatRequest struct {
-	ConversationID string
-	Message        string
-	SystemPrompt   string
-	Stream         bool
-	OnStream       func(string)
+	ConversationID  string
+	Message         string
+	SystemPrompt    string
+	Stream          bool
+	OnStream        func(string)
+	OnToolExecuting func(toolName string) // Callback when a tool starts executing
 }
 
 // ChatResponse represents a chat response
@@ -148,6 +150,10 @@ func (a *Agent) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error
 		Stream:            req.Stream,
 		ParallelToolCalls: len(tools) > 0, // Disable parallel tool calls for better reliability
 	}
+
+	// Set up tool execution callback for UI feedback
+	a.onToolExecuting = req.OnToolExecuting
+	defer func() { a.onToolExecuting = nil }() // Clear after request
 
 	var response *ChatResponse
 	if req.Stream && req.OnStream != nil {
@@ -323,6 +329,11 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 			zap.String("tool", tc.Function.Name),
 			zap.String("args", tc.Function.Arguments),
 		)
+
+		// Notify UI that tool is executing
+		if a.onToolExecuting != nil {
+			a.onToolExecuting(tc.Function.Name)
+		}
 
 		toolCallID := toolCallIDs[i]
 

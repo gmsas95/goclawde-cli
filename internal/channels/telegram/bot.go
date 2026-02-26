@@ -470,6 +470,10 @@ func (b *Bot) handleMessage(msg *tgbotapi.Message) error {
 		ConversationID: convID,
 		Message:        text,
 		Stream:         false, // Non-streaming for Telegram
+		OnToolExecuting: func(toolName string) {
+			// Show tool execution feedback
+			_, _ = b.sendMessage(chatID, fmt.Sprintf("🔧 Using tool: *%s*...", toolName))
+		},
 	})
 
 	if err != nil {
