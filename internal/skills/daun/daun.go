@@ -136,7 +136,7 @@ func (s *DaunSkill) makeRequest(ctx context.Context, method, url string, body io
 		req.Header.Set("Content-Type", contentType)
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := &http.Client{Timeout: 60 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

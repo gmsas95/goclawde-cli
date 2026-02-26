@@ -20,7 +20,7 @@ type SystemSkill struct {
 // NewSystemSkill creates a new system skill
 func NewSystemSkill(allowedCommands []string) *SystemSkill {
 	if len(allowedCommands) == 0 {
-		allowedCommands = []string{"ls", "cat", "grep", "find", "pwd", "echo", "mkdir", "touch", "head", "tail", "wc", "df", "du", "ps", "top", "htop"}
+		allowedCommands = []string{"ls", "cat", "grep", "find", "pwd", "echo", "mkdir", "touch", "head", "tail", "wc", "df", "du", "ps", "top", "htop", "curl", "wget", "ping", "nslookup"}
 	}
 
 	s := &SystemSkill{

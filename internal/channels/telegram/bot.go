@@ -491,6 +491,14 @@ func (b *Bot) handleMessage(msg *tgbotapi.Message) error {
 
 	// Format response for Telegram (respecting message limits)
 	response := responseText.String()
+
+	// Check for empty response
+	if strings.TrimSpace(response) == "" {
+		b.logger.Warn("Empty response from agent, sending fallback message")
+		_, err = b.sendMessage(chatID, "🤖 I processed your request but didn't generate a response. Please try again.")
+		return err
+	}
+
 	if len(response) > 4096 {
 		response = response[:4093] + "..."
 	}
