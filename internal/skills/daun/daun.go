@@ -131,7 +131,7 @@ func (s *DaunSkill) makeRequest(ctx context.Context, method, url string, body io
 		return nil, err
 	}
 
-	req.Header.Set("Authorization", "Bearer "+s.accessToken)
+	req.Header.Set("X-API-Key", s.accessToken)
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
 	}
