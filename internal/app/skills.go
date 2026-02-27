@@ -129,8 +129,8 @@ func RegisterSkills(cfg *config.Config, st *store.Store, registry *skills.Regist
 	}
 
 	// Register Daun skill
-	daunSkill := daun.NewDaunSkill(cfg.Skills.Daun.APIKey)
-	if cfg.Skills.Daun.APIKey != "" {
+	daunSkill := daun.NewDaunSkill(cfg.Skills.Daun.AccessToken)
+	if cfg.Skills.Daun.AccessToken != "" {
 		registry.Register(daunSkill)
 		logger.Info("Daun skill registered")
 	} else {

@@ -16,14 +16,14 @@ import (
 // DaunSkill provides Daun.me API integration
 type DaunSkill struct {
 	*skills.BaseSkill
-	apiKey string
+	accessToken string
 }
 
 // NewDaunSkill creates a new Daun skill
-func NewDaunSkill(apiKey string) *DaunSkill {
+func NewDaunSkill(accessToken string) *DaunSkill {
 	s := &DaunSkill{
-		BaseSkill: skills.NewBaseSkill("daun", "Daun.me social media integration", "1.0.0"),
-		apiKey:    apiKey,
+		BaseSkill:   skills.NewBaseSkill("daun", "Daun.me social media integration", "1.0.0"),
+		accessToken: accessToken,
 	}
 
 	s.registerTools()
@@ -131,7 +131,7 @@ func (s *DaunSkill) makeRequest(ctx context.Context, method, url string, body io
 		return nil, err
 	}
 
-	req.Header.Set("X-API-Key", s.apiKey)
+	req.Header.Set("Authorization", "Bearer "+s.accessToken)
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
 	}
@@ -154,8 +154,8 @@ func (s *DaunSkill) makeRequest(ctx context.Context, method, url string, body io
 
 // handleCreatePost creates a new post on Daun
 func (s *DaunSkill) handleCreatePost(ctx context.Context, args map[string]interface{}) (interface{}, error) {
-	if s.apiKey == "" {
-		return nil, fmt.Errorf("Daun API key not configured. Set DAUN_API_KEY environment variable")
+	if s.accessToken == "" {
+		return nil, fmt.Errorf("Daun access token not configured. Run 'myrai auth daun' or set DAUN_API_KEY environment variable")
 	}
 
 	content, _ := args["content"].(string)
@@ -206,8 +206,8 @@ func (s *DaunSkill) handleCreatePost(ctx context.Context, args map[string]interf
 
 // handleSearchPosts searches for posts
 func (s *DaunSkill) handleSearchPosts(ctx context.Context, args map[string]interface{}) (interface{}, error) {
-	if s.apiKey == "" {
-		return nil, fmt.Errorf("Daun API key not configured. Set DAUN_API_KEY environment variable")
+	if s.accessToken == "" {
+		return nil, fmt.Errorf("Daun access token not configured. Run 'myrai auth daun' or set DAUN_API_KEY environment variable")
 	}
 
 	query, _ := args["query"].(string)
@@ -268,8 +268,8 @@ func (s *DaunSkill) handleSearchPosts(ctx context.Context, args map[string]inter
 
 // handleGetFeed gets timeline feed
 func (s *DaunSkill) handleGetFeed(ctx context.Context, args map[string]interface{}) (interface{}, error) {
-	if s.apiKey == "" {
-		return nil, fmt.Errorf("Daun API key not configured. Set DAUN_API_KEY environment variable")
+	if s.accessToken == "" {
+		return nil, fmt.Errorf("Daun access token not configured. Run 'myrai auth daun' or set DAUN_API_KEY environment variable")
 	}
 
 	feedType := "pepohon" // default to global feed
@@ -326,8 +326,8 @@ func (s *DaunSkill) handleGetFeed(ctx context.Context, args map[string]interface
 
 // handleGetUser gets user profile
 func (s *DaunSkill) handleGetUser(ctx context.Context, args map[string]interface{}) (interface{}, error) {
-	if s.apiKey == "" {
-		return nil, fmt.Errorf("Daun API key not configured. Set DAUN_API_KEY environment variable")
+	if s.accessToken == "" {
+		return nil, fmt.Errorf("Daun access token not configured. Run 'myrai auth daun' or set DAUN_API_KEY environment variable")
 	}
 
 	username, _ := args["username"].(string)

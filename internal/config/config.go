@@ -143,7 +143,7 @@ type ThreadsSkillConfig struct {
 }
 
 type DaunSkillConfig struct {
-	APIKey string `mapstructure:"api_key"`
+	AccessToken string `mapstructure:"access_token"`
 }
 
 // MCPConfig holds MCP server configuration
@@ -511,7 +511,7 @@ func loadEnvOverrides(cfg *Config) {
 
 	cfg.Skills.GitHub.Token = ResolveEnvWithAliases("MYRAI_SKILLS_GITHUB_TOKEN")
 	cfg.Skills.Weather.APIKey = ResolveEnvWithAliases("MYRAI_SKILLS_WEATHER_API_KEY")
-	cfg.Skills.Daun.APIKey = ResolveEnvWithAliases("MYRAI_SKILLS_DAUN_API_KEY")
+	cfg.Skills.Daun.AccessToken = ResolveEnvWithAliases("MYRAI_SKILLS_DAUN_ACCESS_TOKEN")
 
 	cfg.Channels.Telegram.BotToken = ResolveEnvWithAliases("MYRAI_CHANNELS_TELEGRAM_BOT_TOKEN")
 	cfg.Channels.Discord.Token = ResolveEnvWithAliases("MYRAI_CHANNELS_DISCORD_TOKEN")
