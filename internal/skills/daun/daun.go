@@ -21,6 +21,17 @@ type DaunSkill struct {
 
 // NewDaunSkill creates a new Daun skill
 func NewDaunSkill(accessToken string) *DaunSkill {
+	// Debug: Log key length and prefix (don't log full key for security)
+	if accessToken != "" {
+		prefix := accessToken
+		if len(accessToken) > 10 {
+			prefix = accessToken[:10]
+		}
+		fmt.Printf("[DAUN DEBUG] Access token loaded: length=%d, prefix=%s...\n", len(accessToken), prefix)
+	} else {
+		fmt.Println("[DAUN DEBUG] Access token is EMPTY")
+	}
+
 	s := &DaunSkill{
 		BaseSkill:   skills.NewBaseSkill("daun", "Daun.me social media integration", "1.0.0"),
 		accessToken: accessToken,
