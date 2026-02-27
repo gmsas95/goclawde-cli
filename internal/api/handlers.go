@@ -9,6 +9,7 @@ import (
 
 	"github.com/gmsas95/myrai-cli/internal/agent"
 	"github.com/gmsas95/myrai-cli/internal/metrics"
+	"github.com/gmsas95/myrai-cli/internal/security"
 	"github.com/gmsas95/myrai-cli/internal/store"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
@@ -140,9 +141,29 @@ func (s *Server) handleChat(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "message is required"})
 	}
 
+	// SECURITY: Validate and sanitize input before sending to LLM
+	validation := security.ValidateUserInput(req.Message)
+	if !validation.Valid {
+		s.logger.Warn("Security violation - blocked API request",
+			zap.Strings("errors", validation.Errors))
+		return c.Status(403).JSON(fiber.Map{
+			"error":   "security_violation",
+			"details": validation.Errors,
+		})
+	}
+
+	// Log warnings if present but not blocking
+	if len(validation.Warnings) > 0 {
+		s.logger.Warn("Input validation warnings",
+			zap.Strings("warnings", validation.Warnings))
+	}
+
+	// Sanitize input (removes/redacts secrets if detected)
+	sanitizedMessage := security.SanitizeInput(req.Message)
+
 	resp, err := s.agent.Chat(c.Context(), agent.ChatRequest{
 		ConversationID: req.ConversationID,
-		Message:        req.Message,
+		Message:        sanitizedMessage,
 		SystemPrompt:   req.SystemPrompt,
 		Stream:         false,
 	})
@@ -175,6 +196,26 @@ func (s *Server) handleChatStream(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "message is required"})
 	}
 
+	// SECURITY: Validate and sanitize input before sending to LLM
+	validation := security.ValidateUserInput(req.Message)
+	if !validation.Valid {
+		s.logger.Warn("Security violation - blocked streaming request",
+			zap.Strings("errors", validation.Errors))
+		return c.Status(403).JSON(fiber.Map{
+			"error":   "security_violation",
+			"details": validation.Errors,
+		})
+	}
+
+	// Log warnings if present but not blocking
+	if len(validation.Warnings) > 0 {
+		s.logger.Warn("Input validation warnings",
+			zap.Strings("warnings", validation.Warnings))
+	}
+
+	// Sanitize input (removes/redacts secrets if detected)
+	sanitizedMessage := security.SanitizeInput(req.Message)
+
 	c.Set("Content-Type", "text/event-stream")
 	c.Set("Cache-Control", "no-cache")
 	c.Set("Connection", "keep-alive")
@@ -183,7 +224,7 @@ func (s *Server) handleChatStream(c *fiber.Ctx) error {
 
 	_, err := s.agent.Chat(c.Context(), agent.ChatRequest{
 		ConversationID: req.ConversationID,
-		Message:        req.Message,
+		Message:        sanitizedMessage,
 		SystemPrompt:   req.SystemPrompt,
 		Stream:         true,
 		OnStream: func(chunk string) {
@@ -323,9 +364,31 @@ func (s *Server) handleWebSocket(c *websocket.Conn) {
 				continue
 			}
 
+			// SECURITY: Validate and sanitize input before sending to LLM
+			validation := security.ValidateUserInput(req.Message)
+			if !validation.Valid {
+				s.logger.Warn("Security violation - blocked WebSocket message",
+					zap.Strings("errors", validation.Errors))
+				c.WriteJSON(fiber.Map{
+					"type":    "error",
+					"error":   "security_violation",
+					"details": validation.Errors,
+				})
+				continue
+			}
+
+			// Log warnings if present but not blocking
+			if len(validation.Warnings) > 0 {
+				s.logger.Warn("Input validation warnings",
+					zap.Strings("warnings", validation.Warnings))
+			}
+
+			// Sanitize input (removes/redacts secrets if detected)
+			sanitizedMessage := security.SanitizeInput(req.Message)
+
 			_, err := s.agent.Chat(context.Background(), agent.ChatRequest{
 				ConversationID: req.ConversationID,
-				Message:        req.Message,
+				Message:        sanitizedMessage,
 				Stream:         true,
 				OnStream: func(chunk string) {
 					c.WriteJSON(fiber.Map{"type": "chunk", "content": chunk})

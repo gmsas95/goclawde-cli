@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gmsas95/myrai-cli/internal/agent"
+	"github.com/gmsas95/myrai-cli/internal/security"
 	"github.com/gmsas95/myrai-cli/internal/store"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
@@ -456,6 +457,26 @@ func (b *Bot) handleMessage(msg *tgbotapi.Message) error {
 	// Get or create conversation for this chat
 	convID := b.getConversationID(chatID)
 
+	// SECURITY: Validate and sanitize input before sending to LLM
+	validation := security.ValidateUserInput(text)
+	if !validation.Valid {
+		b.logger.Warn("Security violation - blocked message",
+			zap.Int64("chat_id", chatID),
+			zap.Strings("errors", validation.Errors))
+		_, err := b.sendMessage(chatID, "🛡️ *Security Alert*: Your message contains blocked patterns and cannot be processed.")
+		return err
+	}
+
+	// Log warnings if present but not blocking
+	if len(validation.Warnings) > 0 {
+		b.logger.Warn("Input validation warnings",
+			zap.Int64("chat_id", chatID),
+			zap.Strings("warnings", validation.Warnings))
+	}
+
+	// Sanitize input (removes/redacts secrets if detected)
+	sanitizedText := security.SanitizeInput(text)
+
 	// Show typing indicator
 	typing := tgbotapi.NewChatAction(chatID, tgbotapi.ChatTyping)
 	b.api.Send(typing)
@@ -468,7 +489,7 @@ func (b *Bot) handleMessage(msg *tgbotapi.Message) error {
 
 	resp, err := b.agent.Chat(ctx, agent.ChatRequest{
 		ConversationID: convID,
-		Message:        text,
+		Message:        sanitizedText,
 		Stream:         false, // Non-streaming for Telegram
 		OnToolExecuting: func(toolName string) {
 			// Show tool execution feedback
