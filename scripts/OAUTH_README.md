@@ -21,34 +21,37 @@ This Go script helps you get a Daun API key via OAuth flow.
    http://localhost:8080/oauth/callback
    ```
 
-### 2. Edit the Script
+### 2. Create the Script on Your Local Machine
 
-Open `scripts/oauth_helper.go` and replace:
+**Option A: Copy the template from the repo**
+```bash
+git clone https://github.com/gmsas95/goclawde-cli.git
+cd goclawde-cli/scripts
+cp oauth_helper_template.go oauth_helper.go
+```
+
+**Option B: Create it yourself**
+Create a new file `oauth_helper.go` with the content from `oauth_helper_template.go`
+
+### 3. Edit the Script
+
+Open `oauth_helper.go` and replace line 14:
 ```go
-const (
-    clientID     = "daun_cli_P0Snpk4zibbssa4jY2g-Vs-W"
-    clientSecret = "YOUR_CLIENT_SECRET_HERE" // ← REPLACE THIS!
-    ...
-)
+clientSecret = "YOUR_CLIENT_SECRET_HERE" // ← REPLACE THIS!
 ```
 
 With your actual client secret:
 ```go
-const (
-    clientID     = "daun_cli_P0Snpk4zibbssa4jY2g-Vs-W"
-    clientSecret = "daun_sec_xxxxxxxxxxxxxxxx" // Your actual secret
-    ...
-)
+clientSecret = "daun_sec_xxxxxxxxxxxxxxxx" // Your actual secret
 ```
 
-### 3. Run the Script
+### 4. Run the Script
 
 ```bash
-cd scripts
 go run oauth_helper.go
 ```
 
-### 4. Authorize in Browser
+### 5. Authorize in Browser
 
 The script will print a URL like:
 ```
@@ -60,7 +63,7 @@ https://daun.me/oauth/authorize?client_id=daun_cli_P0Snpk4zibbssa4jY2g-Vs-W&...
 3. You'll be redirected to localhost
 4. The script will capture the code and exchange it for an API key
 
-### 5. Copy the API Key
+### 6. Copy the API Key
 
 The script will output:
 ```
@@ -72,7 +75,7 @@ Add this to your Dokploy environment variables:
 DAUN_API_KEY=daun_sec_xxxxxxxxxxxxxxxx
 ```
 
-### 6. Update Dokploy
+### 7. Update Dokploy
 
 1. Go to your Dokploy dashboard
 2. Navigate to your Myrai app → Environment
@@ -97,6 +100,6 @@ const port = ":8081" // or any other port
 
 ## Security Note
 
-⚠️ **Never commit the oauth_helper.go file with your client secret!**
+⚠️ **Never commit oauth_helper.go with your client secret!**
 
-The script is in `.gitignore` to prevent accidental commits.
+The `.gitignore` file is configured to ignore `oauth_helper.go`, so you can safely edit it without accidentally committing credentials.

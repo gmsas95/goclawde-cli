@@ -34,6 +34,7 @@ func (s *Server) setupRoutes() {
 	s.app.Get("/api/health", s.handleHealth)
 	s.app.Get("/metrics", s.handleMetrics)
 	s.app.Get("/api/metrics", s.handleMetricsJSON)
+	s.app.Get("/oauth/callback", s.handleOAuthCallback)
 
 	api := s.app.Group("/api")
 
@@ -169,4 +170,31 @@ func (s *Server) setupDashboard() error {
 
 	s.logger.Info("Dashboard served successfully")
 	return nil
+}
+
+// handleOAuthCallback handles OAuth callback from Daun
+func (s *Server) handleOAuthCallback(c *fiber.Ctx) error {
+	code := c.Query("code")
+	state := c.Query("state")
+	errMsg := c.Query("error")
+
+	if errMsg != "" {
+		return c.Status(400).JSON(fiber.Map{
+			"error":       errMsg,
+			"description": c.Query("error_description"),
+		})
+	}
+
+	if code == "" {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "No authorization code received",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "Authorization code received. Copy this code and use it to get your API key.",
+		"code":    code,
+		"state":   state,
+	})
 }
