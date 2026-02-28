@@ -92,6 +92,14 @@ Complete guide to deploying Myrai 2.0 on Dokploy VPS.
 | `WEATHER_API_KEY` | Weather API (optional, wttr.in used by default) | [openweathermap.org](https://openweathermap.org) |
 | `DAUN_API_KEY` | Daun.me API for posting to social media | Create app at daun.me settings |
 
+### Optional: Browser & Search Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MYRAI_SKILLS_BROWSER_ENABLED` | `true` | Enable browser automation skill |
+| `MYRAI_SKILLS_BROWSER_HEADLESS` | `true` | Run browser in headless mode |
+| `MYRAI_SKILLS_SEARCH_PROVIDER` | `duckduckgo` | Search provider: `duckduckgo` (free), `brave`, `serper`, `google` |
+
 ### Optional: Voice & Media
 
 | Variable | Description | Get Key From |
@@ -128,7 +136,10 @@ OPENAI_API_KEY=sk-your-openai-key
 ### With Web Search
 ```bash
 OPENAI_API_KEY=sk-your-openai-key
-BRAVE_API_KEY=your-brave-key
+# Uses DuckDuckGo by default (free, no API key needed)
+# Optional: Use Brave Search for better results
+# BRAVE_API_KEY=your-brave-key
+# MYRAI_SKILLS_SEARCH_PROVIDER=brave
 ```
 
 ### With Telegram Bot
@@ -150,7 +161,12 @@ DISCORD_BOT_TOKEN=your-discord-token
 
 # Tools
 GITHUB_TOKEN=ghp_...
-BRAVE_API_KEY=your-brave-key
+# Browser & Search (DuckDuckGo is free by default)
+MYRAI_SKILLS_BROWSER_ENABLED=true
+MYRAI_SKILLS_BROWSER_HEADLESS=true
+# Optional: Use Brave Search for better results
+# BRAVE_API_KEY=your-brave-key
+# MYRAI_SKILLS_SEARCH_PROVIDER=brave
 
 # Security
 MYRAI_JWT_SECRET=your-64-char-hex-secret
