@@ -1,54 +1,16 @@
 # Myrai 2.0 Skills Configuration
-# This file configures skill sources and MCP servers
+# This file configures skill sources and skill-specific settings
+#
+# NOTE: MCP servers have been moved to mcp.yaml and are disabled by default.
+# The application now uses internal Go skills for better performance:
+#   - browser skill: Local Chrome/Chromium automation (free)
+#   - search skill: DuckDuckGo provider by default (free, no API key)
 
 # Skill search paths
 skill_paths:
   - ./skills
   - ~/.myrai/skills
   - /usr/share/myrai/skills
-
-# MCP Server configurations
-mcp_servers:
-  # Example filesystem MCP server
-  - name: filesystem
-    transport: stdio
-    command: npx
-    args:
-      - "-y"
-      - "@modelcontextprotocol/server-filesystem"
-      - "/home/user/documents"
-    timeout: 30s
-    max_retries: 3
-
-  # Example GitHub MCP server
-  - name: github
-    transport: stdio
-    command: npx
-    args:
-      - "-y"
-      - "@modelcontextprotocol/server-github"
-    env:
-      GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN}
-    timeout: 60s
-    max_retries: 3
-
-  # Example PostgreSQL MCP server
-  - name: postgres
-    transport: stdio
-    command: npx
-    args:
-      - "-y"
-      - "@modelcontextprotocol/server-postgres"
-      - "postgresql://localhost/mydb"
-    timeout: 30s
-    max_retries: 3
-
-  # Example SSE-based MCP server
-  - name: remote-api
-    transport: sse
-    url: http://localhost:3000/mcp
-    timeout: 30s
-    max_retries: 3
 
 # Sandbox configuration
 sandbox_enabled: true
@@ -80,3 +42,7 @@ dependency_resolution:
   auto_resolve: true
   allow_circular: false
   max_depth: 10
+
+# MCP Server configurations (disabled by default)
+# For MCP server configuration, see mcp.yaml
+# mcp_servers: []
