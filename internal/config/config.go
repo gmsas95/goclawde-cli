@@ -358,6 +358,13 @@ func loadStandardEnvVars(cfg *Config) {
 		cfg.Skills.Search.Provider = provider
 	}
 
+	if enabled := os.Getenv("MYRAI_SKILLS_BROWSER_ENABLED"); enabled != "" {
+		cfg.Skills.Browser.Enabled = enabled == "true"
+	}
+	if headless := os.Getenv("MYRAI_SKILLS_BROWSER_HEADLESS"); headless != "" {
+		cfg.Skills.Browser.Headless = headless == "true"
+	}
+
 	if token := ResolveEnvWithAliases("MYRAI_SKILLS_THREADS_ACCESS_TOKEN"); token != "" {
 		cfg.Skills.Threads.AccessToken = token
 		cfg.Skills.Threads.Enabled = true
@@ -436,9 +443,13 @@ func setDefaults(v *viper.Viper) {
 
 	// Search defaults
 	v.SetDefault("search.enabled", true)
-	v.SetDefault("search.provider", "brave")
+	v.SetDefault("search.provider", "duckduckgo")
 	v.SetDefault("search.max_results", 5)
 	v.SetDefault("search.timeout_seconds", 30)
+
+	// Browser defaults
+	v.SetDefault("browser.enabled", true)
+	v.SetDefault("browser.headless", true)
 
 	// Vision defaults
 	v.SetDefault("vision.enabled", true)
