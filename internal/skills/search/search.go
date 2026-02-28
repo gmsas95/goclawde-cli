@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/gmsas95/myrai-cli/internal/skills"
 )
 
@@ -425,6 +426,8 @@ func (p *DuckDuckGoProvider) IsAvailable() bool {
 }
 
 func (p *DuckDuckGoProvider) Search(ctx context.Context, query string, numResults int) (*SearchResponse, error) {
+	start := time.Now()
+
 	// Build URL
 	u, _ := url.Parse("https://html.duckduckgo.com/html/")
 	q := u.Query()
@@ -437,7 +440,12 @@ func (p *DuckDuckGoProvider) Search(ctx context.Context, query string, numResult
 		return nil, err
 	}
 
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.5")
+	req.Header.Set("Accept-Encoding", "gzip, deflate, br")
+	req.Header.Set("Connection", "keep-alive")
+	req.Header.Set("Upgrade-Insecure-Requests", "1")
 
 	resp, err := p.client.Do(req)
 	if err != nil {
@@ -449,13 +457,111 @@ func (p *DuckDuckGoProvider) Search(ctx context.Context, query string, numResult
 		return nil, fmt.Errorf("DuckDuckGo returned status %d", resp.StatusCode)
 	}
 
-	// Parse HTML (simplified - in production use goquery)
-	// For now, return a note that this is a basic implementation
+	// Parse HTML using goquery
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse DuckDuckGo HTML: %w", err)
+	}
+
+	var results []SearchResult
+
+	// DuckDuckGo HTML results are in .result elements
+	doc.Find(".result").Each(func(i int, s *goquery.Selection) {
+		if len(results) >= numResults {
+			return
+		}
+
+		// Extract title and URL
+		linkElem := s.Find(".result__a")
+		title := strings.TrimSpace(linkElem.Text())
+		href, exists := linkElem.Attr("href")
+		if !exists {
+			return
+		}
+
+		// DuckDuckGo uses redirect URLs, extract the real URL
+		resultURL := p.extractRealURL(href)
+
+		// Extract snippet
+		snippet := strings.TrimSpace(s.Find(".result__snippet").Text())
+
+		// Extract source/domain
+		source := strings.TrimSpace(s.Find(".result__url").Text())
+		if source == "" {
+			// Try alternative selector
+			source = strings.TrimSpace(s.Find(".result__hostname").Text())
+		}
+
+		if title != "" && resultURL != "" {
+			results = append(results, SearchResult{
+				Title:   title,
+				URL:     resultURL,
+				Snippet: snippet,
+				Source:  source,
+			})
+		}
+	})
+
+	// If no results found with primary selector, try alternative
+	if len(results) == 0 {
+		doc.Find(".links_main").Each(func(i int, s *goquery.Selection) {
+			if len(results) >= numResults {
+				return
+			}
+
+			linkElem := s.Find("a")
+			title := strings.TrimSpace(linkElem.Text())
+			href, exists := linkElem.Attr("href")
+			if !exists {
+				return
+			}
+
+			resultURL := p.extractRealURL(href)
+			snippet := strings.TrimSpace(s.Find(".result__snippet").Text())
+
+			if title != "" && resultURL != "" {
+				results = append(results, SearchResult{
+					Title:   title,
+					URL:     resultURL,
+					Snippet: snippet,
+					Source:  resultURL,
+				})
+			}
+		})
+	}
+
 	return &SearchResponse{
-		Query:    query,
-		Results:  []SearchResult{},
-		Provider: p.Name(),
-	}, fmt.Errorf("DuckDuckGo HTML parsing not fully implemented - consider using Brave or Serper for better results")
+		Query:        query,
+		Results:      results,
+		TotalResults: len(results),
+		Provider:     p.Name(),
+		SearchTime:   time.Since(start),
+	}, nil
+}
+
+// extractRealURL extracts the actual URL from DuckDuckGo's redirect URL
+func (p *DuckDuckGoProvider) extractRealURL(duckURL string) string {
+	// DuckDuckGo URLs are like: /l/?kh=-1&uddg=https%3A%2F%2Fexample.com
+	if strings.HasPrefix(duckURL, "/l/") {
+		u, err := url.Parse(duckURL)
+		if err != nil {
+			return duckURL
+		}
+		uddg := u.Query().Get("uddg")
+		if uddg != "" {
+			decoded, err := url.QueryUnescape(uddg)
+			if err == nil {
+				return decoded
+			}
+		}
+	}
+
+	// If it's already a full URL, return as-is
+	if strings.HasPrefix(duckURL, "http://") || strings.HasPrefix(duckURL, "https://") {
+		return duckURL
+	}
+
+	return duckURL
 }
 
 // ==================== GOOGLE PROVIDER ====================
