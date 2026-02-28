@@ -5,6 +5,8 @@ package neural
 import (
 	"encoding/json"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // NeuralCluster represents a semantic cluster of related memories
@@ -171,7 +173,7 @@ type FormationResult struct {
 }
 
 // BeforeCreate hook for NeuralCluster - serialize JSON fields
-func (c *NeuralCluster) BeforeCreate() error {
+func (c *NeuralCluster) BeforeCreate(tx *gorm.DB) error {
 	if c.MemoryIDs != nil {
 		data, err := json.Marshal(c.MemoryIDs)
 		if err != nil {
@@ -190,7 +192,7 @@ func (c *NeuralCluster) BeforeCreate() error {
 }
 
 // AfterFind hook for NeuralCluster - deserialize JSON fields
-func (c *NeuralCluster) AfterFind() error {
+func (c *NeuralCluster) AfterFind(tx *gorm.DB) error {
 	if c.MemoryIDsJSON != "" {
 		if err := json.Unmarshal([]byte(c.MemoryIDsJSON), &c.MemoryIDs); err != nil {
 			return err

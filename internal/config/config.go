@@ -313,7 +313,7 @@ func loadStandardEnvVars(cfg *Config) {
 		provider.APIKey = apiKey
 		provider.BaseURL = baseURL
 		provider.Model = GetEnvDefault("AZURE_OPENAI_MODEL", "gpt-4o")
-		provider.Timeout = 60
+		provider.Timeout = 120
 		provider.MaxTokens = 4096
 		cfg.LLM.Providers["azure"] = provider
 	}
@@ -394,7 +394,7 @@ func loadProviderFromEnv(cfg *Config, name, envKey, defaultBaseURL, defaultModel
 		provider.Model = GetEnvDefault(strings.ToUpper(name)+"_MODEL", defaultModel)
 	}
 	if provider.Timeout == 0 {
-		provider.Timeout = 60
+		provider.Timeout = 120
 	}
 	if provider.MaxTokens == 0 {
 		provider.MaxTokens = 4096
@@ -414,7 +414,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("llm.default_provider", "kimi")
 	v.SetDefault("llm.providers.kimi.base_url", "https://api.moonshot.cn/v1")
 	v.SetDefault("llm.providers.kimi.model", "kimi-k2.5")
-	v.SetDefault("llm.providers.kimi.timeout", 60)
+	v.SetDefault("llm.providers.kimi.timeout", 120)
 	v.SetDefault("llm.providers.kimi.max_tokens", 4096)
 
 	// Tools defaults
