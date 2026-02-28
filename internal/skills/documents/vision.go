@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -40,7 +41,7 @@ func NewAPIVisionProcessor(provider, apiKey string) VisionProcessor {
 	case "anthropic":
 		baseURL = "https://api.anthropic.com/v1"
 	}
-	
+
 	return &apiVisionProcessor{
 		provider: provider,
 		apiKey:   apiKey,
@@ -59,7 +60,7 @@ func (v *apiVisionProcessor) Analyze(ctx context.Context, imagePath string, quer
 	if v.apiKey == "" {
 		return nil, fmt.Errorf("API key not configured for %s", v.provider)
 	}
-	
+
 	switch v.provider {
 	case "gemini":
 		return v.analyzeWithGemini(ctx, imagePath, query)
@@ -79,10 +80,10 @@ func (v *apiVisionProcessor) analyzeWithGemini(ctx context.Context, imagePath st
 	if err != nil {
 		return nil, err
 	}
-	
+
 	base64Image := base64.StdEncoding.EncodeToString(imageData)
 	mimeType := getMimeType(imagePath)
-	
+
 	// Build request
 	reqBody := map[string]interface{}{
 		"contents": []map[string]interface{}{
@@ -105,38 +106,38 @@ func (v *apiVisionProcessor) analyzeWithGemini(ctx context.Context, imagePath st
 			"maxOutputTokens": 2048,
 		},
 	}
-	
+
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Use Gemini 1.5 Flash for speed, Pro for accuracy
 	model := "gemini-1.5-flash-latest"
 	url := fmt.Sprintf("%s/models/%s:generateContent?key=%s", v.baseURL, model, v.apiKey)
-	
+
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return nil, err
 	}
-	
+
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	resp, err := v.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("API request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 	}
-	
+
 	// Parse response
 	var result struct {
 		Candidates []struct {
@@ -147,17 +148,17 @@ func (v *apiVisionProcessor) analyzeWithGemini(ctx context.Context, imagePath st
 			} `json:"content"`
 		} `json:"candidates"`
 	}
-	
+
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
-	
+
 	if len(result.Candidates) == 0 || len(result.Candidates[0].Content.Parts) == 0 {
 		return nil, fmt.Errorf("no response from API")
 	}
-	
+
 	text := result.Candidates[0].Content.Parts[0].Text
-	
+
 	// Parse the response into structured data
 	return v.parseVisionResponse(text, imagePath), nil
 }
@@ -169,10 +170,10 @@ func (v *apiVisionProcessor) analyzeWithOpenAI(ctx context.Context, imagePath st
 	if err != nil {
 		return nil, err
 	}
-	
+
 	base64Image := base64.StdEncoding.EncodeToString(imageData)
 	mimeType := getMimeType(imagePath)
-	
+
 	// Build request
 	reqBody := map[string]interface{}{
 		"model": "gpt-4o-mini", // or gpt-4o for better quality
@@ -195,37 +196,37 @@ func (v *apiVisionProcessor) analyzeWithOpenAI(ctx context.Context, imagePath st
 		},
 		"max_tokens": 2048,
 	}
-	
+
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	url := v.baseURL + "/chat/completions"
-	
+
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return nil, err
 	}
-	
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+v.apiKey)
-	
+
 	resp, err := v.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("API request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 	}
-	
+
 	// Parse response
 	var result struct {
 		Choices []struct {
@@ -234,17 +235,17 @@ func (v *apiVisionProcessor) analyzeWithOpenAI(ctx context.Context, imagePath st
 			} `json:"message"`
 		} `json:"choices"`
 	}
-	
+
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
-	
+
 	if len(result.Choices) == 0 {
 		return nil, fmt.Errorf("no response from API")
 	}
-	
+
 	text := result.Choices[0].Message.Content
-	
+
 	return v.parseVisionResponse(text, imagePath), nil
 }
 
@@ -255,13 +256,13 @@ func (v *apiVisionProcessor) analyzeWithAnthropic(ctx context.Context, imagePath
 	if err != nil {
 		return nil, err
 	}
-	
+
 	base64Image := base64.StdEncoding.EncodeToString(imageData)
 	mimeType := getMimeType(imagePath)
-	
+
 	// Build request
 	reqBody := map[string]interface{}{
-		"model": "claude-3-haiku-20240307", // or claude-3-sonnet for better quality
+		"model":      "claude-3-haiku-20240307", // or claude-3-sonnet for better quality
 		"max_tokens": 2048,
 		"messages": []map[string]interface{}{
 			{
@@ -270,9 +271,9 @@ func (v *apiVisionProcessor) analyzeWithAnthropic(ctx context.Context, imagePath
 					{
 						"type": "image",
 						"source": map[string]string{
-							"type": "base64",
+							"type":       "base64",
 							"media_type": mimeType,
-							"data": base64Image,
+							"data":       base64Image,
 						},
 					},
 					{
@@ -283,55 +284,55 @@ func (v *apiVisionProcessor) analyzeWithAnthropic(ctx context.Context, imagePath
 			},
 		},
 	}
-	
+
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	url := v.baseURL + "/messages"
-	
+
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return nil, err
 	}
-	
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-api-key", v.apiKey)
 	req.Header.Set("anthropic-version", "2023-06-01")
-	
+
 	resp, err := v.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("API request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 	}
-	
+
 	// Parse response
 	var result struct {
 		Content []struct {
 			Text string `json:"text"`
 		} `json:"content"`
 	}
-	
+
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
-	
+
 	if len(result.Content) == 0 {
 		return nil, fmt.Errorf("no response from API")
 	}
-	
+
 	text := result.Content[0].Text
-	
+
 	return v.parseVisionResponse(text, imagePath), nil
 }
 
@@ -341,25 +342,25 @@ func (v *apiVisionProcessor) parseVisionResponse(text string, imagePath string) 
 		Description: text,
 		Text:        text,
 	}
-	
+
 	// Check if it's a receipt
 	textLower := strings.ToLower(text)
-	if strings.Contains(textLower, "receipt") || 
-	   strings.Contains(textLower, "total") && strings.Contains(textLower, "tax") {
+	if strings.Contains(textLower, "receipt") ||
+		strings.Contains(textLower, "total") && strings.Contains(textLower, "tax") {
 		result.IsReceipt = true
 		result.ReceiptData = v.extractReceiptFromText(text)
 	}
-	
+
 	// Check if it's a document
 	if strings.Contains(textLower, "document") ||
-	   strings.Contains(textLower, "letter") ||
-	   strings.Contains(textLower, "form") {
+		strings.Contains(textLower, "letter") ||
+		strings.Contains(textLower, "form") {
 		result.IsDocument = true
 	}
-	
+
 	// Extract entities
 	result.Entities = v.extractEntities(text)
-	
+
 	return result
 }
 
@@ -368,7 +369,7 @@ func (v *apiVisionProcessor) extractReceiptFromText(text string) *ReceiptData {
 	receipt := &ReceiptData{
 		Items: []ReceiptItem{},
 	}
-	
+
 	// Look for patterns in the text
 	lines := strings.Split(text, "\n")
 	for _, line := range lines {
@@ -376,13 +377,13 @@ func (v *apiVisionProcessor) extractReceiptFromText(text string) *ReceiptData {
 		if line == "" {
 			continue
 		}
-		
+
 		// Try to find merchant (usually early in receipt)
-		if receipt.Merchant == "" && len(line) > 2 && len(line) < 50 && 
-		   !strings.Contains(line, "$") && !strings.Contains(line, "Total") {
+		if receipt.Merchant == "" && len(line) > 2 && len(line) < 50 &&
+			!strings.Contains(line, "$") && !strings.Contains(line, "Total") {
 			receipt.Merchant = line
 		}
-		
+
 		// Look for totals
 		if strings.Contains(strings.ToLower(line), "total") {
 			receipt.Total = extractAmount(line)
@@ -394,29 +395,29 @@ func (v *apiVisionProcessor) extractReceiptFromText(text string) *ReceiptData {
 			receipt.Subtotal = extractAmount(line)
 		}
 	}
-	
+
 	return receipt
 }
 
 // extractEntities extracts key entities from text
 func (v *apiVisionProcessor) extractEntities(text string) []Entity {
 	var entities []Entity
-	
+
 	// Date patterns
 	if date := extractDate(text); date != "" {
 		entities = append(entities, Entity{Type: "date", Value: date})
 	}
-	
+
 	// Email patterns
 	if email := extractEmail(text); email != "" {
 		entities = append(entities, Entity{Type: "email", Value: email})
 	}
-	
+
 	// Phone patterns
 	if phone := extractPhone(text); phone != "" {
 		entities = append(entities, Entity{Type: "phone", Value: phone})
 	}
-	
+
 	return entities
 }
 
@@ -450,18 +451,47 @@ func extractAmount(line string) string {
 }
 
 func extractDate(text string) string {
-	// Placeholder - would use regex for real date extraction
+	// Common date patterns
+	patterns := []string{
+		`\b\d{1,2}/\d{1,2}/\d{2,4}\b`, // MM/DD/YYYY or MM/DD/YY
+		`\b\d{1,2}-\d{1,2}-\d{2,4}\b`, // MM-DD-YYYY or MM-DD-YY
+		`\b\d{4}-\d{2}-\d{2}\b`,       // YYYY-MM-DD (ISO)
+		`\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}\b`, // Month DD, YYYY
+		`\b\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}\b`,   // DD Month YYYY
+	}
+
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(`(?i)` + pattern)
+		if match := re.FindString(text); match != "" {
+			return match
+		}
+	}
 	return ""
 }
 
 func extractEmail(text string) string {
-	// Placeholder - would use regex for real email extraction
+	// Email regex pattern
+	pattern := `[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}`
+	re := regexp.MustCompile(pattern)
+	if match := re.FindString(text); match != "" {
+		return match
+	}
 	return ""
 }
 
 func extractPhone(text string) string {
-	// Placeholder - would use regex for real phone extraction
+	// Phone number patterns
+	patterns := []string{
+		`\+?\d{1,3}[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}`, // +1 (555) 123-4567, 555-123-4567
+		`\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}`,                  // (555) 123-4567, 555.123.4567
+		`\b\d{3}[-.\s]?\d{4}\b`,                                // 555-1234 (local)
+	}
+
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		if match := re.FindString(text); match != "" {
+			return match
+		}
+	}
 	return ""
 }
-
-

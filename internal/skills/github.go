@@ -2,6 +2,7 @@ package skills
 
 import (
 	"archive/zip"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -188,57 +189,110 @@ func (gi *GitHubInstaller) UninstallSkill(skillName string) error {
 	return nil
 }
 
-// SearchGitHub searches for skills on GitHub
-// This is a simple implementation that would be enhanced with actual GitHub API integration
+// SearchGitHub searches for skills on GitHub using the GitHub API
 func (gi *GitHubInstaller) SearchGitHub(query string) ([]GitHubSkillInfo, error) {
-	// For now, return a placeholder response
-	// In production, this would use the GitHub API to search for repositories
-	// with the topic "myrai-skill" or similar
+	// Build GitHub API search URL
+	// Search for repositories with query and sort by stars
+	searchURL := fmt.Sprintf("https://api.github.com/search/repositories?q=%s+sort:stars&per_page=20",
+		strings.ReplaceAll(query, " ", "+"))
 
-	results := []GitHubSkillInfo{
-		{
-			Name:        "docker-helper",
-			Repo:        "myrai-agents/docker-helper",
-			Description: "Docker container management operations",
-			Stars:       245,
-			Version:     "1.2.0",
-		},
-		{
-			Name:        "kubernetes",
-			Repo:        "myrai-agents/kubernetes",
-			Description: "Kubernetes cluster management",
-			Stars:       189,
-			Version:     "2.0.1",
-		},
-		{
-			Name:        "aws-cli",
-			Repo:        "myrai-agents/aws-cli",
-			Description: "AWS CLI wrapper for common operations",
-			Stars:       156,
-			Version:     "1.5.0",
-		},
+	req, err := http.NewRequest("GET", searchURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// Filter by query
-	var filtered []GitHubSkillInfo
-	query = strings.ToLower(query)
-	for _, result := range results {
-		if strings.Contains(strings.ToLower(result.Name), query) ||
-			strings.Contains(strings.ToLower(result.Description), query) {
-			filtered = append(filtered, result)
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	req.Header.Set("User-Agent", "myrai-skill-installer")
+
+	// Execute request through circuit breaker
+	resp, err := gi.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search GitHub: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("GitHub API error (status %d): %s", resp.StatusCode, string(body))
+	}
+
+	// Parse response
+	var result struct {
+		TotalCount int `json:"total_count"`
+		Items      []struct {
+			Name          string   `json:"name"`
+			FullName      string   `json:"full_name"`
+			Description   string   `json:"description"`
+			Stars         int      `json:"stargazers_count"`
+			Language      string   `json:"language"`
+			UpdatedAt     string   `json:"updated_at"`
+			Topics        []string `json:"topics"`
+			DefaultBranch string   `json:"default_branch"`
+		} `json:"items"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode GitHub response: %w", err)
+	}
+
+	// Convert to GitHubSkillInfo
+	var skills []GitHubSkillInfo
+	for _, item := range result.Items {
+		// Only include repos that might be skills (have skill-related topics or keywords)
+		isSkill := false
+		for _, topic := range item.Topics {
+			if strings.Contains(strings.ToLower(topic), "skill") ||
+				strings.Contains(strings.ToLower(topic), "agent") ||
+				strings.Contains(strings.ToLower(topic), "tool") {
+				isSkill = true
+				break
+			}
 		}
+
+		// Or if the name/description contains skill keywords
+		if !isSkill {
+			nameDesc := strings.ToLower(item.Name + " " + item.Description)
+			if strings.Contains(nameDesc, "skill") ||
+				strings.Contains(nameDesc, "agent") ||
+				strings.Contains(nameDesc, "tool") {
+				isSkill = true
+			}
+		}
+
+		// Include all results for now, but prioritize skill-like repos
+		skills = append(skills, GitHubSkillInfo{
+			Name:          item.Name,
+			Repo:          item.FullName,
+			Description:   item.Description,
+			Stars:         item.Stars,
+			Language:      item.Language,
+			UpdatedAt:     item.UpdatedAt,
+			Topics:        item.Topics,
+			DefaultBranch: item.DefaultBranch,
+			IsSkill:       isSkill,
+		})
 	}
 
-	return filtered, nil
+	gi.logger.Info("GitHub search completed",
+		zap.String("query", query),
+		zap.Int("total_results", result.TotalCount),
+		zap.Int("returned", len(skills)))
+
+	return skills, nil
 }
 
 // GitHubSkillInfo represents information about a skill on GitHub
 type GitHubSkillInfo struct {
-	Name        string
-	Repo        string
-	Description string
-	Stars       int
-	Version     string
+	Name          string
+	Repo          string
+	Description   string
+	Stars         int
+	Version       string
+	Language      string
+	UpdatedAt     string
+	Topics        []string
+	DefaultBranch string
+	IsSkill       bool
 }
 
 // parseRepoRef parses a repository reference

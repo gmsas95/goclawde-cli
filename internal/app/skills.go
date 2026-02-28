@@ -70,7 +70,7 @@ func RegisterSkills(cfg *config.Config, st *store.Store, registry *skills.Regist
 		registry.Register(healthSkill)
 	}
 
-	intelSkill, err := intelligence.NewIntelligenceSkill(st.DB(), logger)
+	intelSkill, err := intelligence.NewIntelligenceSkill(st.DB(), logger, healthSkill, shoppingSkill)
 	if err != nil {
 		logger.Error("Failed to create intelligence skill", zap.Error(err))
 	} else {
