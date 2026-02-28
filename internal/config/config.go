@@ -442,14 +442,14 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("vector.ollama_host", "http://localhost:11434")
 
 	// Search defaults
-	v.SetDefault("search.enabled", true)
-	v.SetDefault("search.provider", "duckduckgo")
-	v.SetDefault("search.max_results", 5)
-	v.SetDefault("search.timeout_seconds", 30)
+	v.SetDefault("skills.search.enabled", true)
+	v.SetDefault("skills.search.provider", "duckduckgo")
+	v.SetDefault("skills.search.max_results", 5)
+	v.SetDefault("skills.search.timeout_seconds", 30)
 
 	// Browser defaults
-	v.SetDefault("browser.enabled", true)
-	v.SetDefault("browser.headless", true)
+	v.SetDefault("skills.browser.enabled", true)
+	v.SetDefault("skills.browser.headless", true)
 
 	// Vision defaults
 	v.SetDefault("vision.enabled", true)
