@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -589,11 +591,89 @@ func (p *GoogleProvider) Search(ctx context.Context, query string, numResults in
 		return nil, fmt.Errorf("Google Custom Search API key not configured")
 	}
 
-	// Note: This requires both API key and Search Engine ID
-	// For now, return placeholder
+	// Note: Google Custom Search requires both API key and Search Engine ID (cx)
+	// The cx parameter should be set via environment variable: GOOGLE_SEARCH_CX
+	cx := os.Getenv("GOOGLE_SEARCH_CX")
+	if cx == "" {
+		return nil, fmt.Errorf("Google Custom Search requires Search Engine ID (cx). Set GOOGLE_SEARCH_CX environment variable")
+	}
+
+	start := time.Now()
+
+	// Build URL
+	u, _ := url.Parse("https://www.googleapis.com/customsearch/v1")
+	q := u.Query()
+	q.Set("key", p.apiKey)
+	q.Set("cx", cx)
+	q.Set("q", query)
+	q.Set("num", fmt.Sprintf("%d", min(numResults, 10))) // Google max is 10 per request
+	u.RawQuery = q.Encode()
+
+	// Create request
+	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Accept", "application/json")
+
+	// Execute request
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("Google API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Parse response
+	var result struct {
+		Items []struct {
+			Title   string `json:"title"`
+			Link    string `json:"link"`
+			Snippet string `json:"snippet"`
+			Pagemap struct {
+				Metatags []struct {
+					Date string `json:"date"`
+				} `json:"metatags"`
+			} `json:"pagemap"`
+		} `json:"items"`
+		SearchInformation struct {
+			TotalResults string `json:"totalResults"`
+		} `json:"searchInformation"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode Google response: %w", err)
+	}
+
+	// Convert to SearchResponse
+	searchResults := []SearchResult{}
+	for _, r := range result.Items {
+		publishedAt := ""
+		if len(r.Pagemap.Metatags) > 0 {
+			publishedAt = r.Pagemap.Metatags[0].Date
+		}
+		searchResults = append(searchResults, SearchResult{
+			Title:       r.Title,
+			URL:         r.Link,
+			Snippet:     r.Snippet,
+			PublishedAt: publishedAt,
+			Source:      "Google",
+		})
+	}
+
+	totalResults := 0
+	fmt.Sscanf(result.SearchInformation.TotalResults, "%d", &totalResults)
+
 	return &SearchResponse{
-		Query:    query,
-		Results:  []SearchResult{},
-		Provider: p.Name(),
-	}, fmt.Errorf("Google Custom Search requires both API key and Search Engine ID (cx)")
+		Query:        query,
+		Results:      searchResults,
+		TotalResults: totalResults,
+		Provider:     p.Name(),
+		SearchTime:   time.Since(start),
+	}, nil
 }
