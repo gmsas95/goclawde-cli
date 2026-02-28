@@ -362,6 +362,13 @@ func loadStandardEnvVars(cfg *Config) {
 		cfg.Skills.Threads.AccessToken = token
 		cfg.Skills.Threads.Enabled = true
 	}
+
+	if enabled := os.Getenv("MYRAI_SKILLS_VISION_ENABLED"); enabled != "" {
+		cfg.Skills.Vision.Enabled = enabled == "true"
+	}
+	if model := os.Getenv("MYRAI_SKILLS_VISION_VISION_MODEL"); model != "" {
+		cfg.Skills.Vision.VisionModel = model
+	}
 }
 
 func loadProviderFromEnv(cfg *Config, name, envKey, defaultBaseURL, defaultModel string) {
