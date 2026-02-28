@@ -36,7 +36,7 @@ LABEL org.opencontainers.image.title="Myrai (未来)"
 LABEL org.opencontainers.image.description="Personal AI Assistant for Everyone"
 LABEL org.opencontainers.image.source="https://github.com/gmsas95/myrai-cli"
 
-RUN apk add --no-cache ca-certificates sqlite-libs tzdata
+RUN apk add --no-cache ca-certificates sqlite-libs tzdata curl
 
 WORKDIR /app
 
