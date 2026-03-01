@@ -25,13 +25,34 @@ func (s *Server) handleHealth(c *fiber.Ctx) error {
 	})
 }
 
-// handlePublicStatus returns minimal public status for dashboard (no auth required)
+// handlePublicStatus returns public status for dashboard (no auth required)
 func (s *Server) handlePublicStatus(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"status":  "healthy",
 		"version": "2.0.0",
 		"uptime":  "running",
+		"server": fiber.Map{
+			"address": "0.0.0.0",
+			"port":    8080,
+		},
+		"llm": fiber.Map{
+			"provider":  s.config.LLM.DefaultProvider,
+			"model":     s.getDefaultModel(),
+			"connected": true,
+		},
+		"channels": fiber.Map{
+			"telegram": s.config.Channels.Telegram.Enabled,
+			"discord":  s.config.Channels.Discord.Enabled,
+		},
+		"skills": 0,
 	})
+}
+
+func (s *Server) getDefaultModel() string {
+	if provider, ok := s.config.LLM.Providers[s.config.LLM.DefaultProvider]; ok {
+		return provider.Model
+	}
+	return "unknown"
 }
 
 func (s *Server) handleMetrics(c *fiber.Ctx) error {
