@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Brain, Database, Network, Zap, Search, Clock, Grid3X3, Share2 } from 'lucide-react'
+import { Brain, Database, Network, Zap, Search, Clock, Grid3X3, Share2, Box } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { clustersApi } from '@/lib/api'
 import { NeuralGraph } from '@/components/neural-graph'
+import { NeuralGraph3D } from '@/components/neural-graph-3d'
 
 interface Cluster {
   id: string
@@ -19,7 +20,7 @@ interface Cluster {
 
 export function Memory() {
   const [searchQuery, setSearchQuery] = useState('')
-  const [viewMode, setViewMode] = useState<'grid' | 'graph'>('graph')
+  const [viewMode, setViewMode] = useState<'2d' | '3d' | 'grid'>('2d')
 
   const { data: clusters = [], isLoading } = useQuery<Cluster[]>({
     queryKey: ['clusters'],
@@ -115,17 +116,28 @@ export function Memory() {
         </div>
         <div className="flex gap-2 ml-4">
           <Button
-            variant={viewMode === 'graph' ? 'default' : 'outline'}
+            variant={viewMode === '2d' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setViewMode('graph')}
+            onClick={() => setViewMode('2d')}
+            title="2D Graph"
           >
             <Share2 className="mr-2 h-4 w-4" />
-            Graph
+            2D
+          </Button>
+          <Button
+            variant={viewMode === '3d' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('3d')}
+            title="3D Graph"
+          >
+            <Box className="mr-2 h-4 w-4" />
+            3D
           </Button>
           <Button
             variant={viewMode === 'grid' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setViewMode('grid')}
+            title="Grid View"
           >
             <Grid3X3 className="mr-2 h-4 w-4" />
             Grid
@@ -133,8 +145,11 @@ export function Memory() {
         </div>
       </div>
 
-      {/* Graph View */}
-      {viewMode === 'graph' && <NeuralGraph />}
+      {/* 2D Graph View */}
+      {viewMode === '2d' && <NeuralGraph />}
+
+      {/* 3D Graph View */}
+      {viewMode === '3d' && <NeuralGraph3D />}
 
       {/* Grid View */}
       {viewMode === 'grid' && (
