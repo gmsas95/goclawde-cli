@@ -43,6 +43,7 @@ export const clustersApi = {
   list: () => api.get<any[]>('/clusters').then(r => r.data),
   get: (id: string) => api.get<any>(`/clusters/${id}`).then(r => r.data),
   getMemories: (id: string) => api.get<any[]>(`/clusters/${id}/memories`).then(r => r.data),
+  getGraph: () => api.get<{ nodes: any[]; links: any[] }>('/clusters/graph').then(r => r.data),
 }
 
 export const activityApi = {

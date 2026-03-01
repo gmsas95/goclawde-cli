@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Brain, Database, Network, Zap, Search, Clock } from 'lucide-react'
+import { Brain, Database, Network, Zap, Search, Clock, Grid3X3, Share2 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { clustersApi } from '@/lib/api'
+import { NeuralGraph } from '@/components/neural-graph'
 
 interface Cluster {
   id: string
@@ -17,6 +19,7 @@ interface Cluster {
 
 export function Memory() {
   const [searchQuery, setSearchQuery] = useState('')
+  const [viewMode, setViewMode] = useState<'grid' | 'graph'>('graph')
 
   const { data: clusters = [], isLoading } = useQuery<Cluster[]>({
     queryKey: ['clusters'],
@@ -98,20 +101,44 @@ export function Memory() {
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder="Search memory clusters..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
-        />
+      {/* View Toggle */}
+      <div className="flex items-center justify-between">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search memory clusters..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 rounded-lg bg-card border border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none transition-colors"
+          />
+        </div>
+        <div className="flex gap-2 ml-4">
+          <Button
+            variant={viewMode === 'graph' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('graph')}
+          >
+            <Share2 className="mr-2 h-4 w-4" />
+            Graph
+          </Button>
+          <Button
+            variant={viewMode === 'grid' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('grid')}
+          >
+            <Grid3X3 className="mr-2 h-4 w-4" />
+            Grid
+          </Button>
+        </div>
       </div>
 
-      {/* Clusters Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {/* Graph View */}
+      {viewMode === 'graph' && <NeuralGraph />}
+
+      {/* Grid View */}
+      {viewMode === 'grid' && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredClusters.map((cluster) => (
           <Card key={cluster.id} className="cursor-pointer hover:border-primary/50 transition-colors">
             <CardContent className="p-5">
@@ -145,11 +172,12 @@ export function Memory() {
                 <span className="px-2 py-0.5 rounded-full bg-muted capitalize">{cluster.type}</span>
               </div>
             </CardContent>
-          </Card>
-        ))}
+        </Card>
+      ))}
       </div>
+      )}
 
-      {filteredClusters.length === 0 && (
+      {viewMode === 'grid' && filteredClusters.length === 0 && (
         <div className="flex h-64 items-center justify-center">
           <div className="text-center">
             <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />

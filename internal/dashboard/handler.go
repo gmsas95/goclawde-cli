@@ -69,6 +69,7 @@ func (h *Handler) RegisterRoutes(app *fiber.App) {
 	api.Get("/clusters", h.listClusters)
 	api.Get("/clusters/:id", h.getCluster)
 	api.Get("/clusters/:id/memories", h.getClusterMemories)
+	api.Get("/clusters/graph", h.getClusterGraph)
 
 	// Activity feed - REAL
 	api.Get("/activity", h.getActivity)
@@ -780,6 +781,124 @@ func (h *Handler) getClusterMemories(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(memories)
+}
+
+// getClusterGraph returns graph data for neural network visualization
+func (h *Handler) getClusterGraph(c *fiber.Ctx) error {
+	if h.store == nil {
+		return c.JSON(fiber.Map{
+			"nodes": []fiber.Map{},
+			"links": []fiber.Map{},
+		})
+	}
+
+	db := h.store.DB()
+
+	// Get all clusters
+	var clusters []neural.NeuralCluster
+	if err := db.Find(&clusters).Error; err != nil {
+		h.logger.Error("Failed to fetch clusters for graph", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to fetch clusters",
+		})
+	}
+
+	// Build nodes
+	nodes := []fiber.Map{}
+	for _, cluster := range clusters {
+		// Determine color based on confidence
+		color := "#3B82F6" // blue
+		if cluster.ConfidenceScore >= 0.8 {
+			color = "#22C55E" // green
+		} else if cluster.ConfidenceScore >= 0.6 {
+			color = "#F59E0B" // amber
+		} else if cluster.ConfidenceScore < 0.4 {
+			color = "#EF4444" // red
+		}
+
+		nodes = append(nodes, fiber.Map{
+			"id":         cluster.ID,
+			"name":       cluster.Theme,
+			"val":        cluster.ClusterSize,
+			"color":      color,
+			"confidence": cluster.ConfidenceScore,
+			"type":       "cluster",
+		})
+
+		// Add memory nodes for this cluster
+		memoryIDs := cluster.GetMemoryIDs()
+		if len(memoryIDs) > 0 && len(memoryIDs) <= 10 { // Limit to avoid too many nodes
+			var memories []store.Memory
+			db.Where("id IN ?", memoryIDs).Find(&memories)
+
+			for _, mem := range memories {
+				nodes = append(nodes, fiber.Map{
+					"id":        mem.ID,
+					"name":      truncate(mem.Content, 30),
+					"val":       1,
+					"color":     "#6366F1", // indigo
+					"type":      "memory",
+					"clusterId": cluster.ID,
+				})
+			}
+		}
+	}
+
+	// Build links - connect clusters that share memories
+	links := []fiber.Map{}
+	for i, cluster1 := range clusters {
+		memories1 := cluster1.GetMemoryIDs()
+		for j, cluster2 := range clusters {
+			if i >= j {
+				continue
+			}
+			memories2 := cluster2.GetMemoryIDs()
+
+			// Count shared memories
+			shared := 0
+			for _, m1 := range memories1 {
+				for _, m2 := range memories2 {
+					if m1 == m2 {
+						shared++
+						break
+					}
+				}
+			}
+
+			if shared > 0 {
+				links = append(links, fiber.Map{
+					"source": cluster1.ID,
+					"target": cluster2.ID,
+					"value":  shared,
+				})
+			}
+		}
+
+		// Add links from cluster to its memories
+		for _, memID := range cluster1.GetMemoryIDs() {
+			// Only link if memory node exists (we filtered to max 10 per cluster)
+			if len(cluster1.GetMemoryIDs()) <= 10 {
+				links = append(links, fiber.Map{
+					"source": cluster1.ID,
+					"target": memID,
+					"value":  1,
+				})
+			}
+		}
+	}
+
+	return c.JSON(fiber.Map{
+		"nodes": nodes,
+		"links": links,
+	})
+}
+
+// truncate helper function
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
 }
 
 // getActivity returns real activity from database
