@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { FileText, AlertTriangle, Info, CheckCircle2, Clock, Filter, Download } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { logsApi } from '@/lib/api'
 
 interface LogEntry {
   id: string
@@ -11,32 +13,34 @@ interface LogEntry {
   message: string
 }
 
-const mockLogs: LogEntry[] = [
-  { id: '1', timestamp: '2024-01-15 14:32:05', level: 'info', source: 'System', message: 'Server started successfully' },
-  { id: '2', timestamp: '2024-01-15 14:32:10', level: 'success', source: 'Telegram', message: 'Bot connected' },
-  { id: '3', timestamp: '2024-01-15 14:35:22', level: 'info', source: 'LLM', message: 'Model loaded' },
-  { id: '4', timestamp: '2024-01-15 14:40:15', level: 'warning', source: 'Memory', message: 'High memory usage detected' },
-  { id: '5', timestamp: '2024-01-15 14:45:30', level: 'info', source: 'Scheduler', message: 'Job executed' },
-  { id: '6', timestamp: '2024-01-15 14:50:00', level: 'error', source: 'API', message: 'Failed to connect to external API' },
-  { id: '7', timestamp: '2024-01-15 14:55:12', level: 'info', source: 'User', message: 'New conversation started' },
-  { id: '8', timestamp: '2024-01-15 15:00:00', level: 'success', source: 'Skills', message: 'Skill loaded successfully' },
-]
-
 export function Logs() {
   const [filter, setFilter] = useState<string>('all')
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null)
 
-  const filteredLogs = mockLogs.filter(log => {
-    if (filter === 'all') return true
-    return log.level === filter
+  const { data: logs = [], isLoading } = useQuery<LogEntry[]>({
+    queryKey: ['logs', filter],
+    queryFn: () => logsApi.list({ level: filter === 'all' ? undefined : filter, limit: 100 }),
   })
 
+  const filteredLogs = filter === 'all' ? logs : logs.filter(log => log.level === filter)
+
   const logCounts = {
-    all: mockLogs.length,
-    info: mockLogs.filter(l => l.level === 'info').length,
-    warning: mockLogs.filter(l => l.level === 'warning').length,
-    error: mockLogs.filter(l => l.level === 'error').length,
-    success: mockLogs.filter(l => l.level === 'success').length,
+    all: logs.length,
+    info: logs.filter(l => l.level === 'info').length,
+    warning: logs.filter(l => l.level === 'warning').length,
+    error: logs.filter(l => l.level === 'error').length,
+    success: logs.filter(l => l.level === 'success').length,
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <FileText className="h-5 w-5 animate-pulse" />
+          <span>Loading logs...</span>
+        </div>
+      </div>
+    )
   }
 
   return (

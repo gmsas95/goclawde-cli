@@ -1,35 +1,45 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Brain, Database, Network, Zap, Search, Clock } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { clustersApi } from '@/lib/api'
 
-interface MemoryCluster {
+interface Cluster {
   id: string
   name: string
-  type: 'conversation' | 'knowledge' | 'task' | 'personality'
+  type: string
   size: number
-  lastAccessed: string
+  last_accessed: string
   importance: number
   connections: number
+  confidence: number
 }
-
-const mockClusters: MemoryCluster[] = [
-  { id: '1', name: 'User Preferences', type: 'personality', size: 145, lastAccessed: '2 min ago', importance: 95, connections: 12 },
-  { id: '2', name: 'Project Context', type: 'knowledge', size: 892, lastAccessed: '5 min ago', importance: 88, connections: 24 },
-  { id: '3', name: 'Recent Conversations', type: 'conversation', size: 2341, lastAccessed: 'Just now', importance: 72, connections: 8 },
-  { id: '4', name: 'Active Tasks', type: 'task', size: 67, lastAccessed: '1 hour ago', importance: 65, connections: 15 },
-  { id: '5', name: 'Technical Knowledge', type: 'knowledge', size: 1567, lastAccessed: '3 hours ago', importance: 90, connections: 42 },
-  { id: '6', name: 'Personal Memories', type: 'personality', size: 423, lastAccessed: '1 day ago', importance: 55, connections: 6 },
-]
 
 export function Memory() {
   const [searchQuery, setSearchQuery] = useState('')
 
-  const filteredClusters = mockClusters.filter(cluster =>
+  const { data: clusters = [], isLoading } = useQuery<Cluster[]>({
+    queryKey: ['clusters'],
+    queryFn: clustersApi.list,
+  })
+
+  const filteredClusters = clusters.filter(cluster =>
     cluster.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const totalSize = mockClusters.reduce((acc, c) => acc + c.size, 0)
-  const totalConnections = mockClusters.reduce((acc, c) => acc + c.connections, 0)
+  const totalSize = clusters.reduce((acc, c) => acc + c.size, 0)
+  const totalConnections = clusters.reduce((acc, c) => acc + c.connections, 0)
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <Brain className="h-5 w-5 animate-pulse" />
+          <span>Loading memory clusters...</span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -49,17 +59,17 @@ export function Memory() {
             <Brain className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockClusters.length}</div>
+            <div className="text-2xl font-bold">{clusters.length}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Memory Used</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Memory Entries</CardTitle>
             <Database className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{(totalSize / 1024).toFixed(1)} MB</div>
+            <div className="text-2xl font-bold">{totalSize}</div>
           </CardContent>
         </Card>
 
@@ -75,12 +85,14 @@ export function Memory() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Importance</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Avg Confidence</CardTitle>
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {Math.round(mockClusters.reduce((acc, c) => acc + c.importance, 0) / mockClusters.length)}%
+              {clusters.length > 0 
+                ? Math.round(clusters.reduce((acc, c) => acc + c.confidence, 0) / clusters.length * 100)
+                : 0}%
             </div>
           </CardContent>
         </Card>
@@ -107,7 +119,7 @@ export function Memory() {
                 <div className="p-2 rounded-md bg-muted">
                   <Brain className="h-4 w-4" />
                 </div>
-                <h3 className="font-medium">{cluster.name}</h3>
+                <h3 className="font-medium truncate">{cluster.name}</h3>
               </div>
 
               <div className="grid grid-cols-3 gap-3 text-center">
@@ -125,9 +137,12 @@ export function Memory() {
                 </div>
               </div>
 
-              <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-                <Clock className="h-3 w-3" />
-                <span>Last accessed: {cluster.lastAccessed}</span>
+              <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-3 w-3" />
+                  <span>{cluster.last_accessed}</span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full bg-muted capitalize">{cluster.type}</span>
               </div>
             </CardContent>
           </Card>

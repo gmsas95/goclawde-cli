@@ -2,12 +2,13 @@ import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { 
   Activity, Bot, Server, Settings, TrendingUp,
-  MessageSquare, Cpu, Shield, ArrowRight, Zap
+  MessageSquare, Cpu, Shield, ArrowRight, Zap, Brain
 } from 'lucide-react'
-import { statusApi, skillsApi } from '@/lib/api'
+import { statusApi, skillsApi, activityApi } from '@/lib/api'
 import { useStore } from '@/stores/app'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Link } from 'react-router-dom'
 
 export function Dashboard() {
   const { setStatus } = useStore()
@@ -21,6 +22,11 @@ export function Dashboard() {
   const { data: skills } = useQuery({
     queryKey: ['skills'],
     queryFn: skillsApi.list,
+  })
+
+  const { data: activities = [] } = useQuery({
+    queryKey: ['activity'],
+    queryFn: activityApi.list,
   })
 
   useEffect(() => {
@@ -116,22 +122,41 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[
-                { icon: Bot, text: 'AI Assistant started', time: 'Just now', color: 'text-primary' },
-                { icon: Settings, text: 'Skills loaded successfully', time: '2 min ago', color: 'text-accent' },
-                { icon: MessageSquare, text: 'Telegram bot connected', time: '5 min ago', color: 'text-muted-foreground' },
-                { icon: Cpu, text: 'System health check passed', time: '10 min ago', color: 'text-muted-foreground' },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className={`p-2 rounded-md bg-muted ${item.color}`}>
-                    <item.icon className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm">{item.text}</p>
-                    <p className="text-xs text-muted-foreground">{item.time}</p>
-                  </div>
-                </div>
-              ))}
+              {activities.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">No recent activity</p>
+              ) : (
+                activities.slice(0, 5).map((item: any, i: number) => {
+                  // Map activity types to icons and colors
+                  const getIcon = (type: string) => {
+                    switch (type) {
+                      case 'conversation': return MessageSquare
+                      case 'memory': return Brain
+                      case 'task': return Cpu
+                      default: return Activity
+                    }
+                  }
+                  const getColor = (type: string) => {
+                    switch (type) {
+                      case 'conversation': return 'text-primary'
+                      case 'memory': return 'text-accent'
+                      case 'task': return 'text-muted-foreground'
+                      default: return 'text-muted-foreground'
+                    }
+                  }
+                  const Icon = getIcon(item.type)
+                  return (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className={`p-2 rounded-md bg-muted ${getColor(item.type)}`}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm">{item.text}</p>
+                        <p className="text-xs text-muted-foreground">{item.time}</p>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
             </div>
           </CardContent>
         </Card>
@@ -145,27 +170,33 @@ export function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button variant="outline" className="w-full justify-between">
-              <span className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                Manage Skills
-              </span>
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" className="w-full justify-between">
-              <span className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4" />
-                Configure Channels
-              </span>
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" className="w-full justify-between">
-              <span className="flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                View Logs
-              </span>
-              <ArrowRight className="h-4 w-4" />
-            </Button>
+            <Link to="/skills">
+              <Button variant="outline" className="w-full justify-between">
+                <span className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  Manage Skills
+                </span>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Link to="/config">
+              <Button variant="outline" className="w-full justify-between">
+                <span className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Configure Channels
+                </span>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Link to="/logs">
+              <Button variant="outline" className="w-full justify-between">
+                <span className="flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  View Logs
+                </span>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       </div>

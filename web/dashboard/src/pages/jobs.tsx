@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Play, Pause, RotateCcw, Trash2, Plus, CheckCircle2, AlertCircle, Calendar } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { jobsApi } from '@/lib/api'
 
 interface Job {
   id: string
@@ -9,70 +11,55 @@ interface Job {
   description: string
   status: 'running' | 'scheduled' | 'completed' | 'failed' | 'paused'
   schedule: string
-  lastRun: string | null
-  nextRun: string | null
-  runCount: number
-  successRate: number
+  last_run: string | null
+  next_run: string | null
+  run_count: number
+  is_active: boolean
 }
 
-const mockJobs: Job[] = [
-  { 
-    id: '1', 
-    name: 'Health Check', 
-    description: 'Monitor system health and resources',
-    status: 'running', 
-    schedule: 'Every 5 minutes', 
-    lastRun: '3 min ago', 
-    nextRun: 'In 2 min',
-    runCount: 1247,
-    successRate: 99.9
-  },
-  { 
-    id: '2', 
-    name: 'Memory Cleanup', 
-    description: 'Clean up expired and low-importance memories',
-    status: 'scheduled', 
-    schedule: 'Daily at 2 AM', 
-    lastRun: '22 hours ago', 
-    nextRun: 'In 2 hours',
-    runCount: 365,
-    successRate: 98.5
-  },
-  { 
-    id: '3', 
-    name: 'Backup Data', 
-    description: 'Backup conversation and configuration data',
-    status: 'completed', 
-    schedule: 'Weekly on Sunday', 
-    lastRun: '5 days ago', 
-    nextRun: 'In 2 days',
-    runCount: 52,
-    successRate: 100
-  },
-  { 
-    id: '4', 
-    name: 'Sync External APIs', 
-    description: 'Synchronize data with external services',
-    status: 'failed', 
-    schedule: 'Every hour', 
-    lastRun: '1 hour ago', 
-    nextRun: 'Now',
-    runCount: 8760,
-    successRate: 94.2
-  },
-]
-
 export function Jobs() {
+  const queryClient = useQueryClient()
   const [filter, setFilter] = useState<string>('all')
 
-  const filteredJobs = mockJobs.filter(job => {
+  const { data: jobs = [], isLoading } = useQuery<Job[]>({
+    queryKey: ['jobs'],
+    queryFn: jobsApi.list,
+  })
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
+      jobsApi.toggle(id, enabled),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: jobsApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] })
+    },
+  })
+
+  const filteredJobs = jobs.filter(job => {
     if (filter === 'all') return true
     if (filter === 'active') return job.status === 'running' || job.status === 'scheduled'
     return job.status === filter
   })
 
-  const runningJobs = mockJobs.filter(j => j.status === 'running').length
-  const failedJobs = mockJobs.filter(j => j.status === 'failed').length
+  const runningJobs = jobs.filter(j => j.status === 'running').length
+  const failedJobs = jobs.filter(j => j.status === 'failed').length
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <RotateCcw className="h-5 w-5 animate-spin" />
+          <span>Loading jobs...</span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -96,7 +83,7 @@ export function Jobs() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockJobs.length}</div>
+            <div className="text-2xl font-bold">{jobs.length}</div>
           </CardContent>
         </Card>
 
@@ -166,35 +153,40 @@ export function Jobs() {
                       <Calendar className="h-3.5 w-3.5" />
                       {job.schedule}
                     </span>
-                    {job.lastRun && (
-                      <span>Last: {job.lastRun}</span>
+                    {job.last_run && (
+                      <span>Last: {job.last_run}</span>
                     )}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-4">
                   <div className="text-right">
-                    <p className="text-lg font-semibold">{job.runCount.toLocaleString()}</p>
+                    <p className="text-lg font-semibold">{job.run_count.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground">Runs</p>
-                  </div>
-                  
-                  <div className="text-right">
-                    <p className="text-lg font-semibold text-accent">{job.successRate}%</p>
-                    <p className="text-xs text-muted-foreground">Success</p>
                   </div>
 
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      {job.status === 'paused' ? (
-                        <Play className="h-4 w-4" />
-                      ) : (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => toggleMutation.mutate({ id: job.id, enabled: !job.is_active })}
+                    >
+                      {job.is_active ? (
                         <Pause className="h-4 w-4" />
+                      ) : (
+                        <Play className="h-4 w-4" />
                       )}
                     </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
                       <RotateCcw className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-destructive"
+                      onClick={() => deleteMutation.mutate(job.id)}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -204,6 +196,15 @@ export function Jobs() {
           </Card>
         ))}
       </div>
+
+      {filteredJobs.length === 0 && (
+        <div className="flex h-64 items-center justify-center">
+          <div className="text-center">
+            <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">No jobs found</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

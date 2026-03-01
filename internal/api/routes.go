@@ -74,7 +74,7 @@ func (s *Server) setupRoutes() {
 	s.app.Get("/ws", websocket.New(s.handleWebSocket))
 
 	// Register dashboard API routes
-	dashboardHandler := dashboard.NewHandler(s.config, s.skillsRegistry, s.logger)
+	dashboardHandler := dashboard.NewHandler(s.config, s.skillsRegistry, s.logger, s.store)
 	dashboardHandler.RegisterRoutes(s.app)
 
 	// Try to serve embedded dashboard first
