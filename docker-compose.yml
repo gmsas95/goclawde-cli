@@ -58,7 +58,7 @@ services:
       - MYRAI_STORAGE_DATA_DIR=/app/data
       - MYRAI_STORAGE_SQLITE_PATH=/app/data/myrai.db
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
