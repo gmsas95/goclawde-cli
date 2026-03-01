@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Play, Pause, RotateCcw, Trash2, Plus, Clock, CheckCircle2, AlertCircle, Calendar } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
+import { Play, Pause, RotateCcw, Trash2, Plus, CheckCircle2, AlertCircle, Calendar } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
 interface Job {
@@ -60,230 +60,166 @@ const mockJobs: Job[] = [
     runCount: 8760,
     successRate: 94.2
   },
-  { 
-    id: '5', 
-    name: 'Generate Reports', 
-    description: 'Generate usage and performance reports',
-    status: 'paused', 
-    schedule: 'Monthly on 1st', 
-    lastRun: '3 weeks ago', 
-    nextRun: 'Paused',
-    runCount: 12,
-    successRate: 100
-  },
 ]
 
-const getStatusColor = (status: Job['status']) => {
-  const colors = {
-    running: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-    scheduled: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
-    completed: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    failed: 'bg-red-500/20 text-red-400 border-red-500/30',
-    paused: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  }
-  return colors[status]
-}
-
-const getStatusIcon = (status: Job['status']) => {
-  const icons = {
-    running: RotateCcw,
-    scheduled: Calendar,
-    completed: CheckCircle2,
-    failed: AlertCircle,
-    paused: Pause,
-  }
-  return icons[status]
-}
-
 export function Jobs() {
-  const [jobs, setJobs] = useState<Job[]>(mockJobs)
   const [filter, setFilter] = useState<string>('all')
 
-  const filteredJobs = jobs.filter(job => {
+  const filteredJobs = mockJobs.filter(job => {
     if (filter === 'all') return true
     if (filter === 'active') return job.status === 'running' || job.status === 'scheduled'
     return job.status === filter
   })
 
-  const toggleJobStatus = (jobId: string) => {
-    setJobs(jobs.map(job => {
-      if (job.id === jobId) {
-        const newStatus = job.status === 'paused' ? 'scheduled' : 'paused'
-        return { ...job, status: newStatus }
-      }
-      return job
-    }))
-  }
-
-  const runningJobs = jobs.filter(j => j.status === 'running').length
-  const scheduledJobs = jobs.filter(j => j.status === 'scheduled').length
-  const failedJobs = jobs.filter(j => j.status === 'failed').length
+  const runningJobs = mockJobs.filter(j => j.status === 'running').length
+  const failedJobs = mockJobs.filter(j => j.status === 'failed').length
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="relative">
-        <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-2xl blur-xl opacity-50" />
-        <div className="relative">
-          <h1 className="text-4xl font-bold gradient-text-amber mb-2">Job Scheduler</h1>
-          <p className="text-lg text-white/60">Manage automated tasks and scheduled jobs</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Job Scheduler</h1>
+          <p className="text-sm text-muted-foreground mt-1">Manage automated tasks</p>
         </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card variant="glass" className="p-4 flex items-center gap-4">
-          <div className="p-3 rounded-lg bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/30">
-            <Calendar className="h-6 w-6 text-blue-400" />
-          </div>
-          <div>
-            <p className="text-sm text-white/60">Total Jobs</p>
-            <p className="text-2xl font-bold text-white">{jobs.length}</p>
-          </div>
-        </Card>
-
-        <Card variant="glass" className="p-4 flex items-center gap-4">
-          <div className="p-3 rounded-lg bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30">
-            <RotateCcw className="h-6 w-6 text-emerald-400" />
-          </div>
-          <div>
-            <p className="text-sm text-white/60">Running</p>
-            <p className="text-2xl font-bold text-white">{runningJobs}</p>
-          </div>
-        </Card>
-
-        <Card variant="glass" className="p-4 flex items-center gap-4">
-          <div className="p-3 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30">
-            <Clock className="h-6 w-6 text-cyan-400" />
-          </div>
-          <div>
-            <p className="text-sm text-white/60">Scheduled</p>
-            <p className="text-2xl font-bold text-white">{scheduledJobs}</p>
-          </div>
-        </Card>
-
-        <Card variant="glass" className="p-4 flex items-center gap-4">
-          <div className="p-3 rounded-lg bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/30">
-            <AlertCircle className="h-6 w-6 text-red-400" />
-          </div>
-          <div>
-            <p className="text-sm text-white/60">Failed</p>
-            <p className="text-2xl font-bold text-white">{failedJobs}</p>
-          </div>
-        </Card>
-      </div>
-
-      {/* Controls */}
-      <div className="flex flex-col sm:flex-row justify-between gap-4">
-        <div className="flex gap-2">
-          {(['all', 'active', 'running', 'scheduled', 'failed', 'paused'] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                filter === f
-                  ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
-                  : 'text-white/60 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
-          ))}
-        </div>
-        <Button variant="default" className="gap-2">
-          <Plus className="h-4 w-4" />
+        <Button>
+          <Plus className="mr-2 h-4 w-4" />
           New Job
         </Button>
       </div>
 
+      {/* Stats */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Jobs</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{mockJobs.length}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Running</CardTitle>
+            <RotateCcw className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{runningJobs}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Failed</CardTitle>
+            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{failedJobs}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Success Rate</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">98.2%</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filter */}
+      <div className="flex gap-2">
+        {(['all', 'active', 'running', 'failed'] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              filter === f
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`}
+          >
+            {f.charAt(0).toUpperCase() + f.slice(1)}
+          </button>
+        ))}
+      </div>
+
       {/* Jobs List */}
       <div className="space-y-3">
-        {filteredJobs.map((job) => {
-          const StatusIcon = getStatusIcon(job.status)
-          return (
-            <Card key={job.id} variant="gradient" className="group hover:border-amber-500/30 transition-all">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold text-white truncate">{job.name}</h3>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(job.status)}`}>
-                        <span className="flex items-center gap-1">
-                          <StatusIcon className="h-3 w-3" />
-                          {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                        </span>
-                      </span>
-                    </div>
-                    <p className="text-sm text-white/50 mb-3">{job.description}</p>
-                    
-                    <div className="flex flex-wrap gap-4 text-sm">
-                      <div className="flex items-center gap-2 text-white/40">
-                        <Calendar className="h-4 w-4" />
-                        <span>{job.schedule}</span>
-                      </div>
-                      {job.lastRun && (
-                        <div className="flex items-center gap-2 text-white/40">
-                          <RotateCcw className="h-4 w-4" />
-                          <span>Last: {job.lastRun}</span>
-                        </div>
-                      )}
-                      {job.nextRun && (
-                        <div className="flex items-center gap-2 text-cyan-400/70">
-                          <Clock className="h-4 w-4" />
-                          <span>Next: {job.nextRun}</span>
-                        </div>
-                      )}
-                    </div>
+        {filteredJobs.map((job) => (
+          <Card key={job.id}>
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-medium">{job.name}</h3>
+                    <StatusBadge status={job.status} />
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-2">{job.description}</p>
+                  
+                  <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {job.schedule}
+                    </span>
+                    {job.lastRun && (
+                      <span>Last: {job.lastRun}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-lg font-semibold">{job.runCount.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">Runs</p>
+                  </div>
+                  
+                  <div className="text-right">
+                    <p className="text-lg font-semibold text-accent">{job.successRate}%</p>
+                    <p className="text-xs text-muted-foreground">Success</p>
                   </div>
 
-                  <div className="flex flex-col items-end gap-3">
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-white">{job.runCount.toLocaleString()}</p>
-                      <p className="text-xs text-white/40">Total runs</p>
-                    </div>
-                    <div className="text-right">
-                      <p className={`text-lg font-semibold ${job.successRate >= 95 ? 'text-emerald-400' : job.successRate >= 90 ? 'text-amber-400' : 'text-red-400'}`}>
-                        {job.successRate}%
-                      </p>
-                      <p className="text-xs text-white/40">Success rate</p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-8 w-8 p-0"
-                      onClick={() => toggleJobStatus(job.id)}
-                    >
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
                       {job.status === 'paused' ? (
-                        <Play className="h-4 w-4 text-emerald-400" />
+                        <Play className="h-4 w-4" />
                       ) : (
-                        <Pause className="h-4 w-4 text-amber-400" />
+                        <Pause className="h-4 w-4" />
                       )}
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <RotateCcw className="h-4 w-4 text-cyan-400" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <RotateCcw className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-400 hover:text-red-300">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )
-        })}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
-
-      {filteredJobs.length === 0 && (
-        <div className="flex h-64 items-center justify-center">
-          <div className="text-center">
-            <Calendar className="h-12 w-12 text-white/20 mx-auto mb-4" />
-            <p className="text-white/40">No jobs found</p>
-          </div>
-        </div>
-      )}
     </div>
+  )
+}
+
+function StatusBadge({ status }: { status: Job['status'] }) {
+  const styles = {
+    running: 'bg-accent/10 text-accent',
+    scheduled: 'bg-primary/10 text-primary',
+    completed: 'bg-muted text-muted-foreground',
+    failed: 'bg-destructive/10 text-destructive',
+    paused: 'bg-muted text-muted-foreground',
+  }
+
+  return (
+    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${styles[status]}`}>
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </span>
   )
 }
