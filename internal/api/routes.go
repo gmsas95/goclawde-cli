@@ -40,6 +40,9 @@ func (s *Server) setupRoutes() {
 
 	api.Post("/auth/login", s.rateLimitMiddleware(5, time.Minute), s.handleLogin)
 
+	// Public endpoint for dashboard status (no auth required)
+	api.Get("/public/status", s.handlePublicStatus)
+
 	protected := api.Use(s.authMiddleware())
 
 	protected.Get("/conversations", s.handleListConversations)

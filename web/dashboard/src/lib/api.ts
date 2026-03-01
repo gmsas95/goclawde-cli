@@ -14,7 +14,7 @@ export const configApi = {
 }
 
 export const statusApi = {
-  get: () => api.get<Status>('/status').then(r => r.data),
+  get: () => api.get<Status>('/public/status').then(r => r.data),
 }
 
 export const skillsApi = {

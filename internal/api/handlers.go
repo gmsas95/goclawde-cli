@@ -25,6 +25,15 @@ func (s *Server) handleHealth(c *fiber.Ctx) error {
 	})
 }
 
+// handlePublicStatus returns minimal public status for dashboard (no auth required)
+func (s *Server) handlePublicStatus(c *fiber.Ctx) error {
+	return c.JSON(fiber.Map{
+		"status":  "healthy",
+		"version": "2.0.0",
+		"uptime":  "running",
+	})
+}
+
 func (s *Server) handleMetrics(c *fiber.Ctx) error {
 	c.Set("Content-Type", "text/plain; charset=utf-8")
 	return c.SendString(metrics.GetPrometheus())
