@@ -197,15 +197,20 @@ func (a *Agent) chatNonStream(ctx context.Context, req llm.ChatRequest, convID s
 		return a.handleToolCalls(ctx, req, convID, msg)
 	}
 
-	// Save assistant message
-	assistantMsg := &store.Message{
-		ConversationID: convID,
-		Role:           "assistant",
-		Content:        msg.Content,
-		Tokens:         resp.Usage.CompletionTokens,
-	}
-	if err := a.store.CreateMessage(assistantMsg); err != nil {
-		a.logger.Warn("Failed to save assistant message", zap.Error(err))
+	// Save assistant message (skip if empty without tool calls)
+	if msg.Content != "" || len(msg.ToolCalls) > 0 {
+		assistantMsg := &store.Message{
+			ConversationID: convID,
+			Role:           "assistant",
+			Content:        msg.Content,
+			Tokens:         resp.Usage.CompletionTokens,
+		}
+		if err := a.store.CreateMessage(assistantMsg); err != nil {
+			a.logger.Warn("Failed to save assistant message", zap.Error(err))
+		}
+	} else {
+		a.logger.Debug("Skipping empty assistant message (no content, no tool calls)",
+			zap.String("conversation_id", convID))
 	}
 
 	// Extract memories from this conversation turn (async)
@@ -267,15 +272,20 @@ func (a *Agent) chatStream(ctx context.Context, req llm.ChatRequest, convID stri
 	// we'd track if tool calls were detected)
 	// For now, return the content
 
-	// Save assistant message
-	assistantMsg := &store.Message{
-		ConversationID: convID,
-		Role:           "assistant",
-		Content:        content,
-		Tokens:         llm.CountTokens(content),
-	}
-	if err := a.store.CreateMessage(assistantMsg); err != nil {
-		a.logger.Warn("Failed to save assistant message", zap.Error(err))
+	// Save assistant message (skip if empty without tool calls)
+	if content != "" {
+		assistantMsg := &store.Message{
+			ConversationID: convID,
+			Role:           "assistant",
+			Content:        content,
+			Tokens:         llm.CountTokens(content),
+		}
+		if err := a.store.CreateMessage(assistantMsg); err != nil {
+			a.logger.Warn("Failed to save assistant message", zap.Error(err))
+		}
+	} else {
+		a.logger.Debug("Skipping empty assistant message in streaming response",
+			zap.String("conversation_id", convID))
 	}
 
 	return &ChatResponse{
@@ -492,6 +502,15 @@ func (a *Agent) buildContext(ctx context.Context, convID string, systemPrompt st
 	}
 
 	for _, msg := range storeMsgs {
+		// Skip empty assistant messages (no content and no tool calls)
+		// These cause API errors: "message with role 'assistant' must not be empty"
+		if msg.Role == "assistant" && msg.Content == "" && len(msg.ToolCalls) == 0 {
+			a.logger.Debug("Skipping empty assistant message",
+				zap.String("conversation_id", convID),
+				zap.String("message_id", msg.ID))
+			continue
+		}
+
 		lmMsg := llm.Message{
 			Role:             msg.Role,
 			Content:          msg.Content,

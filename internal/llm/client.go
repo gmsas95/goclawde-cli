@@ -123,6 +123,18 @@ type Delta struct {
 func (c *Client) ChatCompletion(ctx context.Context, req ChatRequest) (*ChatResponse, error) {
 	req.Stream = false
 
+	// Filter out empty assistant messages to prevent API errors
+	// "message with role 'assistant' must not be empty"
+	filteredMessages := make([]Message, 0, len(req.Messages))
+	for _, msg := range req.Messages {
+		if msg.Role == "assistant" && msg.Content == "" && len(msg.ToolCalls) == 0 {
+			// Skip empty assistant messages without tool calls
+			continue
+		}
+		filteredMessages = append(filteredMessages, msg)
+	}
+	req.Messages = filteredMessages
+
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
@@ -161,6 +173,18 @@ type StreamCallback func(chunk StreamResponse) error
 // ChatCompletionStream sends a streaming chat completion request
 func (c *Client) ChatCompletionStream(ctx context.Context, req ChatRequest, callback StreamCallback) error {
 	req.Stream = true
+
+	// Filter out empty assistant messages to prevent API errors
+	// "message with role 'assistant' must not be empty"
+	filteredMessages := make([]Message, 0, len(req.Messages))
+	for _, msg := range req.Messages {
+		if msg.Role == "assistant" && msg.Content == "" && len(msg.ToolCalls) == 0 {
+			// Skip empty assistant messages without tool calls
+			continue
+		}
+		filteredMessages = append(filteredMessages, msg)
+	}
+	req.Messages = filteredMessages
 
 	body, err := json.Marshal(req)
 	if err != nil {

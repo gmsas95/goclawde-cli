@@ -127,6 +127,15 @@ func (cm *ContextManager) buildFullContext(ctx context.Context, convID string, r
 	}
 
 	for _, msg := range storeMsgs {
+		// Skip empty assistant messages (no content and no tool calls)
+		// These cause API errors: "message with role 'assistant' must not be empty"
+		if msg.Role == "assistant" && msg.Content == "" && len(msg.ToolCalls) == 0 {
+			cm.logger.Debug("Skipping empty assistant message in full context",
+				zap.String("conversation_id", convID),
+				zap.String("message_id", msg.ID))
+			continue
+		}
+
 		lmMsg := llm.Message{
 			Role:             msg.Role,
 			Content:          msg.Content,
@@ -180,6 +189,15 @@ func (cm *ContextManager) buildSummarizedContext(ctx context.Context, convID str
 
 	// Add recent messages in order
 	for _, msg := range recentMsgs {
+		// Skip empty assistant messages (no content and no tool calls)
+		// These cause API errors: "message with role 'assistant' must not be empty"
+		if msg.Role == "assistant" && msg.Content == "" && len(msg.ToolCalls) == 0 {
+			cm.logger.Debug("Skipping empty assistant message in summarized context",
+				zap.String("conversation_id", convID),
+				zap.String("message_id", msg.ID))
+			continue
+		}
+
 		lmMsg := llm.Message{
 			Role:             msg.Role,
 			Content:          msg.Content,
