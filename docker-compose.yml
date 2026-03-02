@@ -1,12 +1,12 @@
 version: '3.8'
 
 services:
-  myrai:
+  goclawde:
     build:
       context: .
       dockerfile: Dockerfile
     image: myrai:latest
-    container_name: myrai
+    container_name: goclawde
     restart: unless-stopped
     ports:
       - "8080:8080"
