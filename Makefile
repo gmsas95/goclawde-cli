@@ -51,9 +51,30 @@ clean:
 
 # Run tests
 test:
-	go test -v ./...
+	go test ./internal/...
 
-# Run unit tests only
+# Run tests with verbose output
+test-v:
+	go test ./internal/... -v
+
+# Run tests with coverage
+test-cover:
+	go test ./internal/... -cover
+
+# Run tests with coverage report
+test-cover-html:
+	go test ./internal/... -coverprofile=coverage.out
+	go tool cover -html=coverage.out
+
+# Run tests with race detection
+test-race:
+	go test ./internal/... -race
+
+# Run benchmarks
+test-bench:
+	go test ./internal/... -bench=. -benchmem
+
+# Run unit tests only (alias for test)
 test-unit:
 	go test -v ./internal/...
 
