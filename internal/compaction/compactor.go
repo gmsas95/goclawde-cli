@@ -177,6 +177,11 @@ func (c *SummarizingCompactor) EstimateTokens(messages []types.Message) int {
 // (In production, this would call an LLM)
 type SimpleSummarizer struct{}
 
+// NewSimpleSummarizer creates a new simple summarizer
+func NewSimpleSummarizer() *SimpleSummarizer {
+	return &SimpleSummarizer{}
+}
+
 // Summarize creates a basic summary
 func (s *SimpleSummarizer) Summarize(ctx context.Context, messages []types.Message) (string, error) {
 	// Count message types
