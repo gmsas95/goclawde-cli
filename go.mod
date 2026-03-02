@@ -12,7 +12,6 @@ require (
 	github.com/chromedp/chromedp v0.14.2
 	github.com/dgraph-io/badger/v4 v4.5.0
 	github.com/fsnotify/fsnotify v1.7.0
-	github.com/glebarez/go-sqlite v1.22.0
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 	github.com/gofiber/fiber/v2 v2.52.6
 	github.com/gofiber/websocket/v2 v2.2.1
@@ -28,8 +27,9 @@ require (
 	golang.org/x/term v0.40.0
 	golang.org/x/time v0.11.0
 	gopkg.in/yaml.v3 v3.0.1
-	gorm.io/driver/sqlite v1.5.7
-	gorm.io/gorm v1.25.12
+	gorm.io/driver/postgres v1.5.11
+	gorm.io/driver/sqlite v1.6.0
+	gorm.io/gorm v1.30.0
 )
 
 require (
@@ -61,6 +61,10 @@ require (
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
+	github.com/jackc/pgx/v5 v5.5.5 // indirect
+	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
@@ -84,7 +88,6 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
-	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
@@ -110,8 +113,4 @@ require (
 	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
-	modernc.org/libc v1.37.6 // indirect
-	modernc.org/mathutil v1.6.0 // indirect
-	modernc.org/memory v1.7.2 // indirect
-	modernc.org/sqlite v1.28.0 // indirect
 )

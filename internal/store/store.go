@@ -2,17 +2,16 @@ package store
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
-	_ "github.com/glebarez/go-sqlite" // Pure Go SQLite driver
 	"github.com/gmsas95/myrai-cli/internal/config"
 
-	"gorm.io/driver/sqlite"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -26,31 +25,31 @@ type Store struct {
 
 // New creates a new Store instance
 func New(cfg *config.Config) (*Store, error) {
-	// Initialize SQLite
-	sqlitePath := cfg.Storage.SQLitePath
-	if sqlitePath == "" {
-		sqlitePath = filepath.Join(cfg.Storage.DataDir, "myrai.db")
+	// Get database URL from environment or config
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		// Default to local PostgreSQL
+		databaseURL = "postgres://myrai:myrai_secret@localhost:5432/myrai?sslmode=disable"
 	}
 
-	// Open SQLite with optimizations
-	sqliteDB, err := sql.Open("sqlite", sqlitePath+"?_journal=WAL&_synchronous=NORMAL&_busy_timeout=5000&_cache_size=-64000")
-	if err != nil {
-		return nil, fmt.Errorf("failed to open sqlite: %w", err)
-	}
-
-	// Configure connection pool
-	sqliteDB.SetMaxOpenConns(10)
-	sqliteDB.SetMaxIdleConns(5)
-	sqliteDB.SetConnMaxLifetime(time.Hour)
-
-	db, err := gorm.Open(sqlite.Dialector{Conn: sqliteDB}, &gorm.Config{
+	// Open PostgreSQL connection
+	db, err := gorm.Open(postgres.Open(databaseURL), &gorm.Config{
 		Logger:                 logger.Default.LogMode(logger.Silent),
 		SkipDefaultTransaction: true,
 		PrepareStmt:            true,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to open sqlite: %w", err)
+		return nil, fmt.Errorf("failed to open postgres: %w", err)
 	}
+
+	// Configure connection pool
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sql db: %w", err)
+	}
+	sqlDB.SetMaxOpenConns(25)
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetConnMaxLifetime(time.Hour)
 
 	// Auto-migrate schemas
 	if err := db.AutoMigrate(

@@ -47,7 +47,6 @@ type Provider struct {
 
 type StorageConfig struct {
 	DataDir    string `mapstructure:"data_dir"`
-	SQLitePath string `mapstructure:"sqlite_path"`
 	BadgerPath string `mapstructure:"badger_path"`
 }
 
@@ -192,7 +191,6 @@ func Load(configPath, dataDir string) (*Config, error) {
 	}
 
 	v.Set("storage.data_dir", dataDir)
-	v.Set("storage.sqlite_path", filepath.Join(dataDir, "myrai.db"))
 	v.Set("storage.badger_path", filepath.Join(dataDir, "badger"))
 
 	// Config file should be in config directory, not data directory
@@ -238,12 +236,9 @@ func Load(configPath, dataDir string) (*Config, error) {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
-	// IMPORTANT: Force sqlite_path to be inside data directory
+	// Force badger_path to be inside data directory
 	// This ensures database is persisted when using Docker volumes
 	// Only override if not explicitly set via environment variable
-	if os.Getenv("MYRAI_STORAGE_SQLITE_PATH") == "" {
-		v.Set("storage.sqlite_path", filepath.Join(dataDir, "myrai.db"))
-	}
 	if os.Getenv("MYRAI_STORAGE_BADGER_PATH") == "" {
 		v.Set("storage.badger_path", filepath.Join(dataDir, "badger"))
 	}
