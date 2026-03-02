@@ -111,54 +111,70 @@ type ContentBlockWrapper struct {
 func (b TextBlock) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		Type string `json:"type"`
-		TextBlock
+		Text string `json:"text"`
 	}{
-		Type:      "text",
-		TextBlock: b,
+		Type: "text",
+		Text: b.Text,
 	})
 }
 
 // MarshalJSON implements custom JSON marshaling for ContentBlock
 func (b ToolCallBlock) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Type string `json:"type"`
-		ToolCallBlock
+		Type      string          `json:"type"`
+		ID        string          `json:"id"`
+		Name      string          `json:"name"`
+		Arguments json.RawMessage `json:"arguments"`
 	}{
-		Type:          "tool_call",
-		ToolCallBlock: b,
+		Type:      "tool_call",
+		ID:        b.ID,
+		Name:      b.Name,
+		Arguments: b.Arguments,
 	})
 }
 
 // MarshalJSON implements custom JSON marshaling for ContentBlock
 func (b ToolResultBlock) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Type string `json:"type"`
-		ToolResultBlock
+		Type       string         `json:"type"`
+		ToolCallID string         `json:"tool_call_id"`
+		ToolName   string         `json:"tool_name"`
+		Content    []ContentBlock `json:"content"`
+		IsError    bool           `json:"is_error"`
 	}{
-		Type:            "tool_result",
-		ToolResultBlock: b,
+		Type:       "tool_result",
+		ToolCallID: b.ToolCallID,
+		ToolName:   b.ToolName,
+		Content:    b.Content,
+		IsError:    b.IsError,
 	})
 }
 
 // MarshalJSON implements custom JSON marshaling for ContentBlock
 func (b ThinkingBlock) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Type string `json:"type"`
-		ThinkingBlock
+		Type      string `json:"type"`
+		Thinking  string `json:"thinking"`
+		Signature string `json:"signature,omitempty"`
 	}{
-		Type:          "thinking",
-		ThinkingBlock: b,
+		Type:      "thinking",
+		Thinking:  b.Thinking,
+		Signature: b.Signature,
 	})
 }
 
 // MarshalJSON implements custom JSON marshaling for ContentBlock
 func (b ImageBlock) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Type string `json:"type"`
-		ImageBlock
+		Type      string `json:"type"`
+		Source    string `json:"source"`
+		MediaType string `json:"media_type"`
+		Data      string `json:"data"`
 	}{
-		Type:       "image",
-		ImageBlock: b,
+		Type:      "image",
+		Source:    b.Source,
+		MediaType: b.MediaType,
+		Data:      b.Data,
 	})
 }
 
