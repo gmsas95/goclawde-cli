@@ -163,7 +163,7 @@ func TestStore_MessageOperations(t *testing.T) {
 		}
 
 		// Retrieve and verify
-		msgs, err := st.GetMessages(conv.ID, 1, 0)
+		msgs, err := st.GetMessages(conv.ID, 20, 0)
 		if err != nil {
 			t.Fatalf("Failed to get messages with tool calls: %v", err)
 		}
@@ -183,7 +183,7 @@ func TestStore_MessageOperations(t *testing.T) {
 			}
 		}
 		if !found {
-			t.Error("Message with tool calls not found in retrieved messages")
+			t.Errorf("Message with tool calls not found in retrieved messages. Total messages: %d", len(msgs))
 		}
 	})
 
@@ -203,7 +203,7 @@ func TestStore_MessageOperations(t *testing.T) {
 		}
 
 		// Retrieve and verify
-		msgs, err := st.GetMessages(conv.ID, 1, 0)
+		msgs, err := st.GetMessages(conv.ID, 20, 0)
 		if err != nil {
 			t.Fatalf("Failed to get messages with tool results: %v", err)
 		}
@@ -219,7 +219,7 @@ func TestStore_MessageOperations(t *testing.T) {
 			}
 		}
 		if !found {
-			t.Error("Message with tool results not found in retrieved messages")
+			t.Errorf("Message with tool results not found in retrieved messages. Total messages: %d", len(msgs))
 		}
 	})
 }

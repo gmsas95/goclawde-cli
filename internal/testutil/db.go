@@ -67,7 +67,6 @@ func NewTestDBWithStore(t *testing.T) (*TestDB, *store.Store) {
 	cfg := &config.Config{
 		Storage: config.StorageConfig{
 			DataDir:    tempDir,
-			SQLitePath: tempDir + "/test.db",
 			BadgerPath: tempDir + "/badger",
 		},
 	}
@@ -96,7 +95,6 @@ func NewTestStore(t *testing.T) *store.Store {
 	cfg := &config.Config{
 		Storage: config.StorageConfig{
 			DataDir:    tempDir,
-			SQLitePath: tempDir + "/test.db",
 			BadgerPath: tempDir + "/badger",
 		},
 	}
