@@ -147,6 +147,81 @@ func TestStore_MessageOperations(t *testing.T) {
 			t.Errorf("Expected 2 messages, got %d", len(msgs))
 		}
 	})
+
+	t.Run("MessageWithToolCalls", func(t *testing.T) {
+		// Create message with tool calls (JSON field)
+		toolCallsJSON := store.JSON(`[{"id":"call_1","type":"function","function":{"name":"get_weather","arguments":"{}"}}]`)
+		msg := &store.Message{
+			ConversationID: conv.ID,
+			Role:           "assistant",
+			Content:        "",
+			ToolCalls:      toolCallsJSON,
+			Tokens:         50,
+		}
+		if err := st.CreateMessage(msg); err != nil {
+			t.Fatalf("Failed to create message with tool calls: %v", err)
+		}
+
+		// Retrieve and verify
+		msgs, err := st.GetMessages(conv.ID, 1, 0)
+		if err != nil {
+			t.Fatalf("Failed to get messages with tool calls: %v", err)
+		}
+
+		found := false
+		for _, m := range msgs {
+			if m.ID == msg.ID {
+				found = true
+				if len(m.ToolCalls) == 0 {
+					t.Error("Expected ToolCalls to be retrieved, got empty")
+				}
+				// Verify the content matches
+				if string(m.ToolCalls) != string(toolCallsJSON) {
+					t.Errorf("ToolCalls mismatch: expected %s, got %s", toolCallsJSON, m.ToolCalls)
+				}
+				break
+			}
+		}
+		if !found {
+			t.Error("Message with tool calls not found in retrieved messages")
+		}
+	})
+
+	t.Run("MessageWithToolResults", func(t *testing.T) {
+		// Create message with tool results (JSON field)
+		toolResultsJSON := store.JSON(`{"result":"sunny","temperature":25}`)
+		msg := &store.Message{
+			ConversationID: conv.ID,
+			Role:           "tool",
+			Content:        "The weather is sunny with 25°C",
+			ToolResults:    toolResultsJSON,
+			ToolCallID:     "call_1",
+			Tokens:         20,
+		}
+		if err := st.CreateMessage(msg); err != nil {
+			t.Fatalf("Failed to create message with tool results: %v", err)
+		}
+
+		// Retrieve and verify
+		msgs, err := st.GetMessages(conv.ID, 1, 0)
+		if err != nil {
+			t.Fatalf("Failed to get messages with tool results: %v", err)
+		}
+
+		found := false
+		for _, m := range msgs {
+			if m.ID == msg.ID {
+				found = true
+				if len(m.ToolResults) == 0 {
+					t.Error("Expected ToolResults to be retrieved, got empty")
+				}
+				break
+			}
+		}
+		if !found {
+			t.Error("Message with tool results not found in retrieved messages")
+		}
+	})
 }
 
 func TestStore_MemoryOperations(t *testing.T) {
