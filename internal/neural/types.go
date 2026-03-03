@@ -94,6 +94,11 @@ type QueryPattern struct {
 	CreatedAt         time.Time `json:"created_at"`
 }
 
+// TableName specifies the table name for QueryPattern
+func (QueryPattern) TableName() string {
+	return "cluster_query_patterns"
+}
+
 // ClusterFilter contains filters for cluster queries
 type ClusterFilter struct {
 	MinConfidence float64

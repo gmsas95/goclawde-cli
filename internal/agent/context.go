@@ -146,7 +146,7 @@ func (cm *ContextManager) buildFullContext(ctx context.Context, convID string, r
 		// Handle tool calls
 		if len(msg.ToolCalls) > 0 {
 			var tcs []llm.ToolCall
-			if err := json.Unmarshal(msg.ToolCalls, &tcs); err == nil {
+			if err := json.Unmarshal([]byte(msg.ToolCalls), &tcs); err == nil {
 				lmMsg.ToolCalls = tcs
 			}
 		}
@@ -207,7 +207,7 @@ func (cm *ContextManager) buildSummarizedContext(ctx context.Context, convID str
 
 		if len(msg.ToolCalls) > 0 {
 			var tcs []llm.ToolCall
-			if err := json.Unmarshal(msg.ToolCalls, &tcs); err == nil {
+			if err := json.Unmarshal([]byte(msg.ToolCalls), &tcs); err == nil {
 				lmMsg.ToolCalls = tcs
 			}
 		}

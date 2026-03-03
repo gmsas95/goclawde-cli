@@ -521,7 +521,7 @@ func (a *Agent) buildContext(ctx context.Context, convID string, systemPrompt st
 		// Handle tool calls from history
 		if len(msg.ToolCalls) > 0 {
 			var tcs []llm.ToolCall
-			if err := json.Unmarshal(msg.ToolCalls, &tcs); err == nil {
+			if err := json.Unmarshal([]byte(msg.ToolCalls), &tcs); err == nil {
 				lmMsg.ToolCalls = tcs
 			}
 		}

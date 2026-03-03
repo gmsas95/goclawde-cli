@@ -35,17 +35,17 @@ type Conversation struct {
 
 // Message represents a chat message
 type Message struct {
-	ID               string          `gorm:"primaryKey" json:"id"`
-	ConversationID   string          `gorm:"index:idx_conv_created" json:"conversation_id"`
-	Role             string          `json:"role"` // user, assistant, system, tool
-	Content          string          `json:"content"`
-	Tokens           int             `json:"tokens"`
-	ToolCalls        json.RawMessage `json:"tool_calls,omitempty" gorm:"type:text"`
-	ToolResults      json.RawMessage `json:"tool_results,omitempty" gorm:"type:text"`
-	ToolCallID       string          `json:"tool_call_id,omitempty"`                       // For tool role messages
-	ReasoningContent string          `json:"reasoning_content,omitempty" gorm:"type:text"` // For thinking/reasoning models like Kimi
-	LatencyMs        int             `json:"latency_ms"`
-	CreatedAt        time.Time       `gorm:"index:idx_conv_created" json:"created_at"`
+	ID               string    `gorm:"primaryKey" json:"id"`
+	ConversationID   string    `gorm:"index:idx_conv_created" json:"conversation_id"`
+	Role             string    `json:"role"` // user, assistant, system, tool
+	Content          string    `json:"content"`
+	Tokens           int       `json:"tokens"`
+	ToolCalls        JSON      `json:"tool_calls,omitempty" gorm:"type:text"`
+	ToolResults      JSON      `json:"tool_results,omitempty" gorm:"type:text"`
+	ToolCallID       string    `json:"tool_call_id,omitempty"`                       // For tool role messages
+	ReasoningContent string    `json:"reasoning_content,omitempty" gorm:"type:text"` // For thinking/reasoning models like Kimi
+	LatencyMs        int       `json:"latency_ms"`
+	CreatedAt        time.Time `gorm:"index:idx_conv_created" json:"created_at"`
 }
 
 // Memory represents a stored fact or preference
@@ -213,12 +213,12 @@ func randomString(n int) string {
 }
 
 // ToJSON converts struct to JSON bytes
-func ToJSON(v interface{}) json.RawMessage {
+func ToJSON(v interface{}) JSON {
 	b, _ := json.Marshal(v)
-	return b
+	return JSON(b)
 }
 
 // FromJSON parses JSON bytes into struct
-func FromJSON(data json.RawMessage, v interface{}) error {
+func FromJSON(data JSON, v interface{}) error {
 	return json.Unmarshal(data, v)
 }
