@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -111,29 +110,6 @@ func (s *AgenticSkill) handleGetNetworkInfo(ctx context.Context, args map[string
 	}
 
 	return result, nil
-}
-
-func (s *AgenticSkill) handleGetEnvironment(ctx context.Context, args map[string]interface{}) (interface{}, error) {
-	filter := ""
-	if f, ok := args["filter"].(string); ok {
-		filter = f
-	}
-
-	env := map[string]string{}
-	for _, e := range os.Environ() {
-		parts := strings.SplitN(e, "=", 2)
-		if len(parts) == 2 {
-			if filter == "" || strings.HasPrefix(parts[0], filter) {
-				env[parts[0]] = parts[1]
-			}
-		}
-	}
-
-	env["GO_VERSION"] = runtime.Version()
-	env["GO_OS"] = runtime.GOOS
-	env["GO_ARCH"] = runtime.GOARCH
-
-	return env, nil
 }
 
 func parseCPUInfo(data string) []map[string]string {

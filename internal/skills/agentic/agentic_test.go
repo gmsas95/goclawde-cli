@@ -28,7 +28,6 @@ func TestToolsRegistered(t *testing.T) {
 		"get_system_resources",
 		"list_processes",
 		"get_network_info",
-		"get_environment",
 		"analyze_project_structure",
 		"analyze_code_file",
 		"search_code",
@@ -49,48 +48,6 @@ func TestToolsRegistered(t *testing.T) {
 	for _, expected := range expectedTools {
 		if !toolNames[expected] {
 			t.Errorf("expected tool %q to be registered", expected)
-		}
-	}
-}
-
-func TestHandleGetEnvironment(t *testing.T) {
-	skill := NewAgenticSkill("/tmp")
-	ctx := context.Background()
-
-	result, err := skill.handleGetEnvironment(ctx, map[string]interface{}{})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	env, ok := result.(map[string]string)
-	if !ok {
-		t.Fatal("expected map[string]string result")
-	}
-
-	if _, exists := env["GO_VERSION"]; !exists {
-		t.Error("expected GO_VERSION in result")
-	}
-}
-
-func TestHandleGetEnvironmentWithFilter(t *testing.T) {
-	skill := NewAgenticSkill("/tmp")
-	ctx := context.Background()
-
-	result, err := skill.handleGetEnvironment(ctx, map[string]interface{}{
-		"filter": "GO",
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	env, ok := result.(map[string]string)
-	if !ok {
-		t.Fatal("expected map[string]string result")
-	}
-
-	for key := range env {
-		if len(key) < 2 || key[:2] != "GO" {
-			t.Errorf("expected key to start with 'GO', got %q", key)
 		}
 	}
 }
