@@ -416,8 +416,11 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("tools.enabled", []string{"read_file", "write_file", "list_dir", "exec_command", "web_search"})
 	v.SetDefault("tools.sandbox", true)
 
-	// Security defaults
-	v.SetDefault("security.allow_origins", []string{"*"})
+	// Security defaults - localhost only for self-hosted
+	v.SetDefault("security.allow_origins", []string{
+		"http://localhost:8080",
+		"http://127.0.0.1:8080",
+	})
 
 	// MCP defaults
 	v.SetDefault("mcp.enabled", false)

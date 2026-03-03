@@ -192,6 +192,9 @@ func initAppWithGracefulShutdown() *AppContext {
 		logger.Fatal("Failed to load config", zap.Error(err))
 	}
 
+	// Run security checks and warnings
+	runSecurityChecks(cfg, logger)
+
 	st, err := store.New(cfg)
 	if err != nil {
 		logger.Fatal("Failed to initialize store", zap.Error(err))
@@ -410,4 +413,46 @@ func getMode() string {
 		return "cli"
 	}
 	return "server"
+}
+
+func runSecurityChecks(cfg *config.Config, logger *zap.Logger) {
+	// Check if admin password is configured
+	if cfg.Security.AdminPassword == "" {
+		logger.Info("Security: No admin password configured")
+		logger.Info("  - Dashboard is open (relying on network-level security)")
+		logger.Info("  - To enable password auth: Set GOCLAWDE_ADMIN_PASSWORD")
+		logger.Info("  - Recommended: Use reverse proxy with HTTPS or VPN")
+	} else {
+		logger.Info("Security: Admin password configured")
+	}
+
+	// Check CORS configuration
+	if len(cfg.Security.AllowOrigins) == 1 && cfg.Security.AllowOrigins[0] == "*" {
+		logger.Warn("Security: CORS is set to allow all origins (*)")
+		logger.Warn("  - This is suitable for local development only")
+		logger.Warn("  - For production, set GOCLAWDE_SECURITY_ALLOW_ORIGINS to your domain")
+	}
+
+	// Check server binding
+	if cfg.Server.Address == "0.0.0.0" {
+		logger.Warn("Security: Server is bound to all interfaces (0.0.0.0)")
+		logger.Warn("  - Accessible from any network interface")
+		logger.Warn("  - Recommended: Use reverse proxy with HTTPS")
+	} else if cfg.Server.Address == "127.0.0.1" || cfg.Server.Address == "localhost" {
+		logger.Info("Security: Server is bound to localhost only")
+		logger.Info("  - Only accessible from this machine")
+	}
+
+	// Check JWT secret
+	if cfg.Security.JWTSecret == "" {
+		logger.Warn("Security: JWT secret not configured, using random value")
+		logger.Warn("  - Sessions won't persist across restarts")
+		logger.Warn("  - Set GOCLAWDE_JWT_SECRET for persistent sessions")
+	}
+
+	// Check if running as root
+	if os.Getuid() == 0 {
+		logger.Warn("Security: Running as root is not recommended")
+		logger.Warn("  - Consider running as a non-root user")
+	}
 }

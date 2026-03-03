@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -73,8 +76,21 @@ func (s *Server) handleLogin(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
 	}
 
+	// If no admin password configured, rely on network-level security
+	if s.config.Security.AdminPassword == "" {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "password authentication not configured",
+			"hint":  "Set GOCLAWDE_ADMIN_PASSWORD to enable password auth, or use network-level security (VPN/reverse proxy)",
+		})
+	}
+
+	// Verify password
+	if req.Password != s.config.Security.AdminPassword {
+		return c.Status(401).JSON(fiber.Map{"error": "invalid credentials"})
+	}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub": "default",
+		"sub": "admin",
 		"iat": time.Now().Unix(),
 		"exp": time.Now().Add(7 * 24 * time.Hour).Unix(),
 	})
@@ -322,23 +338,68 @@ func (s *Server) handleFileUpload(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "no file provided"})
 	}
 
-	path := fmt.Sprintf("./data/files/%s_%s", time.Now().Format("20060102_150405"), file.Filename)
+	// Size limit (10MB)
+	const maxFileSize = 10 * 1024 * 1024
+	if file.Size > maxFileSize {
+		return c.Status(413).JSON(fiber.Map{
+			"error": fmt.Sprintf("file too large (max %d MB)", maxFileSize/1024/1024),
+		})
+	}
+
+	// Sanitize filename to prevent path traversal
+	safeFilename := sanitizeFilename(file.Filename)
+
+	// Use configured data directory
+	filesDir := filepath.Join(s.config.Storage.DataDir, "files")
+
+	// Ensure directory exists
+	if err := os.MkdirAll(filesDir, 0750); err != nil {
+		s.logger.Error("Failed to create files directory", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "failed to create storage directory"})
+	}
+
+	// Build safe path
+	path := filepath.Join(filesDir, fmt.Sprintf("%s_%s",
+		time.Now().Format("20060102_150405"),
+		safeFilename))
+
 	if err := c.SaveFile(file, path); err != nil {
+		s.logger.Error("Failed to save file", zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": "failed to save file"})
 	}
 
 	f := &store.File{
-		Filename:    file.Filename,
+		Filename:    safeFilename,
 		MimeType:    file.Header.Get("Content-Type"),
 		SizeBytes:   file.Size,
 		StoragePath: path,
 	}
 
 	if err := s.store.DB().Create(f).Error; err != nil {
+		s.logger.Error("Failed to save file record", zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": "failed to save file record"})
 	}
 
 	return c.Status(201).JSON(f)
+}
+
+// sanitizeFilename removes path traversal risks and unsafe characters
+func sanitizeFilename(name string) string {
+	// Get base name only (remove any path)
+	name = filepath.Base(name)
+
+	// Remove null bytes
+	name = strings.ReplaceAll(name, "\x00", "")
+
+	// Replace unsafe characters with underscore
+	// Keep: alphanumeric, dots, dashes, underscores
+	unsafe := regexp.MustCompile(`[^a-zA-Z0-9._-]`)
+	name = unsafe.ReplaceAllString(name, "_")
+
+	// Prevent hidden files (starting with .)
+	name = strings.TrimLeft(name, ".")
+
+	return name
 }
 
 func (s *Server) handleGetFile(c *fiber.Ctx) error {
