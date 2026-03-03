@@ -48,7 +48,7 @@ func TestNeuralCluster_BeforeCreate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.cluster.BeforeCreate()
+			err := tt.cluster.BeforeCreate(nil)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -117,7 +117,7 @@ func TestNeuralCluster_AfterFind(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.cluster.AfterFind()
+			err := tt.cluster.AfterFind(nil)
 			if tt.wantErr {
 				assert.Error(t, err)
 				return

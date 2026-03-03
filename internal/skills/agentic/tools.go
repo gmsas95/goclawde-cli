@@ -50,6 +50,21 @@ func (s *AgenticSkill) registerSystemTools() {
 		},
 		Handler: s.handleGetNetworkInfo,
 	})
+
+	s.AddTool(skills.Tool{
+		Name:        "get_environment",
+		Description: "Get environment variables and Go runtime information",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"filter": map[string]interface{}{
+					"type":        "string",
+					"description": "Filter environment variables by prefix (optional)",
+				},
+			},
+		},
+		Handler: s.handleGetEnvironment,
+	})
 }
 
 func (s *AgenticSkill) registerCodeTools() {
