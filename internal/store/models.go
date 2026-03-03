@@ -53,8 +53,8 @@ type Memory struct {
 	ID           string     `gorm:"primaryKey" json:"id"`
 	Type         string     `json:"type"` // fact, preference, task, person
 	Content      string     `json:"content"`
-	Embedding    []byte     `json:"-" gorm:"type:blob"` // Vector embedding for semantic search
-	Importance   int        `json:"importance"`         // 1-10
+	Embedding    []byte     `json:"-" gorm:"type:bytea"` // Vector embedding for semantic search
+	Importance   int        `json:"importance"`          // 1-10
 	AccessCount  int        `json:"access_count"`
 	LastAccessed *time.Time `json:"last_accessed"`
 	Source       string     `json:"source"` // conversation_id or import

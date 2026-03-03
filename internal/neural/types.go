@@ -18,7 +18,7 @@ type NeuralCluster struct {
 	Essence         string     `gorm:"not null" json:"essence"`              // AI-generated natural language summary
 	MemoryIDs       []string   `gorm:"-" json:"memory_ids"`                  // List of memory IDs (serialized as JSON)
 	MemoryIDsJSON   string     `gorm:"column:memory_ids;type:text" json:"-"` // JSON storage for memory IDs
-	Embedding       []byte     `gorm:"type:blob" json:"-"`                   // Vector embedding for similarity search
+	Embedding       []byte     `gorm:"type:bytea" json:"-"`                  // Vector embedding for similarity search
 	AccessCount     int        `gorm:"default:0" json:"access_count"`        // Number of times cluster was accessed
 	ConfidenceScore float64    `gorm:"default:0" json:"confidence_score"`    // Cluster coherence score (0.0-1.0)
 	ClusterSize     int        `gorm:"default:0" json:"cluster_size"`        // Number of memories in cluster
@@ -86,7 +86,7 @@ type ClusterFormationLog struct {
 type QueryPattern struct {
 	ID                string    `gorm:"primaryKey" json:"id"`
 	QueryText         string    `gorm:"not null" json:"query_text"`
-	QueryEmbedding    []byte    `gorm:"type:blob" json:"-"`
+	QueryEmbedding    []byte    `gorm:"type:bytea" json:"-"`
 	MatchedClusterIDs []string  `gorm:"-" json:"matched_cluster_ids"`
 	MatchedMemoryIDs  []string  `gorm:"-" json:"matched_memory_ids"`
 	TokensUsed        int       `gorm:"default:0" json:"tokens_used"`
