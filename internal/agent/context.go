@@ -345,9 +345,33 @@ func (cm *ContextManager) getOrCreateSummary(ctx context.Context, convID string)
 
 // getExistingSummary retrieves an existing summary if fresh enough
 func (cm *ContextManager) getExistingSummary(convID string) (string, error) {
-	// Look for recent summary in BadgerDB or metadata
-	// For now, return empty to regenerate
-	return "", fmt.Errorf("no existing summary")
+	if cm.store == nil || cm.store.DB() == nil {
+		return "", fmt.Errorf("store not available")
+	}
+
+	var summary store.ConversationSummary
+	result := cm.store.DB().
+		Where("conv_id = ?", convID).
+		Order("created_at DESC").
+		First(&summary)
+
+	if result.Error != nil {
+		return "", result.Error
+	}
+
+	// Check if summary is fresh enough (e.g., less than 24 hours old)
+	maxAge := 24 * time.Hour
+	if time.Since(summary.CreatedAt) > maxAge {
+		return "", fmt.Errorf("summary too old")
+	}
+
+	cm.logger.Debug("Retrieved existing conversation summary",
+		zap.String("conv_id", convID),
+		zap.Int("summary_length", len(summary.Summary)),
+		zap.Time("created_at", summary.CreatedAt),
+	)
+
+	return summary.Summary, nil
 }
 
 // generateSummary creates a summary of the conversation
