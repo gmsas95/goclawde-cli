@@ -50,15 +50,15 @@ type SuggestedAction struct {
 
 // AudioTranscriptionResult holds transcription results
 type AudioTranscriptionResult struct {
-	Text      string  `json:"text"`
+	Text       string  `json:"text"`
 	Confidence float64 `json:"confidence"`
-	Language  string  `json:"language"`
+	Language   string  `json:"language"`
 }
 
 // CaptureOptions options for capture
 type CaptureOptions struct {
-	Device     string // Camera device (default: 0)
-	Resolution string // e.g., "1920x1080"
+	Device     string        // Camera device (default: 0)
+	Resolution string        // e.g., "1920x1080"
 	Duration   time.Duration // For video/audio
 }
 
@@ -317,7 +317,13 @@ func (c *Capture) transcribeWithAPI(ctx context.Context, audioData []byte) (*Aud
 	}
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	// req.Header.Set("Authorization", "Bearer "+apiKey) // Need to implement
+
+	// Get API key from environment
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("OPENAI_API_KEY not set (required for audio transcription)")
+	}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
@@ -341,7 +347,7 @@ func (c *Capture) transcribeWithAPI(ctx context.Context, audioData []byte) (*Aud
 	return &AudioTranscriptionResult{
 		Text:       result.Text,
 		Confidence: 0.95, // Placeholder
-		Language:   "en",  // Would detect from response
+		Language:   "en", // Would detect from response
 	}, nil
 }
 

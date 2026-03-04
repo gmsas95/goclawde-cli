@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -223,17 +225,53 @@ func (l *SkillLoader) LoadSkill(skillName string) error {
 // createSkillHandler creates a handler that executes a skill tool
 func (l *SkillLoader) createSkillHandler(skillPath, entryPoint, handler string) ToolHandler {
 	return func(ctx context.Context, args json.RawMessage) (*ToolResult, error) {
-		// This is a placeholder - actual implementation would:
-		// 1. Execute the entry point (Python/JS) with the handler name and args
-		// 2. Parse the output
-		// 3. Return as ToolResult
+		entryPointPath := filepath.Join(skillPath, entryPoint)
 
-		// For now, return a placeholder result
-		return &ToolResult{
-			Content: []types.ContentBlock{
-				types.TextBlock{Text: fmt.Sprintf("Skill handler %s executed", handler)},
-			},
-		}, nil
+		// Check if entry point exists
+		if _, err := os.Stat(entryPointPath); os.IsNotExist(err) {
+			return nil, fmt.Errorf("entry point not found: %s", entryPointPath)
+		}
+
+		// Determine how to execute based on file extension
+		var cmd *exec.Cmd
+		ext := strings.ToLower(filepath.Ext(entryPoint))
+
+		switch ext {
+		case ".py":
+			cmd = exec.CommandContext(ctx, "python3", entryPointPath, handler, string(args))
+		case ".js", ".mjs":
+			cmd = exec.CommandContext(ctx, "node", entryPointPath, handler, string(args))
+		case ".go":
+			// For Go, we'd need to compile first - skip for now
+			return nil, fmt.Errorf("Go entry points not yet supported")
+		default:
+			return nil, fmt.Errorf("unsupported entry point type: %s", ext)
+		}
+
+		cmd.Dir = skillPath
+		cmd.Env = append(os.Environ(),
+			"MYRAI_HANDLER="+handler,
+			"MYRAI_ARGS="+string(args),
+		)
+
+		// Execute and capture output
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return nil, fmt.Errorf("skill execution failed: %w (output: %s)", err, string(output))
+		}
+
+		// Parse output as JSON if possible
+		var result ToolResult
+		if err := json.Unmarshal(output, &result); err != nil {
+			// If not JSON, return as text
+			return &ToolResult{
+				Content: []types.ContentBlock{
+					types.TextBlock{Text: string(output)},
+				},
+			}, nil
+		}
+
+		return &result, nil
 	}
 }
 

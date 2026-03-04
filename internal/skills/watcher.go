@@ -2,9 +2,11 @@ package skills
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -165,20 +167,86 @@ func (sl *SkillLoader) LoadAllSkills() error {
 // createToolHandler creates a handler for a manifest tool
 func (sl *SkillLoader) createToolHandler(skillName string, tool ManifestTool) ToolHandler {
 	return func(ctx context.Context, args map[string]interface{}) (interface{}, error) {
-		// This is a placeholder - actual implementation would:
-		// 1. Validate arguments against schema
-		// 2. Execute the tool (could be external command, script, etc.)
-		// 3. Return results
+		// Validate required arguments
+		for _, param := range tool.Parameters {
+			if param.Required {
+				if _, ok := args[param.Name]; !ok {
+					return nil, fmt.Errorf("missing required parameter: %s", param.Name)
+				}
+			}
+		}
 
-		// For now, return a placeholder response
+		// Get the skill directory
+		skillDir := filepath.Join(sl.skillsDir, skillName)
+
+		// Check if skill has an entry point script
+		entryPoint := filepath.Join(skillDir, "skill.py")
+		if _, err := os.Stat(entryPoint); os.IsNotExist(err) {
+			// Try other entry points
+			entryPoint = filepath.Join(skillDir, "skill.js")
+			if _, err := os.Stat(entryPoint); os.IsNotExist(err) {
+				return nil, fmt.Errorf("no entry point found for skill %s", skillName)
+			}
+		}
+
+		// Execute the tool
+		switch filepath.Ext(entryPoint) {
+		case ".py":
+			return sl.executePythonTool(ctx, entryPoint, tool.Name, args)
+		case ".js":
+			return sl.executeNodeTool(ctx, entryPoint, tool.Name, args)
+		default:
+			return nil, fmt.Errorf("unsupported skill type: %s", filepath.Ext(entryPoint))
+		}
+	}
+}
+
+// executePythonTool executes a Python-based tool
+func (sl *SkillLoader) executePythonTool(ctx context.Context, entryPoint, toolName string, args map[string]interface{}) (interface{}, error) {
+	argsJSON, _ := json.Marshal(args)
+
+	cmd := exec.CommandContext(ctx, "python3", entryPoint, toolName, string(argsJSON))
+	cmd.Dir = filepath.Dir(entryPoint)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("tool execution failed: %w (output: %s)", err, string(output))
+	}
+
+	// Try to parse as JSON
+	var result map[string]interface{}
+	if err := json.Unmarshal(output, &result); err != nil {
+		// Return as text if not JSON
 		return map[string]interface{}{
-			"skill":   skillName,
-			"tool":    tool.Name,
-			"args":    args,
-			"status":  "executed",
-			"message": fmt.Sprintf("Tool %s from skill %s executed", tool.Name, skillName),
+			"output": string(output),
 		}, nil
 	}
+
+	return result, nil
+}
+
+// executeNodeTool executes a Node.js-based tool
+func (sl *SkillLoader) executeNodeTool(ctx context.Context, entryPoint, toolName string, args map[string]interface{}) (interface{}, error) {
+	argsJSON, _ := json.Marshal(args)
+
+	cmd := exec.CommandContext(ctx, "node", entryPoint, toolName, string(argsJSON))
+	cmd.Dir = filepath.Dir(entryPoint)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("tool execution failed: %w (output: %s)", err, string(output))
+	}
+
+	// Try to parse as JSON
+	var result map[string]interface{}
+	if err := json.Unmarshal(output, &result); err != nil {
+		// Return as text if not JSON
+		return map[string]interface{}{
+			"output": string(output),
+		}, nil
+	}
+
+	return result, nil
 }
 
 // NewWatcher creates a new file watcher for hot-reload
