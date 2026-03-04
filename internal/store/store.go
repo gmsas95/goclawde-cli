@@ -55,6 +55,7 @@ func New(cfg *config.Config) (*Store, error) {
 	if err := db.AutoMigrate(
 		&Conversation{},
 		&Message{},
+		&ConversationSummary{},
 		&Memory{},
 		&File{},
 		&Task{},

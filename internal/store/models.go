@@ -48,6 +48,26 @@ type Message struct {
 	CreatedAt        time.Time `gorm:"index:idx_conv_created" json:"created_at"`
 }
 
+// ConversationSummary represents a cached summary of a conversation
+// Used for long conversations where older messages are summarized to maintain context window
+type ConversationSummary struct {
+	ID        string    `gorm:"primaryKey" json:"id"`
+	ConvID    string    `gorm:"index:idx_conv_summaries_conv_id" json:"conv_id"`
+	Summary   string    `json:"summary" gorm:"type:text"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// BeforeCreate hook for ConversationSummary
+func (cs *ConversationSummary) BeforeCreate(tx *gorm.DB) error {
+	if cs.ID == "" {
+		cs.ID = generateID("summary")
+	}
+	if cs.CreatedAt.IsZero() {
+		cs.CreatedAt = time.Now()
+	}
+	return nil
+}
+
 // Memory represents a stored fact or preference
 type Memory struct {
 	ID           string     `gorm:"primaryKey" json:"id"`
