@@ -16,25 +16,25 @@ import (
 // VoiceSkill provides voice processing capabilities
 type VoiceSkill struct {
 	*skills.BaseSkill
-	
+
 	// Configuration
 	config Config
-	
+
 	// STT (Speech-to-Text)
 	stt STTProvider
-	
+
 	// TTS (Text-to-Speech)
 	tts TTSProvider
-	
+
 	// Audio recorder
 	recorder *AudioRecorder
-	
+
 	// Audio player
 	player *AudioPlayer
-	
+
 	// State
-	mu       sync.RWMutex
-	isReady  bool
+	mu      sync.RWMutex
+	isReady bool
 }
 
 // Config holds voice skill configuration
@@ -43,20 +43,20 @@ type Config struct {
 	WhisperModelPath string
 	PiperModelPath   string
 	PiperConfigPath  string
-	
+
 	// Audio settings
-	SampleRate    int
-	Channels      int
-	BufferSize    int
-	
+	SampleRate int
+	Channels   int
+	BufferSize int
+
 	// STT settings
-	STTLanguage   string // "auto" for auto-detect, or "en", "ja", etc.
-	STTTranslate  bool   // Translate to English
-	
+	STTLanguage  string // "auto" for auto-detect, or "en", "ja", etc.
+	STTTranslate bool   // Translate to English
+
 	// TTS settings
-	TTSSpeakerID  int    // Speaker ID for multi-speaker models
+	TTSSpeakerID   int     // Speaker ID for multi-speaker models
 	TTSLengthScale float64 // Speed (1.0 = normal, <1.0 = faster, >1.0 = slower)
-	
+
 	// Voice Activity Detection
 	EnableVAD     bool
 	VADThreshold  float64
@@ -67,7 +67,7 @@ type Config struct {
 func DefaultConfig() Config {
 	homeDir, _ := os.UserHomeDir()
 	dataDir := filepath.Join(homeDir, ".myrai")
-	
+
 	return Config{
 		WhisperModelPath: filepath.Join(dataDir, "models", "whisper", "ggml-base.en.bin"),
 		PiperModelPath:   filepath.Join(dataDir, "models", "piper", "en_US-lessac-medium.onnx"),
@@ -99,24 +99,24 @@ func NewVoiceSkill(config Config) *VoiceSkill {
 func (vs *VoiceSkill) Initialize() error {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
-	
+
 	if vs.isReady {
 		return nil
 	}
-	
+
 	// Initialize STT
 	sttConfig := STTConfig{
-		ModelPath:  vs.config.WhisperModelPath,
-		Language:   vs.config.STTLanguage,
-		Translate:  vs.config.STTTranslate,
+		ModelPath: vs.config.WhisperModelPath,
+		Language:  vs.config.STTLanguage,
+		Translate: vs.config.STTTranslate,
 	}
-	
+
 	stt, err := NewWhisperSTT(sttConfig)
 	if err != nil {
 		return fmt.Errorf("failed to initialize STT: %w", err)
 	}
 	vs.stt = stt
-	
+
 	// Initialize TTS
 	ttsConfig := TTSConfig{
 		ModelPath:   vs.config.PiperModelPath,
@@ -124,19 +124,19 @@ func (vs *VoiceSkill) Initialize() error {
 		SpeakerID:   vs.config.TTSSpeakerID,
 		LengthScale: vs.config.TTSLengthScale,
 	}
-	
+
 	tts, err := NewPiperTTS(ttsConfig)
 	if err != nil {
 		return fmt.Errorf("failed to initialize TTS: %w", err)
 	}
 	vs.tts = tts
-	
+
 	// Initialize audio recorder
 	vs.recorder = NewAudioRecorder(vs.config.SampleRate, vs.config.Channels, vs.config.BufferSize)
-	
+
 	// Initialize audio player
 	vs.player = NewAudioPlayer()
-	
+
 	vs.isReady = true
 	return nil
 }
@@ -155,7 +155,7 @@ func (vs *VoiceSkill) Transcribe(ctx context.Context, audioPath string) (string,
 			return "", err
 		}
 	}
-	
+
 	return vs.stt.Transcribe(ctx, audioPath)
 }
 
@@ -166,7 +166,7 @@ func (vs *VoiceSkill) TranscribeBytes(ctx context.Context, audioData []byte) (st
 			return "", err
 		}
 	}
-	
+
 	return vs.stt.TranscribeBytes(ctx, audioData)
 }
 
@@ -177,7 +177,7 @@ func (vs *VoiceSkill) Speak(ctx context.Context, text string) (string, error) {
 			return "", err
 		}
 	}
-	
+
 	return vs.tts.Synthesize(ctx, text)
 }
 
@@ -188,7 +188,7 @@ func (vs *VoiceSkill) SpeakBytes(ctx context.Context, text string) ([]byte, erro
 			return nil, err
 		}
 	}
-	
+
 	return vs.tts.SynthesizeBytes(ctx, text)
 }
 
@@ -236,24 +236,24 @@ func (vs *VoiceSkill) IsRecording() bool {
 func (vs *VoiceSkill) GetInfo() map[string]interface{} {
 	vs.mu.RLock()
 	defer vs.mu.RUnlock()
-	
+
 	info := map[string]interface{}{
 		"name":     "voice",
 		"version":  "1.0.0",
 		"ready":    vs.isReady,
 		"platform": runtime.GOOS,
 	}
-	
+
 	if vs.stt != nil {
 		info["stt_provider"] = vs.stt.Name()
 		info["stt_ready"] = vs.stt.IsReady()
 	}
-	
+
 	if vs.tts != nil {
 		info["tts_provider"] = vs.tts.Name()
 		info["tts_ready"] = vs.tts.IsReady()
 	}
-	
+
 	return info
 }
 
@@ -279,7 +279,7 @@ func (vs *VoiceSkill) registerTools() {
 		},
 		Handler: vs.handleTranscribe,
 	})
-	
+
 	// Text to speech
 	vs.AddTool(skills.Tool{
 		Name:        "text_to_speech",
@@ -300,11 +300,11 @@ func (vs *VoiceSkill) registerTools() {
 		},
 		Handler: vs.handleTextToSpeech,
 	})
-	
+
 	// Get voice info
 	vs.AddTool(skills.Tool{
 		Name:        "voice_info",
-		Description: "Get voice processing status and info",
+		Description: "Get detailed technical status of voice processing capabilities (STT/TTS). ONLY use when user explicitly asks about voice features, audio processing status, or voice configuration. Do NOT use for general conversation or greetings.",
 		Parameters: map[string]interface{}{
 			"type":       "object",
 			"properties": map[string]interface{}{},
@@ -319,18 +319,18 @@ func (vs *VoiceSkill) handleTranscribe(ctx context.Context, args map[string]inte
 	if audioPath == "" {
 		return nil, fmt.Errorf("audio_path is required")
 	}
-	
+
 	// Override language if provided
 	if lang, ok := args["language"].(string); ok && lang != "" {
 		// TODO: Implement per-request language override
 		_ = lang
 	}
-	
+
 	text, err := vs.Transcribe(ctx, audioPath)
 	if err != nil {
 		return nil, fmt.Errorf("transcription failed: %w", err)
 	}
-	
+
 	return map[string]string{
 		"text": text,
 	}, nil
@@ -342,17 +342,17 @@ func (vs *VoiceSkill) handleTextToSpeech(ctx context.Context, args map[string]in
 	if text == "" {
 		return nil, fmt.Errorf("text is required")
 	}
-	
+
 	// Get speed if provided
 	if speed, ok := args["speed"].(float64); ok {
 		vs.tts.SetSpeed(speed)
 	}
-	
+
 	audioPath, err := vs.Speak(ctx, text)
 	if err != nil {
 		return nil, fmt.Errorf("speech synthesis failed: %w", err)
 	}
-	
+
 	return map[string]string{
 		"audio_path": audioPath,
 	}, nil
