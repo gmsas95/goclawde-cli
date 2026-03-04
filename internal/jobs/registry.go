@@ -9,6 +9,7 @@ import (
 	"github.com/gmsas95/myrai-cli/internal/config"
 	"github.com/gmsas95/myrai-cli/internal/llm"
 	"github.com/gmsas95/myrai-cli/internal/neural"
+	"github.com/gmsas95/myrai-cli/internal/persona"
 	"github.com/gmsas95/myrai-cli/internal/reflection"
 	"github.com/gmsas95/myrai-cli/internal/store"
 	"github.com/gmsas95/myrai-cli/internal/vector"
@@ -23,6 +24,7 @@ type Registry struct {
 	db             *gorm.DB
 	llmClient      *llm.Client
 	vectorSearcher *vector.Searcher
+	personaManager *persona.PersonaManager
 	config         *config.Config
 	logger         *zap.Logger
 	initialized    bool
@@ -225,11 +227,114 @@ func (r *Registry) registerReflectionJobs() error {
 	return nil
 }
 
+// SetPersonaManager sets the persona manager for evolution jobs
+func (r *Registry) SetPersonaManager(pm *persona.PersonaManager) {
+	r.personaManager = pm
+}
+
 // registerPersonaEvolutionJob registers the persona evolution analysis job
 func (r *Registry) registerPersonaEvolutionJob() error {
-	// For now, we skip persona evolution as it requires different initialization
-	// This can be added later when the persona package API is stabilized
-	r.logger.Info("Skipping persona evolution job - not yet integrated")
+	if r.personaManager == nil {
+		r.logger.Info("Persona manager not configured, skipping persona evolution job")
+		return nil
+	}
+
+	r.logger.Info("Registering persona evolution job")
+
+	// Create evolution manager
+	evolutionManager := persona.NewEvolutionManager(r.personaManager, r.store, r.llmClient, r.logger)
+
+	// Initialize evolution system
+	if err := evolutionManager.Initialize(); err != nil {
+		return fmt.Errorf("failed to initialize evolution manager: %w", err)
+	}
+
+	// Job: Weekly Persona Evolution Analysis (Monday 1 AM)
+	evolutionJob := &Job{
+		ID:          "persona-evolution-weekly",
+		Name:        "Persona Evolution Analysis",
+		Description: "Analyzes usage patterns and generates persona evolution proposals",
+		Schedule:    "0 1 * * 1", // Monday at 1 AM
+		Enabled:     true,
+		Func: func(ctx context.Context) error {
+			start := time.Now()
+			r.logger.Info("Starting weekly persona evolution analysis")
+
+			// Run pattern analysis
+			result, err := evolutionManager.RunAnalysis(ctx)
+			if err != nil {
+				r.logger.Error("Persona evolution analysis failed", zap.Error(err))
+				return fmt.Errorf("evolution analysis failed: %w", err)
+			}
+
+			// Log results
+			r.logger.Info("Persona evolution analysis complete",
+				zap.Int("patterns_found", result.PatternsFound),
+				zap.Int("proposals_created", len(result.Proposals)),
+				zap.Duration("duration", time.Since(start)),
+			)
+
+			// Notify if proposals were created
+			if len(result.Proposals) > 0 {
+				if err := evolutionManager.NotifyNewProposals(result.Proposals); err != nil {
+					r.logger.Warn("Failed to notify about new proposals", zap.Error(err))
+				}
+			}
+
+			return nil
+		},
+	}
+
+	if err := r.scheduler.RegisterJob(evolutionJob); err != nil {
+		return fmt.Errorf("failed to register evolution job: %w", err)
+	}
+
+	// Job: Check and auto-apply high-confidence proposals (Daily 2 AM)
+	autoApplyJob := &Job{
+		ID:          "persona-autoapply-daily",
+		Name:        "Persona Auto-Apply Proposals",
+		Description: "Automatically applies high-confidence evolution proposals",
+		Schedule:    SchedulePresets.DailyAt2AM,
+		Enabled:     true,
+		Func: func(ctx context.Context) error {
+			// Get pending proposals
+			proposals, err := evolutionManager.GetPendingProposals()
+			if err != nil {
+				return fmt.Errorf("failed to get pending proposals: %w", err)
+			}
+
+			autoApplied := 0
+			for _, proposal := range proposals {
+				// Check if proposal can be auto-applied
+				if proposal.CanAutoApply(evolutionManager.GetConfig()) {
+					if err := evolutionManager.ApplyProposal(proposal.ID); err != nil {
+						r.logger.Warn("Failed to auto-apply proposal",
+							zap.String("proposal_id", proposal.ID),
+							zap.Error(err),
+						)
+					} else {
+						autoApplied++
+						r.logger.Info("Auto-applied persona evolution proposal",
+							zap.String("proposal_id", proposal.ID),
+							zap.String("title", proposal.Title),
+						)
+					}
+				}
+			}
+
+			if autoApplied > 0 {
+				r.logger.Info("Auto-applied persona proposals", zap.Int("count", autoApplied))
+			}
+
+			return nil
+		},
+	}
+
+	if err := r.scheduler.RegisterJob(autoApplyJob); err != nil {
+		return fmt.Errorf("failed to register auto-apply job: %w", err)
+	}
+
+	r.logger.Info("Persona evolution jobs registered successfully")
 	return nil
 }
 
