@@ -140,6 +140,21 @@ func (a *Agent) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error
 		toolDefs = append(toolDefs, a.skillsRegistry.GetToolDefinitions()...)
 	}
 
+	// Log available tools for debugging
+	if len(toolDefs) > 0 {
+		toolNames := make([]string, 0, len(toolDefs))
+		for _, def := range toolDefs {
+			if fn, ok := def["function"].(map[string]interface{}); ok {
+				if name, ok := fn["name"].(string); ok {
+					toolNames = append(toolNames, name)
+				}
+			}
+		}
+		a.logger.Debug("Tools presented to LLM",
+			zap.Int("count", len(toolDefs)),
+			zap.Strings("tools", toolNames))
+	}
+
 	// Call LLM
 	tools := a.convertTools(toolDefs)
 	llmReq := llm.ChatRequest{
@@ -194,6 +209,21 @@ func (a *Agent) chatNonStream(ctx context.Context, req llm.ChatRequest, convID s
 
 	// Handle tool calls
 	if len(msg.ToolCalls) > 0 {
+		// Log which tools the LLM decided to call
+		toolNames := make([]string, 0, len(msg.ToolCalls))
+		for _, tc := range msg.ToolCalls {
+			toolNames = append(toolNames, tc.Function.Name)
+		}
+		a.logger.Info("LLM decided to call tools",
+			zap.Strings("tools", toolNames),
+			zap.String("user_message", func() string {
+				for _, m := range req.Messages {
+					if m.Role == "user" {
+						return m.Content
+					}
+				}
+				return ""
+			}()))
 		return a.handleToolCalls(ctx, req, convID, msg)
 	}
 
