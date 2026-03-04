@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -284,13 +285,23 @@ type dirEntry struct {
 }
 
 func readFile(path string) ([]byte, error) {
-	// Placeholder - would use os.ReadFile
-	return nil, fmt.Errorf("not implemented")
+	return os.ReadFile(path)
 }
 
 func listDir(path string) ([]dirEntry, error) {
-	// Placeholder - would use os.ReadDir
-	return nil, fmt.Errorf("not implemented")
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]dirEntry, 0, len(entries))
+	for _, entry := range entries {
+		result = append(result, dirEntry{
+			Name:  entry.Name(),
+			IsDir: entry.IsDir(),
+		})
+	}
+	return result, nil
 }
 
 // DefaultRegistry is the global tool registry instance

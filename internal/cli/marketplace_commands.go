@@ -61,7 +61,7 @@ func HandleMarketplaceCommand(args []string) {
 	case "publish":
 		handleMarketplacePublish(ctx, client, args[1:])
 	case "review":
-		handleMarketplaceReview(ctx, reviewsManager, args[1:], userID)
+		handleMarketplaceReview(ctx, client, reviewsManager, args[1:], userID)
 	case "sync":
 		handleMarketplaceSync(ctx, client)
 	default:
@@ -450,15 +450,17 @@ func handleMarketplacePublish(ctx context.Context, client *marketplace.Client, a
 	fmt.Println()
 }
 
-func handleMarketplaceReview(ctx context.Context, reviewsManager *marketplace.ReviewsManager, args []string, userID string) {
+func handleMarketplaceReview(ctx context.Context, client *marketplace.Client, reviewsManager *marketplace.ReviewsManager, args []string, userID string) {
 	if len(args) < 1 {
-		fmt.Println("Usage: myrai marketplace review <agent> --rating <1-5> [--comment \"...\"]")
+		fmt.Println("Usage: myrai marketplace review <agent> [--rating <1-5>] [--comment \"...\"]")
+		fmt.Println("       myrai marketplace review <agent>          # Show existing reviews")
 		os.Exit(1)
 	}
 
 	agentName := args[0]
 	rating := 0
 	comment := ""
+	title := ""
 
 	for i := 1; i < len(args); i++ {
 		switch args[i] {
@@ -472,13 +474,43 @@ func handleMarketplaceReview(ctx context.Context, reviewsManager *marketplace.Re
 				comment = args[i+1]
 				i++
 			}
+		case "--title", "-t":
+			if i+1 < len(args) {
+				title = args[i+1]
+				i++
+			}
 		}
+	}
+
+	// Get agent by name
+	agent, err := client.GetAgentByName(ctx, agentName)
+	if err != nil {
+		fmt.Printf("Error: Agent '%s' not found: %v\n", agentName, err)
+		os.Exit(1)
 	}
 
 	if rating == 0 {
 		// Show existing reviews
-		// We need to get agent ID first - this is a simplified version
-		fmt.Println("Showing reviews (not yet implemented for this agent)")
+		reviews, err := reviewsManager.GetReviews(ctx, agent.Name, 10, 0)
+		if err != nil {
+			fmt.Printf("Error fetching reviews: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("\n📊 Reviews for %s\n", agent.Name)
+		fmt.Printf("   Rating: %.1f/5 (%d reviews)\n\n", agent.Rating, agent.ReviewCount)
+
+		if len(reviews) == 0 {
+			fmt.Println("   No reviews yet. Be the first to review!")
+		} else {
+			for _, review := range reviews {
+				fmt.Printf("   ⭐ %d/5 - %s\n", review.Rating, review.Title)
+				if review.Content != "" {
+					fmt.Printf("      %s\n", review.Content)
+				}
+				fmt.Printf("      — %s, %s\n\n", review.UserID, review.CreatedAt.Format("Jan 2, 2006"))
+			}
+		}
 		return
 	}
 
@@ -489,8 +521,17 @@ func handleMarketplaceReview(ctx context.Context, reviewsManager *marketplace.Re
 
 	fmt.Printf("Submitting review for %s...\n", agentName)
 
-	// In a real implementation, we'd look up the agent ID first
+	// Submit the review
+	_, err = reviewsManager.SubmitReview(ctx, agent.Name, userID, rating, title, comment, agent.Version)
+	if err != nil {
+		fmt.Printf("Error submitting review: %v\n", err)
+		os.Exit(1)
+	}
+
 	fmt.Printf("✓ Review submitted: %d stars\n", rating)
+	if title != "" {
+		fmt.Printf("  Title: %s\n", title)
+	}
 	if comment != "" {
 		fmt.Printf("  Comment: %s\n", comment)
 	}
