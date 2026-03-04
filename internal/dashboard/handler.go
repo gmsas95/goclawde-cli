@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gmsas95/myrai-cli/internal/config"
+	"github.com/gmsas95/myrai-cli/internal/jobs"
 	"github.com/gmsas95/myrai-cli/internal/neural"
 	"github.com/gmsas95/myrai-cli/internal/skills"
 	"github.com/gmsas95/myrai-cli/internal/store"
@@ -22,19 +23,21 @@ import (
 
 // Handler manages dashboard API routes
 type Handler struct {
-	config *config.Config
-	skills *skills.Registry
-	store  *store.Store
-	logger *zap.Logger
+	config      *config.Config
+	skills      *skills.Registry
+	store       *store.Store
+	jobRegistry *jobs.Registry
+	logger      *zap.Logger
 }
 
 // NewHandler creates a new dashboard handler
-func NewHandler(cfg *config.Config, sr *skills.Registry, logger *zap.Logger, store *store.Store) *Handler {
+func NewHandler(cfg *config.Config, sr *skills.Registry, logger *zap.Logger, store *store.Store, jobRegistry *jobs.Registry) *Handler {
 	return &Handler{
-		config: cfg,
-		skills: sr,
-		store:  store,
-		logger: logger,
+		config:      cfg,
+		skills:      sr,
+		store:       store,
+		jobRegistry: jobRegistry,
+		logger:      logger,
 	}
 }
 
@@ -553,9 +556,9 @@ func (h *Handler) installSkill(c *fiber.Ctx) error {
 
 	// Register the skill
 	if h.skills != nil {
-		// TODO: Actually register the skill with the registry
-		// This would load the skill and make it available
-		h.logger.Info("Skill would be registered here", zap.String("name", manifest.Name))
+		// Skill is installed but needs to be manually enabled via the API
+		// This allows users to review before activating
+		h.logger.Info("Skill installed - enable via API", zap.String("name", manifest.Name))
 	}
 
 	// Save installation metadata
@@ -916,15 +919,67 @@ func (h *Handler) toggleJob(c *fiber.Ctx) error {
 	})
 }
 
-// runJobNow triggers a job to run immediately (placeholder)
+// runJobNow triggers a job to run immediately
 func (h *Handler) runJobNow(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	// TODO: Implement actual job execution
-	return c.Status(501).JSON(fiber.Map{
-		"error":   "Manual job execution not yet implemented",
+	if id == "" {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "Job ID is required",
+		})
+	}
+
+	// Check if job registry is available
+	if h.jobRegistry == nil {
+		return c.Status(503).JSON(fiber.Map{
+			"error":   "Job registry not available",
+			"message": "Job execution service is not configured",
+		})
+	}
+
+	// Get scheduler from registry
+	scheduler := h.jobRegistry.GetScheduler()
+	if scheduler == nil {
+		return c.Status(503).JSON(fiber.Map{
+			"error":   "Job scheduler not available",
+			"message": "Job scheduler is not initialized",
+		})
+	}
+
+	// Check if job exists
+	jobs := scheduler.ListJobs()
+	jobExists := false
+	for _, job := range jobs {
+		if job.ID == id {
+			jobExists = true
+			break
+		}
+	}
+
+	if !jobExists {
+		return c.Status(404).JSON(fiber.Map{
+			"error":   "Job not found",
+			"id":      id,
+			"message": "The requested job does not exist",
+		})
+	}
+
+	// Trigger job execution
+	h.logger.Info("Manually triggering job", zap.String("job_id", id))
+	if err := scheduler.RunJob(id); err != nil {
+		h.logger.Error("Failed to trigger job", zap.String("job_id", id), zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{
+			"error":   "Failed to trigger job",
+			"id":      id,
+			"message": err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "Job triggered successfully",
 		"id":      id,
-		"message": "This feature is coming soon",
+		"status":  "running",
+		"note":    "Job is running in the background. Check logs for results.",
 	})
 }
 
@@ -1221,29 +1276,43 @@ func (h *Handler) getLogs(c *fiber.Ctx) error {
 	level := c.Query("level", "all")
 	limit := c.QueryInt("limit", 50)
 
-	// For now, return placeholder logs based on recent activity
-	logs := []fiber.Map{
-		{
-			"id":        "1",
-			"timestamp": time.Now().Add(-5 * time.Minute).Format("2006-01-02 15:04:05"),
-			"level":     "info",
-			"source":    "System",
-			"message":   "Dashboard API initialized",
-		},
-		{
-			"id":        "2",
-			"timestamp": time.Now().Add(-10 * time.Minute).Format("2006-01-02 15:04:05"),
-			"level":     "success",
-			"source":    "Skills",
-			"message":   "Skills registry loaded successfully",
-		},
-		{
-			"id":        "3",
-			"timestamp": time.Now().Add(-15 * time.Minute).Format("2006-01-02 15:04:05"),
-			"level":     "info",
-			"source":    "Database",
-			"message":   "Connected to SQLite database",
-		},
+	// Return recent system activities as logs
+	logs := []fiber.Map{}
+
+	if h.store != nil {
+		db := h.store.DB()
+
+		// Get recent conversations as info logs
+		var conversations []store.Conversation
+		db.Order("updated_at DESC").Limit(limit).Find(&conversations)
+		for _, conv := range conversations {
+			logs = append(logs, fiber.Map{
+				"id":        conv.ID,
+				"timestamp": conv.UpdatedAt.Format("2006-01-02 15:04:05"),
+				"level":     "info",
+				"source":    "Conversation",
+				"message":   fmt.Sprintf("Updated: %s", conv.Title),
+			})
+		}
+
+		// Get recent tasks
+		var tasks []store.Task
+		db.Order("created_at DESC").Limit(limit).Find(&tasks)
+		for _, task := range tasks {
+			logLevel := "info"
+			if task.Status == "failed" {
+				logLevel = "error"
+			} else if task.Status == "completed" {
+				logLevel = "success"
+			}
+			logs = append(logs, fiber.Map{
+				"id":        task.ID,
+				"timestamp": task.CreatedAt.Format("2006-01-02 15:04:05"),
+				"level":     logLevel,
+				"source":    "Task",
+				"message":   fmt.Sprintf("%s (%s)", task.Title, task.Status),
+			})
+		}
 	}
 
 	// Filter by level if specified

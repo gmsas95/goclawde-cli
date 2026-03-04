@@ -143,8 +143,10 @@ func (t *ReadFileTool) Execute(ctx context.Context, args map[string]interface{})
 // WriteFileTool writes content to a file
 type WriteFileTool struct{}
 
-func (t *WriteFileTool) Name() string        { return "write_file" }
-func (t *WriteFileTool) Description() string { return "Write content to a file (creates if doesn't exist)" }
+func (t *WriteFileTool) Name() string { return "write_file" }
+func (t *WriteFileTool) Description() string {
+	return "Write content to a file (creates if doesn't exist)"
+}
 func (t *WriteFileTool) Parameters() map[string]interface{} {
 	return map[string]interface{}{
 		"type": "object",
@@ -311,8 +313,10 @@ func (t *ExecCommandTool) Execute(ctx context.Context, args map[string]interface
 // WebSearchTool searches the web
 type WebSearchTool struct{}
 
-func (t *WebSearchTool) Name() string        { return "web_search" }
-func (t *WebSearchTool) Description() string { return "Search the web for information (requires external search API)" }
+func (t *WebSearchTool) Name() string { return "web_search" }
+func (t *WebSearchTool) Description() string {
+	return "Search the web for information (requires external search API)"
+}
 func (t *WebSearchTool) Parameters() map[string]interface{} {
 	return map[string]interface{}{
 		"type": "object",
@@ -336,14 +340,9 @@ func (t *WebSearchTool) Execute(ctx context.Context, args map[string]interface{}
 		return nil, fmt.Errorf("query is required")
 	}
 
-	// For now, return a placeholder - actual implementation needs search API
-	return map[string]interface{}{
-		"note": "Web search requires configuration of a search API (Brave, Serper, etc.)",
-		"query": query,
-		"results": []map[string]string{
-			{"title": "Example result", "url": "https://example.com"},
-		},
-	}, nil
+	// Note: Full web search is implemented in internal/skills/search/
+	// This tool is deprecated - use the search skill instead
+	return nil, fmt.Errorf("web_search tool is deprecated. Use the 'search' skill with the web_search tool instead. Configure BRAVE_API_KEY or other search providers in your environment")
 }
 
 // FetchURLTool fetches URL content
@@ -384,7 +383,7 @@ func (t *FetchURLTool) Execute(ctx context.Context, args map[string]interface{})
 	content := string(output)
 	content = strings.ReplaceAll(content, "<script", "\x00")
 	content = strings.ReplaceAll(content, "</script>", "\x00")
-	
+
 	// Truncate if needed
 	maxLen := 5000
 	if len(content) > maxLen {
@@ -397,8 +396,10 @@ func (t *FetchURLTool) Execute(ctx context.Context, args map[string]interface{})
 // ThinkingTool allows the model to show its reasoning
 type ThinkingTool struct{}
 
-func (t *ThinkingTool) Name() string        { return "thinking" }
-func (t *ThinkingTool) Description() string { return "Use this tool to think step by step before responding" }
+func (t *ThinkingTool) Name() string { return "thinking" }
+func (t *ThinkingTool) Description() string {
+	return "Use this tool to think step by step before responding"
+}
 func (t *ThinkingTool) Parameters() map[string]interface{} {
 	return map[string]interface{}{
 		"type": "object",
