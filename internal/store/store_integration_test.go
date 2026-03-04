@@ -222,6 +222,51 @@ func TestStore_MessageOperations(t *testing.T) {
 			t.Errorf("Message with tool results not found in retrieved messages. Total messages: %d", len(msgs))
 		}
 	})
+
+	t.Run("GetMessagesOrder", func(t *testing.T) {
+		// Create conversation
+		conv := &store.Conversation{Title: "Order Test"}
+		if err := st.CreateConversation(conv); err != nil {
+			t.Fatalf("Failed to create conversation: %v", err)
+		}
+
+		// Create messages with different timestamps
+		messages := []string{"Message 1", "Message 2", "Message 3", "Message 4", "Message 5"}
+		for i, content := range messages {
+			msg := &store.Message{
+				ConversationID: conv.ID,
+				Role:           "user",
+				Content:        content,
+				CreatedAt:      time.Now().Add(time.Duration(i) * time.Second),
+			}
+			if err := st.CreateMessage(msg); err != nil {
+				t.Fatalf("Failed to create message %d: %v", i+1, err)
+			}
+			time.Sleep(10 * time.Millisecond) // Ensure different timestamps
+		}
+
+		// Retrieve messages with limit
+		msgs, err := st.GetMessages(conv.ID, 3, 0)
+		if err != nil {
+			t.Fatalf("Failed to get messages: %v", err)
+		}
+
+		if len(msgs) != 3 {
+			t.Errorf("Expected 3 messages, got %d", len(msgs))
+		}
+
+		// Verify order: newest first (DESC order)
+		// Should get Message 5, Message 4, Message 3
+		expectedOrder := []string{"Message 5", "Message 4", "Message 3"}
+		for i, expected := range expectedOrder {
+			if i >= len(msgs) {
+				break
+			}
+			if msgs[i].Content != expected {
+				t.Errorf("Message %d: expected %q, got %q", i, expected, msgs[i].Content)
+			}
+		}
+	})
 }
 
 func TestStore_MemoryOperations(t *testing.T) {
