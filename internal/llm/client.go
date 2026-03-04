@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -302,4 +303,102 @@ func CountTokens(text string) int {
 // GetModel returns the configured model
 func (c *Client) GetModel() string {
 	return c.provider.Model
+}
+
+// VisionMessage represents a message with image content for vision APIs
+type VisionMessage struct {
+	Role    string         `json:"role"`
+	Content []ContentBlock `json:"content"`
+}
+
+// ContentBlock represents a content block that can be text or image
+type ContentBlock struct {
+	Type     string    `json:"type"`
+	Text     string    `json:"text,omitempty"`
+	ImageURL *ImageURL `json:"image_url,omitempty"`
+}
+
+// ImageURL represents an image URL or base64 data
+type ImageURL struct {
+	URL    string `json:"url"`
+	Detail string `json:"detail,omitempty"`
+}
+
+// VisionChatRequest represents a vision-capable chat request
+type VisionChatRequest struct {
+	Model       string          `json:"model"`
+	Messages    []VisionMessage `json:"messages"`
+	MaxTokens   int             `json:"max_tokens,omitempty"`
+	Temperature float64         `json:"temperature,omitempty"`
+}
+
+// ChatWithVision sends an image to a vision-capable model and returns the analysis
+func (c *Client) ChatWithVision(prompt, base64Image, mimeType string) (string, error) {
+	if c.client == nil {
+		return "", fmt.Errorf("HTTP client not initialized")
+	}
+
+	// Use GPT-4 Vision or similar
+	visionModel := os.Getenv("VISION_MODEL")
+	if visionModel == "" {
+		visionModel = "gpt-4-vision-preview"
+	}
+
+	// Build data URL
+	dataURL := fmt.Sprintf("data:%s;base64,%s", mimeType, base64Image)
+
+	req := VisionChatRequest{
+		Model: visionModel,
+		Messages: []VisionMessage{
+			{
+				Role: "user",
+				Content: []ContentBlock{
+					{Type: "text", Text: prompt},
+					{
+						Type: "image_url",
+						ImageURL: &ImageURL{
+							URL:    dataURL,
+							Detail: "auto",
+						},
+					},
+				},
+			},
+		},
+		MaxTokens: 1000,
+	}
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal vision request: %w", err)
+	}
+
+	httpReq, err := http.NewRequest("POST", c.provider.BaseURL+"/chat/completions", bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("failed to create vision request: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+c.provider.APIKey)
+
+	resp, err := c.client.Do(httpReq)
+	if err != nil {
+		return "", fmt.Errorf("failed to send vision request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("vision API error (status %d): %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var result ChatResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to decode vision response: %w", err)
+	}
+
+	if len(result.Choices) == 0 {
+		return "", fmt.Errorf("no response from vision model")
+	}
+
+	return result.Choices[0].Message.Content, nil
 }
