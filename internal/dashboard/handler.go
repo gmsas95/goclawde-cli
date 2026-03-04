@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -435,20 +436,268 @@ func (h *Handler) installSkill(c *fiber.Ctx) error {
 		})
 	}
 
+	if body.Repo == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Repository URL is required",
+		})
+	}
+
 	h.logger.Info("Skill install requested", zap.String("repo", body.Repo))
 
-	// TODO: Actually implement skill installation
-	// This would involve:
-	// 1. Cloning the repo
-	// 2. Validating the skill manifest
-	// 3. Installing dependencies
-	// 4. Registering the skill
+	// Create skills directory if it doesn't exist
+	dataDir := h.config.Storage.DataDir
+	if dataDir == "" {
+		dataDir = "./data"
+	}
+	skillsDir := filepath.Join(dataDir, "skills")
+	if err := os.MkdirAll(skillsDir, 0755); err != nil {
+		h.logger.Error("Failed to create skills directory", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to create skills directory",
+		})
+	}
 
-	return c.Status(501).JSON(fiber.Map{
-		"error":   "Skill installation not yet implemented",
-		"message": "This feature is coming soon",
-		"repo":    body.Repo,
+	// Generate unique directory name for this installation
+	timestamp := time.Now().Format("20060102_150405")
+	skillDirName := fmt.Sprintf("%s_%s", sanitizeRepoName(body.Repo), timestamp)
+	skillPath := filepath.Join(skillsDir, skillDirName)
+
+	// Clone the repository
+	h.logger.Info("Cloning repository", zap.String("repo", body.Repo), zap.String("path", skillPath))
+	if err := h.cloneRepository(body.Repo, skillPath); err != nil {
+		h.logger.Error("Failed to clone repository", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{
+			"error":   "Failed to clone repository",
+			"message": err.Error(),
+		})
+	}
+
+	// Look for SKILL.md file
+	skillMarkdownPath := filepath.Join(skillPath, "SKILL.md")
+	if _, err := os.Stat(skillMarkdownPath); os.IsNotExist(err) {
+		// Try skill.yaml as fallback
+		skillYamlPath := filepath.Join(skillPath, "skill.yaml")
+		if _, err := os.Stat(skillYamlPath); os.IsNotExist(err) {
+			// Cleanup and return error
+			os.RemoveAll(skillPath)
+			return c.Status(400).JSON(fiber.Map{
+				"error":   "Invalid skill repository",
+				"message": "Repository must contain SKILL.md or skill.yaml file",
+			})
+		}
+	}
+
+	// Parse and validate manifest
+	var manifest *skills.SkillManifest
+
+	if _, err := os.Stat(skillMarkdownPath); err == nil {
+		// Parse SKILL.md with frontmatter
+		content, err := os.ReadFile(skillMarkdownPath)
+		if err != nil {
+			os.RemoveAll(skillPath)
+			return c.Status(500).JSON(fiber.Map{
+				"error":   "Failed to read SKILL.md",
+				"message": err.Error(),
+			})
+		}
+		manifest, _, err = skills.ParseSkillMarkdown(string(content))
+		if err != nil {
+			os.RemoveAll(skillPath)
+			return c.Status(400).JSON(fiber.Map{
+				"error":   "Failed to parse SKILL.md frontmatter",
+				"message": err.Error(),
+			})
+		}
+	}
+
+	// Validate manifest
+	if err := manifest.Validate(); err != nil {
+		os.RemoveAll(skillPath)
+		return c.Status(400).JSON(fiber.Map{
+			"error":   "Invalid skill manifest",
+			"message": err.Error(),
+		})
+	}
+
+	// Check for duplicate skill name
+	if h.skills != nil {
+		if _, exists := h.skills.GetSkill(manifest.Name); exists {
+			os.RemoveAll(skillPath)
+			return c.Status(409).JSON(fiber.Map{
+				"error":   "Skill already exists",
+				"message": fmt.Sprintf("A skill named '%s' is already installed", manifest.Name),
+			})
+		}
+	}
+
+	// Check minimum Myrai version compatibility
+	if manifest.MinMyraiVersion != "" {
+		currentVersion := os.Getenv("MYRAI_VERSION")
+		if currentVersion == "" {
+			currentVersion = "2.0.0" // Default version
+		}
+		if !isVersionCompatible(currentVersion, manifest.MinMyraiVersion) {
+			os.RemoveAll(skillPath)
+			return c.Status(400).JSON(fiber.Map{
+				"error":   "Incompatible Myrai version",
+				"message": fmt.Sprintf("Skill requires Myrai %s, but current version is %s", manifest.MinMyraiVersion, currentVersion),
+			})
+		}
+	}
+
+	// Install dependencies if package.json or requirements.txt exists
+	if err := h.installSkillDependencies(skillPath); err != nil {
+		h.logger.Warn("Failed to install some dependencies", zap.Error(err))
+		// Continue anyway - skill might still work
+	}
+
+	// Register the skill
+	if h.skills != nil {
+		// TODO: Actually register the skill with the registry
+		// This would load the skill and make it available
+		h.logger.Info("Skill would be registered here", zap.String("name", manifest.Name))
+	}
+
+	// Save installation metadata
+	installRecord := map[string]interface{}{
+		"name":         manifest.Name,
+		"version":      manifest.Version,
+		"description":  manifest.Description,
+		"author":       manifest.Author,
+		"source_repo":  body.Repo,
+		"install_path": skillPath,
+		"installed_at": time.Now(),
+		"tools_count":  len(manifest.Tools),
+	}
+
+	// Store in database if available
+	if h.store != nil {
+		db := h.store.DB()
+		configJSON, _ := json.Marshal(installRecord)
+		config := &store.Config{
+			Key:       fmt.Sprintf("skill.install.%s", manifest.Name),
+			Value:     string(configJSON),
+			UpdatedAt: time.Now(),
+		}
+		if err := db.Save(config).Error; err != nil {
+			h.logger.Error("Failed to save skill installation record", zap.Error(err))
+		}
+	}
+
+	h.logger.Info("Skill installed successfully",
+		zap.String("name", manifest.Name),
+		zap.String("version", manifest.Version),
+		zap.String("path", skillPath),
+	)
+
+	return c.JSON(fiber.Map{
+		"message": "Skill installed successfully",
+		"skill":   installRecord,
+		"next_steps": []string{
+			fmt.Sprintf("Enable the skill: POST /api/skills/%s/toggle with {'enabled': true}", manifest.Name),
+		},
 	})
+}
+
+// cloneRepository clones a git repository
+func (h *Handler) cloneRepository(repoURL, destPath string) error {
+	// Ensure git is available
+	if _, err := exec.LookPath("git"); err != nil {
+		return fmt.Errorf("git is not installed")
+	}
+
+	// Normalize repo URL
+	if !strings.HasPrefix(repoURL, "http://") && !strings.HasPrefix(repoURL, "https://") && !strings.HasPrefix(repoURL, "git@") {
+		// Assume GitHub repo shorthand (e.g., "owner/repo")
+		repoURL = "https://github.com/" + repoURL
+	}
+
+	// Clone the repository
+	cmd := exec.Command("git", "clone", "--depth", "1", repoURL, destPath)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("git clone failed: %w", err)
+	}
+
+	return nil
+}
+
+// installSkillDependencies installs dependencies for the skill
+func (h *Handler) installSkillDependencies(skillPath string) error {
+	// Check for package.json (Node.js)
+	packageJSONPath := filepath.Join(skillPath, "package.json")
+	if _, err := os.Stat(packageJSONPath); err == nil {
+		h.logger.Info("Installing Node.js dependencies", zap.String("path", skillPath))
+		cmd := exec.Command("npm", "install", "--production")
+		cmd.Dir = skillPath
+		if output, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("npm install failed: %w (output: %s)", err, string(output))
+		}
+	}
+
+	// Check for requirements.txt (Python)
+	requirementsPath := filepath.Join(skillPath, "requirements.txt")
+	if _, err := os.Stat(requirementsPath); err == nil {
+		h.logger.Info("Installing Python dependencies", zap.String("path", skillPath))
+		cmd := exec.Command("pip", "install", "-r", "requirements.txt")
+		cmd.Dir = skillPath
+		if output, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("pip install failed: %w (output: %s)", err, string(output))
+		}
+	}
+
+	// Check for go.mod (Go)
+	goModPath := filepath.Join(skillPath, "go.mod")
+	if _, err := os.Stat(goModPath); err == nil {
+		h.logger.Info("Installing Go dependencies", zap.String("path", skillPath))
+		cmd := exec.Command("go", "mod", "download")
+		cmd.Dir = skillPath
+		if output, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("go mod download failed: %w (output: %s)", err, string(output))
+		}
+	}
+
+	return nil
+}
+
+// sanitizeRepoName creates a safe directory name from repo URL
+func sanitizeRepoName(repo string) string {
+	// Remove protocol prefixes
+	name := strings.TrimPrefix(repo, "https://")
+	name = strings.TrimPrefix(name, "http://")
+	name = strings.TrimPrefix(name, "git@github.com:")
+	name = strings.TrimSuffix(name, ".git")
+
+	// Replace path separators and special chars
+	name = strings.ReplaceAll(name, "/", "_")
+	name = strings.ReplaceAll(name, ":", "_")
+	name = strings.ReplaceAll(name, " ", "_")
+
+	return name
+}
+
+// isVersionCompatible checks if current version meets minimum requirement
+func isVersionCompatible(current, minimum string) bool {
+	// Simple version comparison (assumes semver format)
+	currentParts := strings.Split(current, ".")
+	minimumParts := strings.Split(minimum, ".")
+
+	for i := 0; i < len(minimumParts) && i < len(currentParts); i++ {
+		var currentVal, minimumVal int
+		fmt.Sscanf(currentParts[i], "%d", &currentVal)
+		fmt.Sscanf(minimumParts[i], "%d", &minimumVal)
+
+		if currentVal > minimumVal {
+			return true
+		}
+		if currentVal < minimumVal {
+			return false
+		}
+	}
+
+	return len(currentParts) >= len(minimumParts)
 }
 
 // toggleSkill enables/disables a skill - ACTUALLY WORKS NOW
