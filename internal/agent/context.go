@@ -126,7 +126,9 @@ func (cm *ContextManager) buildFullContext(ctx context.Context, convID string, r
 		return result, nil
 	}
 
-	for _, msg := range storeMsgs {
+	// Reverse order to get chronological sequence (oldest first) for LLM
+	for i := len(storeMsgs) - 1; i >= 0; i-- {
+		msg := storeMsgs[i]
 		// Skip empty assistant messages (no content and no tool calls)
 		// These cause API errors: "message with role 'assistant' must not be empty"
 		if msg.Role == "assistant" && msg.Content == "" && len(msg.ToolCalls) == 0 {
@@ -187,8 +189,9 @@ func (cm *ContextManager) buildSummarizedContext(ctx context.Context, convID str
 		return result, nil
 	}
 
-	// Add recent messages in order
-	for _, msg := range recentMsgs {
+	// Reverse order to get chronological sequence (oldest first) for LLM
+	for i := len(recentMsgs) - 1; i >= 0; i-- {
+		msg := recentMsgs[i]
 		// Skip empty assistant messages (no content and no tool calls)
 		// These cause API errors: "message with role 'assistant' must not be empty"
 		if msg.Role == "assistant" && msg.Content == "" && len(msg.ToolCalls) == 0 {

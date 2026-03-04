@@ -402,8 +402,13 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 				zap.Error(err),
 			)
 		} else {
-			resultStr := fmt.Sprintf("%v", result)
-			resultObj["content"] = resultStr
+			// Convert result to proper JSON string for LLM
+			resultJSON, err := json.Marshal(result)
+			if err != nil {
+				resultObj["content"] = fmt.Sprintf("%v", result)
+			} else {
+				resultObj["content"] = string(resultJSON)
+			}
 		}
 
 		toolResults = append(toolResults, resultObj)
@@ -416,7 +421,7 @@ func (a *Agent) handleToolCalls(ctx context.Context, req llm.ChatRequest, convID
 			ConversationID: convID,
 			Role:           "tool",
 			Content:        resultObj["content"].(string),
-			ToolCalls:      store.ToJSON(updatedToolCallForSave),
+			ToolCalls:      store.ToJSON([]llm.ToolCall{updatedToolCallForSave}), // Store as array for consistency
 			ToolResults:    store.ToJSON(result),
 			ToolCallID:     toolCallID,
 		}
@@ -531,7 +536,9 @@ func (a *Agent) buildContext(ctx context.Context, convID string, systemPrompt st
 		return messages, nil // Return just system prompt if no history
 	}
 
-	for _, msg := range storeMsgs {
+	// Reverse order to get chronological sequence (oldest first) for LLM
+	for i := len(storeMsgs) - 1; i >= 0; i-- {
+		msg := storeMsgs[i]
 		// Skip empty assistant messages (no content and no tool calls)
 		// These cause API errors: "message with role 'assistant' must not be empty"
 		if msg.Role == "assistant" && msg.Content == "" && len(msg.ToolCalls) == 0 {

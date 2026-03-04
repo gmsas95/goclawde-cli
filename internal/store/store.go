@@ -173,11 +173,11 @@ func (s *Store) CreateMessage(msg *Message) error {
 	return s.db.Create(msg).Error
 }
 
-// GetMessages retrieves messages for a conversation
+// GetMessages retrieves messages for a conversation (newest first)
 func (s *Store) GetMessages(conversationID string, limit, offset int) ([]Message, error) {
 	var msgs []Message
 	err := s.db.Where("conversation_id = ?", conversationID).
-		Order("created_at ASC").
+		Order("created_at DESC").
 		Limit(limit).
 		Offset(offset).
 		Find(&msgs).Error
