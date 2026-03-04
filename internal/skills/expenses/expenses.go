@@ -1,8 +1,14 @@
 package expenses
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -14,9 +20,10 @@ import (
 // ExpensesSkill provides expense tracking capabilities
 type ExpensesSkill struct {
 	*skills.BaseSkill
-	store  *Store
-	parser *ExpenseParser
-	logger *zap.Logger
+	store      *Store
+	parser     *ExpenseParser
+	logger     *zap.Logger
+	httpClient *http.Client
 }
 
 // NewExpensesSkill creates a new expenses skill
@@ -25,14 +32,15 @@ func NewExpensesSkill(db *gorm.DB, logger *zap.Logger) (*ExpensesSkill, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create expense store: %w", err)
 	}
-	
+
 	skill := &ExpensesSkill{
-		BaseSkill: skills.NewBaseSkill("expenses", "Expense Tracking", "1.0.0"),
-		store:     store,
-		parser:    NewExpenseParser(),
-		logger:    logger,
+		BaseSkill:  skills.NewBaseSkill("expenses", "Expense Tracking", "1.0.0"),
+		store:      store,
+		parser:     NewExpenseParser(),
+		logger:     logger,
+		httpClient: &http.Client{Timeout: 30 * time.Second},
 	}
-	
+
 	skill.registerTools()
 	return skill, nil
 }
@@ -180,7 +188,7 @@ func (e *ExpensesSkill) registerTools() {
 			},
 		},
 	}
-	
+
 	for _, tool := range tools {
 		tool.Handler = e.handleTool(tool.Name)
 		e.AddTool(tool)
@@ -214,17 +222,17 @@ func (e *ExpensesSkill) handleTool(name string) skills.ToolHandler {
 // handleAddExpense adds a new expense
 func (e *ExpensesSkill) handleAddExpense(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	description, _ := args["description"].(string)
-	
+
 	if description == "" {
 		return nil, fmt.Errorf("description is required")
 	}
-	
+
 	// Parse the expense
 	parseResult, err := e.parser.ParseExpense(description)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse expense: %w", err)
 	}
-	
+
 	// Allow overrides
 	if amount, ok := args["amount"].(float64); ok && amount > 0 {
 		parseResult.Amount = amount
@@ -237,13 +245,13 @@ func (e *ExpensesSkill) handleAddExpense(ctx context.Context, args map[string]in
 			parseResult.Date = d
 		}
 	}
-	
+
 	if parseResult.Amount <= 0 {
 		return nil, fmt.Errorf("could not determine expense amount")
 	}
-	
+
 	userID := e.getUserID(ctx)
-	
+
 	expense := &Expense{
 		UserID:      userID,
 		Amount:      parseResult.Amount,
@@ -254,16 +262,16 @@ func (e *ExpensesSkill) handleAddExpense(ctx context.Context, args map[string]in
 		Date:        parseResult.Date,
 		Source:      "manual",
 	}
-	
+
 	if err := e.store.CreateExpense(expense); err != nil {
 		return nil, fmt.Errorf("failed to create expense: %w", err)
 	}
-	
+
 	e.logger.Info("Expense added",
 		zap.Float64("amount", expense.Amount),
 		zap.String("category", expense.Category),
 	)
-	
+
 	return map[string]interface{}{
 		"expense_id": expense.ID,
 		"amount":     expense.FormatAmount(),
@@ -282,15 +290,15 @@ func (e *ExpensesSkill) handleListExpenses(ctx context.Context, args map[string]
 	if l, ok := args["limit"].(float64); ok {
 		limit = int(l)
 	}
-	
+
 	userID := e.getUserID(ctx)
-	
+
 	// Build filters
 	filters := ExpenseFilters{
 		Category: category,
 		Limit:    limit,
 	}
-	
+
 	// Set date range based on period
 	now := time.Now()
 	switch period {
@@ -317,12 +325,12 @@ func (e *ExpensesSkill) handleListExpenses(ctx context.Context, args map[string]
 		filters.StartDate = &start
 		filters.EndDate = &end
 	}
-	
+
 	list, err := e.store.ListExpenses(userID, filters)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Format expenses
 	formatted := make([]map[string]interface{}, len(list.Expenses))
 	for i, exp := range list.Expenses {
@@ -335,7 +343,7 @@ func (e *ExpensesSkill) handleListExpenses(ctx context.Context, args map[string]
 			"date":        exp.Date.Format("Jan 2"),
 		}
 	}
-	
+
 	return map[string]interface{}{
 		"expenses": formatted,
 		"total":    list.Total,
@@ -349,10 +357,10 @@ func (e *ExpensesSkill) handleGetSummary(ctx context.Context, args map[string]in
 	if period == "" {
 		period = "month"
 	}
-	
+
 	userID := e.getUserID(ctx)
 	now := time.Now()
-	
+
 	var start, end time.Time
 	switch period {
 	case "today":
@@ -371,12 +379,12 @@ func (e *ExpensesSkill) handleGetSummary(ctx context.Context, args map[string]in
 		start = time.Date(now.Year(), 1, 1, 0, 0, 0, 0, now.Location())
 		end = now
 	}
-	
+
 	summary, err := e.store.GetSummary(userID, start, end)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Format category breakdown
 	categories := []map[string]interface{}{}
 	for cat, amount := range summary.ByCategory {
@@ -385,7 +393,7 @@ func (e *ExpensesSkill) handleGetSummary(ctx context.Context, args map[string]in
 			"amount":   fmt.Sprintf("%.2f", amount),
 		})
 	}
-	
+
 	return map[string]interface{}{
 		"period":       summary.Period,
 		"total_spent":  fmt.Sprintf("%.2f", summary.TotalSpent),
@@ -400,17 +408,17 @@ func (e *ExpensesSkill) handleAddBudget(ctx context.Context, args map[string]int
 	category, _ := args["category"].(string)
 	amount, _ := args["amount"].(float64)
 	period, _ := args["period"].(string)
-	
+
 	if category == "" || amount <= 0 {
 		return nil, fmt.Errorf("category and amount are required")
 	}
-	
+
 	if period == "" {
 		period = string(PeriodMonthly)
 	}
-	
+
 	userID := e.getUserID(ctx)
-	
+
 	budget := &Budget{
 		UserID:   userID,
 		Name:     fmt.Sprintf("%s Budget", category),
@@ -418,11 +426,11 @@ func (e *ExpensesSkill) handleAddBudget(ctx context.Context, args map[string]int
 		Amount:   amount,
 		Period:   BudgetPeriod(period),
 	}
-	
+
 	if err := e.store.CreateBudget(budget); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{
 		"budget_id": budget.ID,
 		"category":  category,
@@ -436,35 +444,35 @@ func (e *ExpensesSkill) handleAddBudget(ctx context.Context, args map[string]int
 func (e *ExpensesSkill) handleCheckBudget(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	category, _ := args["category"].(string)
 	userID := e.getUserID(ctx)
-	
+
 	budgets, err := e.store.GetBudgets(userID, true)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	statuses := []map[string]interface{}{}
 	for _, budget := range budgets {
 		if category != "" && budget.Category != category {
 			continue
 		}
-		
+
 		status, err := e.store.GetBudgetStatus(&budget)
 		if err != nil {
 			continue
 		}
-		
+
 		statuses = append(statuses, map[string]interface{}{
-			"name":             status.Name,
-			"category":         status.Category,
-			"budget":           status.BudgetAmount,
-			"spent":            status.SpentAmount,
-			"remaining":        status.RemainingAmount,
-			"percent_used":     fmt.Sprintf("%.1f%%", status.PercentUsed),
-			"alert_triggered":  status.AlertTriggered,
-			"is_over_budget":   status.IsOverBudget,
+			"name":            status.Name,
+			"category":        status.Category,
+			"budget":          status.BudgetAmount,
+			"spent":           status.SpentAmount,
+			"remaining":       status.RemainingAmount,
+			"percent_used":    fmt.Sprintf("%.1f%%", status.PercentUsed),
+			"alert_triggered": status.AlertTriggered,
+			"is_over_budget":  status.IsOverBudget,
 		})
 	}
-	
+
 	return map[string]interface{}{
 		"budgets": statuses,
 	}, nil
@@ -474,22 +482,22 @@ func (e *ExpensesSkill) handleCheckBudget(ctx context.Context, args map[string]i
 func (e *ExpensesSkill) handleDeleteExpense(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	expenseID, _ := args["expense_id"].(string)
 	confirm, _ := args["confirm"].(bool)
-	
+
 	if expenseID == "" {
 		return nil, fmt.Errorf("expense_id is required")
 	}
-	
+
 	if !confirm {
 		return map[string]interface{}{
 			"confirm_required": true,
 			"message":          "Set confirm=true to delete this expense",
 		}, nil
 	}
-	
+
 	if err := e.store.DeleteExpense(expenseID); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{
 		"expense_id": expenseID,
 		"deleted":    true,
@@ -500,25 +508,30 @@ func (e *ExpensesSkill) handleDeleteExpense(ctx context.Context, args map[string
 func (e *ExpensesSkill) handleProcessReceipt(ctx context.Context, args map[string]interface{}) (interface{}, error) {
 	imagePath, _ := args["image_path"].(string)
 	ocrText, _ := args["ocr_text"].(string)
-	
+
 	if imagePath == "" {
 		return nil, fmt.Errorf("image_path is required")
 	}
-	
-	// In production, this would run OCR on the image
-	// For now, use provided OCR text or mock
+
+	// If OCR text not provided, extract it from the image
 	if ocrText == "" {
-		return map[string]interface{}{
-			"message": "Receipt processing requires OCR text. Please provide the text extracted from the receipt.",
-			"image":   imagePath,
-		}, nil
+		extractedText, err := e.extractTextFromImage(ctx, imagePath)
+		if err != nil {
+			e.logger.Warn("OCR extraction failed, falling back to manual input", zap.Error(err))
+			return map[string]interface{}{
+				"message": "Could not extract text from receipt automatically. Please provide the text manually via ocr_text parameter.",
+				"image":   imagePath,
+				"error":   err.Error(),
+			}, nil
+		}
+		ocrText = extractedText
 	}
-	
+
 	receipt, err := e.parser.ParseReceipt(ocrText)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Create expense from receipt
 	userID := e.getUserID(ctx)
 	expense := &Expense{
@@ -532,11 +545,11 @@ func (e *ExpensesSkill) handleProcessReceipt(ctx context.Context, args map[strin
 		HasReceipt:  true,
 		Source:      "receipt",
 	}
-	
+
 	if err := e.store.CreateExpense(expense); err != nil {
 		return nil, err
 	}
-	
+
 	return map[string]interface{}{
 		"expense_id": expense.ID,
 		"merchant":   receipt.Merchant,
@@ -568,4 +581,198 @@ func (e *ExpensesSkill) parseDate(dateStr string) time.Time {
 		}
 	}
 	return time.Time{}
+}
+
+// extractTextFromImage performs OCR on an image file
+// Supports multiple OCR providers: OpenAI Vision, Google Vision API, or Tesseract (local)
+func (e *ExpensesSkill) extractTextFromImage(ctx context.Context, imagePath string) (string, error) {
+	// Read image file
+	imageData, err := os.ReadFile(imagePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read image: %w", err)
+	}
+
+	// Try OpenAI Vision API first (if available)
+	if apiKey := os.Getenv("OPENAI_API_KEY"); apiKey != "" {
+		text, err := e.ocrWithOpenAI(ctx, imageData, apiKey)
+		if err == nil && text != "" {
+			return text, nil
+		}
+		e.logger.Warn("OpenAI OCR failed, trying fallback", zap.Error(err))
+	}
+
+	// Try Google Vision API
+	if apiKey := os.Getenv("GOOGLE_VISION_API_KEY"); apiKey != "" {
+		text, err := e.ocrWithGoogleVision(ctx, imageData, apiKey)
+		if err == nil && text != "" {
+			return text, nil
+		}
+		e.logger.Warn("Google Vision OCR failed, trying fallback", zap.Error(err))
+	}
+
+	// Fallback to Tesseract (local OCR)
+	text, err := e.ocrWithTesseract(ctx, imagePath)
+	if err == nil {
+		return text, nil
+	}
+
+	return "", fmt.Errorf("all OCR methods failed: %w", err)
+}
+
+// ocrWithOpenAI uses OpenAI's GPT-4 Vision API for OCR
+func (e *ExpensesSkill) ocrWithOpenAI(ctx context.Context, imageData []byte, apiKey string) (string, error) {
+	base64Image := base64.StdEncoding.EncodeToString(imageData)
+
+	reqBody := map[string]interface{}{
+		"model": "gpt-4-vision-preview",
+		"messages": []map[string]interface{}{
+			{
+				"role": "user",
+				"content": []map[string]interface{}{
+					{
+						"type": "text",
+						"text": "Extract all text from this receipt image. Return ONLY the raw text content, no formatting or commentary.",
+					},
+					{
+						"type": "image_url",
+						"image_url": map[string]string{
+							"url":    fmt.Sprintf("data:image/jpeg;base64,%s", base64Image),
+							"detail": "high",
+						},
+					},
+				},
+			},
+		},
+		"max_tokens": 1000,
+	}
+
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.openai.com/v1/chat/completions", bytes.NewReader(jsonBody))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := e.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API returned status %d", resp.StatusCode)
+	}
+
+	var result struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if len(result.Choices) == 0 {
+		return "", fmt.Errorf("no response from API")
+	}
+
+	return result.Choices[0].Message.Content, nil
+}
+
+// ocrWithGoogleVision uses Google Cloud Vision API for OCR
+func (e *ExpensesSkill) ocrWithGoogleVision(ctx context.Context, imageData []byte, apiKey string) (string, error) {
+	base64Image := base64.StdEncoding.EncodeToString(imageData)
+
+	reqBody := map[string]interface{}{
+		"requests": []map[string]interface{}{
+			{
+				"image": map[string]string{
+					"content": base64Image,
+				},
+				"features": []map[string]interface{}{
+					{
+						"type": "TEXT_DETECTION",
+					},
+				},
+			},
+		},
+	}
+
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	url := fmt.Sprintf("https://vision.googleapis.com/v1/images:annotate?key=%s", apiKey)
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(jsonBody))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := e.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API returned status %d", resp.StatusCode)
+	}
+
+	var result struct {
+		Responses []struct {
+			FullTextAnnotation struct {
+				Text string `json:"text"`
+			} `json:"fullTextAnnotation"`
+		} `json:"responses"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if len(result.Responses) == 0 {
+		return "", fmt.Errorf("no response from API")
+	}
+
+	return result.Responses[0].FullTextAnnotation.Text, nil
+}
+
+// ocrWithTesseract uses local Tesseract OCR
+func (e *ExpensesSkill) ocrWithTesseract(ctx context.Context, imagePath string) (string, error) {
+	// Check if tesseract is available
+	_, err := exec.LookPath("tesseract")
+	if err != nil {
+		return "", fmt.Errorf("tesseract not installed")
+	}
+
+	// Create temp output file
+	tempFile := imagePath + ".ocr"
+	defer os.Remove(tempFile + ".txt") // Tesseract adds .txt extension
+
+	// Run tesseract
+	cmd := exec.CommandContext(ctx, "tesseract", imagePath, tempFile, "-l", "eng")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("tesseract failed: %w (output: %s)", err, string(output))
+	}
+
+	// Read result
+	resultBytes, err := os.ReadFile(tempFile + ".txt")
+	if err != nil {
+		return "", fmt.Errorf("failed to read OCR result: %w", err)
+	}
+
+	return string(resultBytes), nil
 }
