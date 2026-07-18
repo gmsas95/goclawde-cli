@@ -19,6 +19,7 @@ import (
 	"github.com/gmsas95/myrai-cli/internal/llm"
 	"github.com/gmsas95/myrai-cli/internal/mcp"
 	"github.com/gmsas95/myrai-cli/internal/persona"
+	"github.com/gmsas95/myrai-cli/internal/runtime"
 	"github.com/gmsas95/myrai-cli/internal/skills"
 	"github.com/gmsas95/myrai-cli/internal/store"
 	"github.com/gmsas95/myrai-cli/internal/vector"
@@ -148,6 +149,28 @@ func (app *App) RunServer() {
 		} else {
 			app.Logger.Info("Cron runner started")
 		}
+	}
+
+	runtimeStore := runtime.NewStore(app.Store.DB())
+	if err := runtimeStore.Migrate(); err != nil {
+		app.Logger.Error("Failed to migrate runtime schema", zap.Error(err))
+	} else {
+		workspaceRoot, _ := os.Getwd()
+		runtimeRunner := runtime.NewRunner(runtime.RunnerConfig{
+			Logger:         app.Logger,
+			Store:          runtimeStore,
+			ToolRegistry:   tools.NewRegistry(app.Config.Tools.AllowedCmds),
+			SkillsRegistry: app.SkillsRegistry,
+			LLMClient:      llmClient,
+			WorkspaceRoot:  workspaceRoot,
+			AllowedCmds:    app.Config.Tools.AllowedCmds,
+		})
+		recovery := runtime.NewRecovery(runtimeStore, runtimeRunner, app.Logger)
+		if err := recovery.RecoverOnStartup(context.Background()); err != nil {
+			app.Logger.Error("Runtime recovery failed", zap.Error(err))
+		}
+
+		go recovery.MonitorRunningTasks(context.Background(), time.Minute)
 	}
 
 	server := api.New(app.Config, app.Store, app.Logger)

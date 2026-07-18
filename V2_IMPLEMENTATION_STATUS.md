@@ -1,3 +1,12 @@
+---
+type: plan
+title: Myrai v2 - Implementation Status
+resource: goclawde-cli
+description: "These components are **production-ready** with complete implementations:"
+tags: [implementation, postgresql, python, status]
+updated: 2026-06-18
+---
+
 # Myrai v2 - Implementation Status
 
 ## ✅ Fully Implemented Components

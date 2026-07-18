@@ -1,3 +1,12 @@
+---
+type: readme
+title: Phase 4: Tool Orchestration
+resource: goclawde-cli
+description: "This package implements Phase 4 of the Myrai 2.0 implementation plan, providing intelligent task decomposition and execution capabilities."
+tags: [docker]
+updated: 2026-06-18
+---
+
 # Phase 4: Tool Orchestration
 
 This package implements Phase 4 of the Myrai 2.0 implementation plan, providing intelligent task decomposition and execution capabilities.

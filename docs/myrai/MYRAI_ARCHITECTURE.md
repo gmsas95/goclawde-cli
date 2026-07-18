@@ -1,3 +1,12 @@
+---
+type: architecture
+title: Architecture Comparison: Current vs Target
+resource: goclawde-cli
+description: "┌────────────────────────────────────────────────────────────────┐"
+tags: [architecture, go, react]
+updated: 2026-06-18
+---
+
 # Architecture Comparison: Current vs Target
 
 ## Current State: Dev Assistant

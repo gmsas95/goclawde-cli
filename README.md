@@ -1,3 +1,12 @@
+---
+type: readme
+title: Myrai - Production-Grade AI Assistant
+resource: goclawde-cli
+description: "> **Myrai** (未来) means 'future' in Japanese."
+tags: [d1, docker, go, postgresql]
+updated: 2026-06-18
+---
+
 # Myrai - Production-Grade AI Assistant
 
 > **Myrai** (未来) means "future" in Japanese.  

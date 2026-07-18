@@ -1,3 +1,12 @@
+---
+type: guide
+title: Security Model for Self-Hosted Myrai
+resource: goclawde-cli
+description: "Myrai is designed as a **personal, self-hosted AI assistant** - not a multi-tenant SaaS. The security model prioritizes:"
+tags: [cloudflare, docker, go, nginx, security]
+updated: 2026-06-18
+---
+
 # Security Model for Self-Hosted Myrai
 
 ## Philosophy

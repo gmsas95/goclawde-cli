@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gmsas95/myrai-cli/internal/dashboard"
+	"github.com/gmsas95/myrai-cli/internal/runtime"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
@@ -77,6 +78,24 @@ func (s *Server) setupRoutes() {
 	// Note: jobRegistry is passed as nil - manual job execution requires full registry setup
 	dashboardHandler := dashboard.NewHandler(s.config, s.skillsRegistry, s.logger, s.store, nil)
 	dashboardHandler.RegisterRoutes(s.app)
+
+	runtimeStore := runtime.NewStore(s.store.DB())
+	if err := runtimeStore.Migrate(); err != nil {
+		s.logger.Error("Failed to migrate runtime schema", zap.Error(err))
+	} else {
+		workspaceRoot, _ := os.Getwd()
+		runtimeRunner := runtime.NewRunner(runtime.RunnerConfig{
+			Logger:         s.logger,
+			Store:          runtimeStore,
+			ToolRegistry:   s.tools,
+			SkillsRegistry: s.skillsRegistry,
+			LLMClient:      s.llmClient,
+			WorkspaceRoot:  workspaceRoot,
+			AllowedCmds:    s.config.Tools.AllowedCmds,
+		})
+		taskHandler := dashboard.NewTaskHandler(runtimeStore, runtimeRunner, s.logger)
+		taskHandler.RegisterTaskRoutes(api)
+	}
 
 	// Try to serve embedded dashboard first
 	if err := s.setupDashboard(); err != nil {

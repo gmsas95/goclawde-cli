@@ -1,3 +1,12 @@
+---
+type: guide
+title: Deploying Myrai on Dokploy
+resource: goclawde-cli
+description: "Complete guide to deploying Myrai 2.0 on Dokploy VPS."
+tags: [deployment, docker, go]
+updated: 2026-06-18
+---
+
 # Deploying Myrai on Dokploy
 
 Complete guide to deploying Myrai 2.0 on Dokploy VPS.

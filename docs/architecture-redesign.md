@@ -1,3 +1,12 @@
+---
+type: architecture
+title: Myrai Production Architecture Design
+resource: goclawde-cli
+description: "Based on analysis of OpenClaw's proven architecture, this document outlines the production-grade overhaul needed for Myrai."
+tags: [architecture, go]
+updated: 2026-06-18
+---
+
 # Myrai Production Architecture Design
 
 Based on analysis of OpenClaw's proven architecture, this document outlines the production-grade overhaul needed for Myrai.

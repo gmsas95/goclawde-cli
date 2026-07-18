@@ -1,3 +1,12 @@
+---
+type: guide
+title: Myrai Document Processing Guide
+resource: goclawde-cli
+description: "Myrai's document skill provides comprehensive document processing capabilities including:"
+tags: []
+updated: 2026-06-18
+---
+
 # Myrai Document Processing Guide
 
 ## Overview

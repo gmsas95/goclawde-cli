@@ -1,3 +1,12 @@
+---
+type: plan
+title: Myrai v2 Architecture - Implementation Summary
+resource: goclawde-cli
+description: "A production-grade AI assistant architecture inspired by OpenClaw's proven design patterns. This overhaul transforms Myrai from a simple bot into an enterprise-ready platform."
+tags: [go, implementation]
+updated: 2026-06-18
+---
+
 # Myrai v2 Architecture - Implementation Summary
 
 ## What We've Built

@@ -1,3 +1,12 @@
+---
+type: readme
+title: Myrai (未来) Documentation
+resource: goclawde-cli
+description: "> **Myrai** (未来) means 'future' in Japanese."
+tags: []
+updated: 2026-06-18
+---
+
 # Myrai (未来) Documentation
 
 > **Myrai** (未来) means "future" in Japanese.  

@@ -1,3 +1,12 @@
+---
+type: readme
+title: Config Package
+resource: goclawde-cli
+description: "Configuration management using Viper for:"
+tags: []
+updated: 2026-06-18
+---
+
 # Config Package
 
 Configuration management using Viper for:

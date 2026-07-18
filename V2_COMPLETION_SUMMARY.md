@@ -1,3 +1,12 @@
+---
+type: architecture
+title: Myrai v2 Architecture - Completion Summary
+resource: goclawde-cli
+description: "A **production-grade AI assistant architecture** on branch `v2-architecture` with comprehensive test coverage."
+tags: [docker, go, postgresql]
+updated: 2026-06-18
+---
+
 # Myrai v2 Architecture - Completion Summary
 
 ## ✅ What Was Built

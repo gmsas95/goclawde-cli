@@ -1,3 +1,12 @@
+---
+type: readme
+title: Myrai VPS Deployment Guide
+resource: goclawde-cli
+description: "Deploy Myrai to your own VPS for 24/7 uptime."
+tags: [deployment, docker]
+updated: 2026-06-18
+---
+
 # Myrai VPS Deployment Guide
 
 Deploy Myrai to your own VPS for 24/7 uptime.

@@ -1,3 +1,12 @@
+---
+type: readme
+title: Myrai Documentation Index
+resource: goclawde-cli
+description: "Welcome to the Myrai documentation. This index helps you navigate all available documentation."
+tags: [docker, go, postgresql]
+updated: 2026-06-18
+---
+
 # Myrai Documentation Index
 
 Welcome to the Myrai documentation. This index helps you navigate all available documentation.

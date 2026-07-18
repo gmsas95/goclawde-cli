@@ -1,3 +1,12 @@
+---
+type: plan
+title: Myrai Roadmap: From Dev Assistant to Personal Life OS
+resource: goclawde-cli
+description: "**A lightweight, local-first personal AI assistant for the 99% - not developers.**"
+tags: [go, planning, react]
+updated: 2026-06-18
+---
+
 # Myrai Roadmap: From Dev Assistant to Personal Life OS
 
 ## The Vision

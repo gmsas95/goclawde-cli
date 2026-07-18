@@ -1,3 +1,12 @@
+---
+type: guide
+title: Releasing Myrai
+resource: goclawde-cli
+description: "This document describes how to release new versions of Myrai."
+tags: [go]
+updated: 2026-06-18
+---
+
 # Releasing Myrai
 
 This document describes how to release new versions of Myrai.

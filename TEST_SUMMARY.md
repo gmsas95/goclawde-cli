@@ -1,3 +1,12 @@
+---
+type: guide
+title: Myrai v2 Test Suite - Summary
+resource: goclawde-cli
+description: "Myrai v2 now has comprehensive test coverage across all major architectural components."
+tags: [go, postgresql, testing]
+updated: 2026-06-18
+---
+
 # Myrai v2 Test Suite - Summary
 
 ## Overview

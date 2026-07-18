@@ -1,3 +1,12 @@
+---
+type: readme
+title: API Package
+resource: goclawde-cli
+description: "HTTP API using Fiber framework:"
+tags: [api]
+updated: 2026-06-18
+---
+
 # API Package
 
 HTTP API using Fiber framework:

@@ -29,7 +29,7 @@ func TestInstallSkill(t *testing.T) {
 	}
 
 	skillsRegistry := skills.NewRegistry(nil)
-	handler := NewHandler(cfg, skillsRegistry, logger, nil)
+	handler := NewHandler(cfg, skillsRegistry, logger, nil, nil)
 
 	app := fiber.New()
 	app.Post("/api/skills/install", handler.installSkill)
@@ -139,7 +139,7 @@ func TestCloneRepository(t *testing.T) {
 		},
 	}
 
-	handler := NewHandler(cfg, nil, logger, nil)
+	handler := NewHandler(cfg, nil, logger, nil, nil)
 
 	t.Run("non-existent repo fails gracefully", func(t *testing.T) {
 		destPath := filepath.Join(tempDir, "test_clone")
@@ -165,7 +165,7 @@ func TestInstallSkillDependencies(t *testing.T) {
 		},
 	}
 
-	handler := NewHandler(cfg, nil, logger, nil)
+	handler := NewHandler(cfg, nil, logger, nil, nil)
 
 	t.Run("no dependencies returns nil", func(t *testing.T) {
 		skillPath := t.TempDir()
@@ -209,7 +209,7 @@ func TestInstallSkill_InvalidRepoFormat(t *testing.T) {
 	}
 
 	skillsRegistry := skills.NewRegistry(nil)
-	handler := NewHandler(cfg, skillsRegistry, logger, nil)
+	handler := NewHandler(cfg, skillsRegistry, logger, nil, nil)
 
 	app := fiber.New()
 	app.Post("/api/skills/install", handler.installSkill)
@@ -243,7 +243,7 @@ func TestInstallSkill_MissingManifest(t *testing.T) {
 		},
 	}
 
-	handler := NewHandler(cfg, nil, logger, nil)
+	handler := NewHandler(cfg, nil, logger, nil, nil)
 
 	app := fiber.New()
 	app.Post("/api/skills/install", handler.installSkill)

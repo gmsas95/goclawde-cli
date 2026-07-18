@@ -1,3 +1,12 @@
+---
+type: readme
+title: Myrai - npm Package
+resource: goclawde-cli
+description: "This is the npm wrapper for [Myrai](https://github.com/gmsas95/goclawde-cli), your personal AI assistant."
+tags: []
+updated: 2026-06-18
+---
+
 # Myrai - npm Package
 
 This is the npm wrapper for [Myrai](https://github.com/gmsas95/goclawde-cli), your personal AI assistant.

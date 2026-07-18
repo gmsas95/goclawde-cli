@@ -1,3 +1,12 @@
+---
+type: guide
+title: Contributing to Myrai
+resource: goclawde-cli
+description: "Thank you for your interest in contributing to Myrai! This document provides guidelines and instructions for contributing."
+tags: [go]
+updated: 2026-06-18
+---
+
 # Contributing to Myrai
 
 Thank you for your interest in contributing to Myrai! This document provides guidelines and instructions for contributing.

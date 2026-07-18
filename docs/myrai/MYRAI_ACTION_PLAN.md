@@ -1,3 +1,12 @@
+---
+type: plan
+title: Immediate Action Plan: Pivot to Personal AI
+resource: goclawde-cli
+description: "✅ Single binary (~50MB)"
+tags: [go, planning]
+updated: 2026-06-18
+---
+
 # Immediate Action Plan: Pivot to Personal AI
 
 ## What We Have NOW (Good Foundation)

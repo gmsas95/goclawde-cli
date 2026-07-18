@@ -1,3 +1,12 @@
+---
+type: readme
+title: Web Search Skill
+resource: goclawde-cli
+description: "The Web Search skill provides real-time information retrieval from the internet using multiple search providers."
+tags: [architecture, go]
+updated: 2026-06-18
+---
+
 # Web Search Skill
 
 The Web Search skill provides real-time information retrieval from the internet using multiple search providers.

@@ -1,3 +1,12 @@
+---
+type: guide
+title: PostgreSQL Migration Guide
+resource: goclawde-cli
+description: "Myrai has been migrated from SQLite to PostgreSQL for better performance, scalability, and JSON support."
+tags: [database, docker, go, postgresql]
+updated: 2026-06-18
+---
+
 # PostgreSQL Migration Guide
 
 ## Overview

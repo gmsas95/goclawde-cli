@@ -1,3 +1,12 @@
+---
+type: guide
+title: Quick Start Guide
+resource: goclawde-cli
+description: "Get Myrai running in under 5 minutes."
+tags: [docker, go]
+updated: 2026-06-18
+---
+
 # Quick Start Guide
 
 Get Myrai running in under 5 minutes.

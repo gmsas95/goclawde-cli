@@ -1,3 +1,12 @@
+---
+type: guide
+title: Myrai Persona & Memory System
+resource: goclawde-cli
+description: "Myrai features a powerful persona and memory system using markdown files (IDENTITY.md, USER.md, TOOLS.md, AGENTS.md) adapted for a self-hosted Go application."
+tags: [go]
+updated: 2026-06-18
+---
+
 # Myrai Persona & Memory System
 
 **History:** The markdown-based persona system was originally created by a Malaysian developer as MemoryCore for local private use before being publicized. OpenClaw later brought the concept to wider attention with their implementation. Myrai builds on both with a Go implementation featuring performance optimizations (caching, SQLite persistence).

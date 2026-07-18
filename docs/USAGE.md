@@ -1,3 +1,12 @@
+---
+type: guide
+title: Myrai Usage Guide
+resource: goclawde-cli
+description: "Complete guide to using Myrai 2.0."
+tags: [docker, postgresql, python]
+updated: 2026-06-18
+---
+
 # Myrai Usage Guide
 
 Complete guide to using Myrai 2.0.

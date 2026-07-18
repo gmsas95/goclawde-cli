@@ -1,3 +1,12 @@
+---
+type: guide
+title: Myrai 2.0 - Quick Reference Card
+resource: goclawde-cli
+description: "Semantic memory compression. Like human brain clustering related memories."
+tags: [docker, go]
+updated: 2026-06-18
+---
+
 # Myrai 2.0 - Quick Reference Card
 
 ## 🎯 Key Concepts

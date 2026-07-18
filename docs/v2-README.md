@@ -1,3 +1,12 @@
+---
+type: readme
+title: Myrai v2 Architecture - Complete Implementation
+resource: goclawde-cli
+description: "Production-grade AI assistant architecture implementing OpenClaw-inspired patterns. This branch (`v2-architecture`) contains a complete overhaul of Myrai's core systems."
+tags: [go]
+updated: 2026-06-18
+---
+
 # Myrai v2 Architecture - Complete Implementation
 
 ## Overview

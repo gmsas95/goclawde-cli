@@ -1,3 +1,12 @@
+---
+type: readme
+title: LLM Package
+resource: goclawde-cli
+description: "Language model provider abstractions:"
+tags: []
+updated: 2026-06-18
+---
+
 # LLM Package
 
 Language model provider abstractions:

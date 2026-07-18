@@ -1,3 +1,12 @@
+---
+type: guide
+title: Test Suite Documentation
+resource: goclawde-cli
+description: "Myrai v2 includes comprehensive test coverage for all major components. Tests are organized by package and use the standard Go testing framework with `testify` for assertions."
+tags: [d1, go, postgresql, testing]
+updated: 2026-06-18
+---
+
 # Test Suite Documentation
 
 ## Overview

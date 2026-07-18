@@ -1,3 +1,12 @@
+---
+type: readme
+title: Vision & Audio Skill
+resource: goclawde-cli
+description: "Camera, screenshot, and audio capabilities for Myrai - bringing Jarvis-like vision and hearing to your AI assistant."
+tags: []
+updated: 2026-06-18
+---
+
 # Vision & Audio Skill
 
 Camera, screenshot, and audio capabilities for Myrai - bringing Jarvis-like vision and hearing to your AI assistant.

@@ -1,3 +1,12 @@
+---
+type: guide
+title: Deploying Myrai on Dokploy
+resource: goclawde-cli
+description: "[Dokploy](https://dokploy.com) is an open-source deployment platform that makes it easy to deploy Docker applications. This guide shows you how to deploy Myrai on Dokploy."
+tags: [docker, go]
+updated: 2026-06-18
+---
+
 # Deploying Myrai on Dokploy
 
 [Dokploy](https://dokploy.com) is an open-source deployment platform that makes it easy to deploy Docker applications. This guide shows you how to deploy Myrai on Dokploy.

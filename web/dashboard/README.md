@@ -1,3 +1,12 @@
+---
+type: readme
+title: React + TypeScript + Vite
+resource: goclawde-cli
+description: "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules."
+tags: [react, typescript]
+updated: 2026-06-18
+---
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

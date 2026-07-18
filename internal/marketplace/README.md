@@ -1,3 +1,12 @@
+---
+type: readme
+title: Myrai Agent Marketplace (Phase 6)
+resource: goclawde-cli
+description: "This package implements Phase 6 of the Myrai 2.0 roadmap - the Agent Marketplace. It provides a complete system for discovering, installing, managing, and publishing AI agents."
+tags: [go, postgresql]
+updated: 2026-06-18
+---
+
 # Myrai Agent Marketplace (Phase 6)
 
 This package implements Phase 6 of the Myrai 2.0 roadmap - the Agent Marketplace. It provides a complete system for discovering, installing, managing, and publishing AI agents.

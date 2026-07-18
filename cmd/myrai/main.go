@@ -105,6 +105,9 @@ func main() {
 		case "job":
 			handleJobCommand(os.Args[2:])
 			return
+		case "task":
+			cli.HandleTaskCommand(os.Args[2:])
+			return
 		case "help", "--help", "-h":
 			cli.PrintExtendedHelp()
 			return

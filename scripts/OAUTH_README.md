@@ -1,3 +1,12 @@
+---
+type: readme
+title: Daun OAuth Helper - Go Script
+resource: goclawde-cli
+description: "This Go script helps you get a Daun API key via OAuth flow."
+tags: [auth, go, security]
+updated: 2026-06-18
+---
+
 # Daun OAuth Helper - Go Script
 
 This Go script helps you get a Daun API key via OAuth flow.
